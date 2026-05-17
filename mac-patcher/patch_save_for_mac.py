@@ -1190,9 +1190,9 @@ function macRefreshModeUI()
     table.insert(rows, {
         tag = "Button",
         attributes = {
-            id   = "poc_test_decals",
-            text = "POC #2: setDecals players filter",
-            onClick = "gPocTestDecals",
+            id   = "poc_test_tile",
+            text = "POC #3: Custom_Tile setInvisibleTo",
+            onClick = "gPocTestTileInvisible",
             color = "#444444", textColor = "white",
             fontSize = "11", preferredHeight = "24",
         },
@@ -1311,39 +1311,125 @@ function gPocCollectSeated()
     return out
 end
 
-function gPocTestInvisible(_, clickerColor)
+-- TTS UI onClick callback signature: (player, value, id) where `player` is
+-- a Player object (not a color string). Color is player.color. Fixing this
+-- alone might explain why POC v1/v2 didn't isolate any seat.
+function gPocResolveHideFrom(playerObj, seated)
+    if playerObj and playerObj.color and playerObj.color ~= "" then
+        return playerObj.color
+    end
+    return seated[1]
+end
+
+-- v4: hide from the NON-clicker seat to distinguish "host can't hide from
+-- self" from "setInvisibleTo is broken". Pick the first seat that's NOT
+-- the clicker.
+function gPocResolveHideFromOther(playerObj, seated)
+    local me = (playerObj and playerObj.color) or ""
+    for _, c in ipairs(seated) do
+        if c ~= me then return c end
+    end
+    return seated[1]
+end
+
+function gPocDescribeInvisibleTo(obj)
+    -- TTS does not expose a getter for invisible_to. Best we can do is
+    -- report success of the setter calls; we already log those separately.
+    return "<no getter in API>"
+end
+
+function gPocTestInvisible(playerObj, _, _)
     local seated = gPocCollectSeated()
     if #seated < 2 then
         broadcastToAll("POC #1: needs 2+ seated players ("..#seated.." seated).", {1,0.6,0.4})
         return
     end
-    -- Hide the projector from the clicker; the OTHER seat should still see it.
-    local hideFrom = clickerColor or seated[1]
+    -- POC #1: hide from the NON-clicker (the Windows seat in our setup).
+    -- Mac side sees magenta everywhere regardless, so it can't observe the
+    -- result. The Windows seat (showTo? no, hideFrom!) is the reliable
+    -- observer: if setInvisibleTo works, they see NOTHING; if KO, they
+    -- still see the projector halo.
+    local hideFrom = gPocResolveHideFromOther(playerObj, seated)
     local showTo   = nil
     for _, c in ipairs(seated) do if c ~= hideFrom then showTo = c; break end end
 
+    broadcastToAll(
+        "POC #1: clicker="..(playerObj and playerObj.color or "?")..
+        " seated="..table.concat(seated, ",")..
+        " hideFrom="..tostring(hideFrom).." (NON-clicker = reliable observer)"..
+        " showTo="..tostring(showTo),
+        {1, 0.85, 0.3}
+    )
+
     local proj = spawnObject({
         type = "Custom_AssetBundle",
-        position = {x = 0, y = 2, z = 0},
-        scale = {x = 4, y = 4, z = 4},
+        position = {x = 0, y = 20, z = 0},
+        rotation = {x = 0, y = 0, z = 0},
+        scale    = {x = 0, y = 0, z = 0},
         sound = false,
     })
     proj.setCustomObject({
-        assetbundle = "https://steamusercontent-a.akamaihd.net/ugc/10056915662299769833/848514DAF6FBC6488078EA9E0A4EB8C4582FCADF/",
-        type_index = 0,
+        type = 0,
+        assetbundle = "https://steamusercontent-a.akamaihd.net/ugc/2482129948496305632/EBBE2560D4336E6C96317EDDA787E225CF0E5B48/",
     })
     proj.setLock(true)
+    proj.use_gravity = false
     proj.setName("POC_PROJECTOR")
-    -- Wait for bundle to load before applying setInvisibleTo
+    -- IMMEDIATELY apply setInvisibleTo + attachInvisibleHider, BEFORE the
+    -- bundle loads. If the renderer respects visibility from t=0, the
+    -- Projector should never project for the hidden seat (no residue).
+    proj.setInvisibleTo({hideFrom})
+    pcall(function() proj.attachInvisibleHider("poc1", {hideFrom}) end)
+    broadcastToAll(
+        "POC #1 applied IMMEDIATELY on spawn. After bundle loads (~3-5s), "..
+        hideFrom.." should see NOTHING (the projector never renders for them). "..
+        showTo.." should see the projector. IMPORTANT: reload save before each "..
+        "test to avoid stale projection residue.",
+        {0.7,0.9,1}
+    )
+end
+
+function gPocTestTileInvisible(playerObj, _, _)
+    local seated = gPocCollectSeated()
+    if #seated < 2 then
+        broadcastToAll("POC #3: needs 2+ seated players ("..#seated.." seated).", {1,0.6,0.4})
+        return
+    end
+    -- Hide from the clicker themselves (more intuitive to observe).
+    local hideFrom = gPocResolveHideFrom(playerObj, seated)
+    local showTo   = nil
+    for _, c in ipairs(seated) do if c ~= hideFrom then showTo = c; break end end
+
+    broadcastToAll(
+        "POC #3: clicker="..(playerObj and playerObj.color or "?")..
+        " seated="..table.concat(seated, ",")..
+        " hideFrom="..tostring(hideFrom).." showTo="..tostring(showTo),
+        {1, 0.85, 0.3}
+    )
+
+    local tile = spawnObject({
+        type = "Custom_Tile",
+        position = {x = 0, y = 0.5, z = 4},
+        rotation = {x = 0, y = 0, z = 0},
+        scale    = {x = 3, y = 1, z = 3},
+        sound = false,
+    })
+    tile.setCustomObject({
+        image = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/mac-projector-fallback/mod/data/mac-fallback-assets/cohesion_halo.png",
+        type = 3,
+        thickness = 0.1,
+    })
+    tile.setLock(true)
+    tile.setName("POC_TILE")
     Wait.time(function()
-        proj.setInvisibleTo({hideFrom})
+        tile.setInvisibleTo({hideFrom})
+        pcall(function() tile.attachInvisibleHider("poc3", {hideFrom}) end)
         broadcastToAll(
-            "POC #1: projector spawned at table center, hidden from "..hideFrom..
-            ". "..hideFrom.." should see NOTHING. "..showTo.." should see the projector"..
-            " (magenta on Mac, colored on Windows). Each player REPORTS what they see.",
+            "POC #3 applied: getInvisibleTo() = "..gPocDescribeInvisibleTo(tile)..
+            ". "..hideFrom.." should see NOTHING. "..showTo.." should see the halo.",
             {0.7,0.9,1}
         )
-    end, 4)
+    end, 6)
 end
 
 function gPocTestDecals(_, clickerColor)
@@ -1381,13 +1467,15 @@ end
 function gPocCleanup(_, _)
     local n = 0
     for _, o in ipairs(getAllObjects()) do
-        if o.getName() == "POC_PROJECTOR" then o.destruct(); n = n + 1 end
+        local name = o.getName()
+        if name == "POC_PROJECTOR" or name == "POC_TILE" then
+            o.destruct(); n = n + 1
+        end
     end
     -- Clear ALL global decals (POC ones are the only ones using setDecals
     -- in the current patch since our overlays use Object decals, not Global).
-    -- If this breaks something else, revisit; for the POC window it's fine.
     Global.setDecals({})
-    broadcastToAll("POC cleanup: destroyed "..n.." projector(s), cleared global decals.", {0.8,0.8,0.8})
+    broadcastToAll("POC cleanup: destroyed "..n.." object(s), cleared global decals.", {0.8,0.8,0.8})
 end
 
 -- Override hotkey init functions to capture playerColor and route through
@@ -1963,6 +2051,24 @@ TOKEN_BUTTON_WRAPPER_RE = re.compile(
     re.DOTALL
 )
 
+# Command Token clearCohesionRulers (plural) injection. The List Builder
+# emits Command Token scripts whose clearTemplates() calls clearCohesionRulers
+# (plural) but only defines clearCohesionRuler (singular, from Cohesion.ttslua).
+# Order_Token.a57c41 defines both. On Command Tokens, clicking ACT without
+# an eligible unit falls through to standby() -> clearTemplates() -> crash
+# on the missing plural fn. Inject the wrapper if missing. Idempotent via
+# the presence-check before insertion.
+COMMAND_TOKEN_PLURAL_FN = (
+    "\r\n-- MAC PATCH: inject missing clearCohesionRulers plural wrapper "
+    "(upstream bug)\r\n"
+    "function clearCohesionRulers()\r\n"
+    "    if selectedUnitObj then\r\n"
+    "        selectedUnitObj.setVar(\"moveState\", false)\r\n"
+    "        selectedUnitObj.call(\"clearCohesionRuler\")\r\n"
+    "    end\r\n"
+    "end\r\n"
+)
+
 # List Builder _loadArmyFromJson nil-guard. Stock SWL never nil-checks the
 # result of JSON.decode(text) inside importFromText, so any blur of the
 # import InputField with empty/invalid text crashes _loadArmyFromJson at
@@ -2158,6 +2264,15 @@ def patch_object_scripts(data: dict) -> tuple:
                 if n > 0:
                     ls = new_ls
                     n_rng += 1
+                    changed = True
+
+                # Command Token: inject clearCohesionRulers (plural) if the
+                # script calls it from clearTemplates but doesn't define it.
+                # Pre-existing upstream bug; only manifests when ACT is
+                # clicked without an eligible unit (standby -> crash).
+                if ("clearCohesionRulers()" in ls
+                        and "function clearCohesionRulers()" not in ls):
+                    ls = ls.rstrip() + COMMAND_TOKEN_PLURAL_FN
                     changed = True
 
                 # List Builder import guard. Applies to BLUE/RED LIST
