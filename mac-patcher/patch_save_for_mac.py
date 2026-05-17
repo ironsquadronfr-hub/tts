@@ -1166,6 +1166,48 @@ function macRefreshModeUI()
             preferredHeight = "28",
         },
     })
+    -- POC TEMP (17 mai): refactor per-seat rendering validation buttons.
+    -- TODO remove after POC #1 + #2 outcome recorded in design-refactor.md.
+    table.insert(rows, {
+        tag = "Text",
+        attributes = {
+            text = "POC TESTS (temp)",
+            fontSize = "12",
+            color = "#bbbbbb",
+            alignment = "MiddleCenter",
+        },
+    })
+    table.insert(rows, {
+        tag = "Button",
+        attributes = {
+            id   = "poc_test_invisible",
+            text = "POC #1: Projector setInvisibleTo",
+            onClick = "gPocTestInvisible",
+            color = "#444444", textColor = "white",
+            fontSize = "11", preferredHeight = "24",
+        },
+    })
+    table.insert(rows, {
+        tag = "Button",
+        attributes = {
+            id   = "poc_test_decals",
+            text = "POC #2: setDecals players filter",
+            onClick = "gPocTestDecals",
+            color = "#444444", textColor = "white",
+            fontSize = "11", preferredHeight = "24",
+        },
+    })
+    table.insert(rows, {
+        tag = "Button",
+        attributes = {
+            id   = "poc_cleanup",
+            text = "POC: cleanup",
+            onClick = "gPocCleanup",
+            color = "#222222", textColor = "#cccccc",
+            fontSize = "10", preferredHeight = "20",
+        },
+    })
+
     -- Build my panel (will be merged into the existing UI tree below so we
     -- don't clobber legionFloatingMenu / Welcome / Chess Clocks etc.).
     local panel = {
@@ -1176,7 +1218,7 @@ function macRefreshModeUI()
             rectAlignment = "MiddleRight",
             offsetXY = "-10 80",
             width = "260",
-            height = "320",
+            height = "400",
             color = "rgba(0.06,0.06,0.06,0.9)",
             padding = "8 8 8 8",
             outlineSize = "1 1",
@@ -1252,6 +1294,101 @@ function onPlayerDisconnect(_)     macDeferRefresh() end
 
 -- Initial UI build, deferred + pcalled like the rest.
 Wait.time(function() pcall(macRefreshModeUI) end, 2)
+
+-- ============================================
+-- POC TEMP (17 mai 2026): per-seat rendering refactor validation
+-- Test #1: does setInvisibleTo on a Projector AssetBundle hide the actual
+--          projected rendering for that seat (not just the GameObject)?
+-- Test #2: does Global.setDecals support a per-entry `players` filter?
+-- TODO remove after outcomes recorded.
+-- ============================================
+
+function gPocCollectSeated()
+    local out = {}
+    for _, p in ipairs(Player.getPlayers()) do
+        if p.seated then table.insert(out, p.color) end
+    end
+    return out
+end
+
+function gPocTestInvisible(_, clickerColor)
+    local seated = gPocCollectSeated()
+    if #seated < 2 then
+        broadcastToAll("POC #1: needs 2+ seated players ("..#seated.." seated).", {1,0.6,0.4})
+        return
+    end
+    -- Hide the projector from the clicker; the OTHER seat should still see it.
+    local hideFrom = clickerColor or seated[1]
+    local showTo   = nil
+    for _, c in ipairs(seated) do if c ~= hideFrom then showTo = c; break end end
+
+    local proj = spawnObject({
+        type = "Custom_AssetBundle",
+        position = {x = 0, y = 2, z = 0},
+        scale = {x = 4, y = 4, z = 4},
+        sound = false,
+    })
+    proj.setCustomObject({
+        assetbundle = "https://steamusercontent-a.akamaihd.net/ugc/10056915662299769833/848514DAF6FBC6488078EA9E0A4EB8C4582FCADF/",
+        type_index = 0,
+    })
+    proj.setLock(true)
+    proj.setName("POC_PROJECTOR")
+    -- Wait for bundle to load before applying setInvisibleTo
+    Wait.time(function()
+        proj.setInvisibleTo({hideFrom})
+        broadcastToAll(
+            "POC #1: projector spawned at table center, hidden from "..hideFrom..
+            ". "..hideFrom.." should see NOTHING. "..showTo.." should see the projector"..
+            " (magenta on Mac, colored on Windows). Each player REPORTS what they see.",
+            {0.7,0.9,1}
+        )
+    end, 4)
+end
+
+function gPocTestDecals(_, clickerColor)
+    local seated = gPocCollectSeated()
+    if #seated < 2 then
+        broadcastToAll("POC #2: needs 2+ seated players ("..#seated.." seated).", {1,0.6,0.4})
+        return
+    end
+    local url = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/mac-projector-fallback/mod/data/mac-fallback-assets/cohesion_halo.png"
+    -- Try with `players` field per entry (undocumented; TTS API may ignore it).
+    Global.setDecals({
+        {
+            name = "poc_decal_A", url = url,
+            position = {x = 3, y = 0.1, z = 0},
+            rotation = {x = 90, y = 0, z = 0},
+            scale = {x = 2, y = 2, z = 2},
+            players = {seated[1]},
+        },
+        {
+            name = "poc_decal_B", url = url,
+            position = {x = -3, y = 0.1, z = 0},
+            rotation = {x = 90, y = 0, z = 0},
+            scale = {x = 2, y = 2, z = 2},
+            players = {seated[2]},
+        },
+    })
+    broadcastToAll(
+        "POC #2: decal A at x=+3 (filter players="..seated[1]..
+        "), decal B at x=-3 (filter players="..seated[2]..
+        "). If filter honored: each player sees ONLY their own. If ignored: both see both.",
+        {0.7,0.9,1}
+    )
+end
+
+function gPocCleanup(_, _)
+    local n = 0
+    for _, o in ipairs(getAllObjects()) do
+        if o.getName() == "POC_PROJECTOR" then o.destruct(); n = n + 1 end
+    end
+    -- Clear ALL global decals (POC ones are the only ones using setDecals
+    -- in the current patch since our overlays use Object decals, not Global).
+    -- If this breaks something else, revisit; for the POC window it's fine.
+    Global.setDecals({})
+    broadcastToAll("POC cleanup: destroyed "..n.." projector(s), cleared global decals.", {0.8,0.8,0.8})
+end
 
 -- Override hotkey init functions to capture playerColor and route through
 -- the per-seat trigger. Defining initCohesionHotkeys/initRangebandHotkeys
