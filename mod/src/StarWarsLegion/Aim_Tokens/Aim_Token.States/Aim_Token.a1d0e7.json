@@ -1,6 +1,6 @@
 {
   "Object": {
-    "GUID": "21952e",
+    "GUID": "a1d0e7",
     "Name": "Custom_Model",
     "Transform": {
       "posX": -44.1457977,
@@ -13,7 +13,7 @@
       "scaleY": 0.925000131,
       "scaleZ": 0.925000131
     },
-    "Nickname": "Aim Token",
+    "Nickname": "Aim Token (V1)",
     "Description": "",
     "GMNotes": "",
     "ColorDiffuse": {
@@ -35,8 +35,8 @@
     "HideWhenFaceDown": false,
     "Hands": false,
     "CustomMesh": {
-      "MeshURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/aim_v2d.obj",
-      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/aim_v2_r8.jpg",
+      "MeshURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314442508/5CF014A3E962C6116B3B910C8BE44FE1C8FCA1D2/",
+      "DiffuseURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314442626/A2574B5726D1DE612FF4F2464A2315C7C85759D1/",
       "NormalURL": "",
       "ColliderURL": "",
       "Convex": true,
@@ -48,7 +48,5 @@
     "LuaScriptState": "",
     "XmlUI": ""
   },
-  "StatesPaths": {
-    "2": "Aim_Token.a1d0e7.json"
-  }
+  "StatesPaths": {}
 }
