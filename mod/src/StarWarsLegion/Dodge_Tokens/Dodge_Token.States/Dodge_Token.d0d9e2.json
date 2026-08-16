@@ -1,6 +1,6 @@
 {
   "Object": {
-    "GUID": "fbf519",
+    "GUID": "d0d9e2",
     "Name": "Custom_Model",
     "Transform": {
       "posX": -44.2080269,
@@ -13,7 +13,7 @@
       "scaleY": 0.650000334,
       "scaleZ": 0.650000334
     },
-    "Nickname": "Dodge Token",
+    "Nickname": "Dodge Token (V1)",
     "Description": "",
     "GMNotes": "",
     "ColorDiffuse": {
@@ -36,7 +36,7 @@
     "Hands": false,
     "CustomMesh": {
       "MeshURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314442740/91C08C293B53CCF3D104B0472B60ECF7BF4B613E/",
-      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/dodge_v2_r2.jpg",
+      "DiffuseURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314442875/553BAF41BE032BCE7282C4DECB180B5410AC7226/",
       "NormalURL": "",
       "ColliderURL": "",
       "Convex": true,
@@ -58,7 +58,5 @@
     "LuaScriptState": "",
     "XmlUI": ""
   },
-  "StatesPaths": {
-    "2": "Dodge_Token.d0d9e2.json"
-  }
+  "StatesPaths": {}
 }
