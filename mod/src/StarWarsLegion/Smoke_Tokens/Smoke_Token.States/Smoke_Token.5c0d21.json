@@ -1,6 +1,6 @@
 {
   "Object": {
-    "GUID": "63cabc",
+    "GUID": "5c0d21",
     "Name": "Custom_Model",
     "Transform": {
       "posX": -47.0614433,
@@ -13,7 +13,7 @@
       "scaleY": 1,
       "scaleZ": 0.6962911
     },
-    "Nickname": "Smoke Token",
+    "Nickname": "Smoke Token (V1)",
     "Description": "Flip to change color",
     "GMNotes": "",
     "ColorDiffuse": {
@@ -36,7 +36,7 @@
     "Hands": false,
     "CustomMesh": {
       "MeshURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314441337/A0DD41660FEC7E450F2EDF38191AF3C26E826C49/",
-      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/smoke_v2_r1.jpg",
+      "DiffuseURL": "https://steamusercontent-a.akamaihd.net/ugc/785236717874061016/BB4832A82AEEA19EE9B1E9498380E7D3850DB0B6/",
       "NormalURL": "",
       "ColliderURL": "",
       "Convex": true,
@@ -54,11 +54,9 @@
       },
       "CastShadows": true
     },
-    "LuaScript": "#include ./Smoke_Token.63cabc.lua",
+    "LuaScript": "#include ./Smoke_Token.5c0d21.lua",
     "LuaScriptState": "",
     "XmlUI": ""
   },
-  "StatesPaths": {
-    "2": "Smoke_Token.5c0d21.json"
-  }
+  "StatesPaths": {}
 }
