@@ -9,14 +9,24 @@ require('!/RangeRulers')
 -- token = 25.1mm diameter (range 1)
 -- poi = 50.8mm diameter (range 0.5 aka 3in)
 
+-- ⚠ POI a sa PROPRE copie du bouton (position, dimensions et couleur qui lui sont
+-- particulieres) : il ne passe pas par !/TokenWithRangeRuler. On lui applique donc
+-- le meme traitement a la main — un seul bouton au lieu de deux superposes, et une
+-- reorientation au retournement. Les fonctions viennent de !/RangeRulers.
+-- L'ASPECT NE CHANGE PAS : position, largeur, hauteur, police et teinte sont
+-- repris tels quels.
 function onLoad()
   rangeOn = false
-  createButton({0, 0, 0})
-  createButton({0, 0, 180})
+  isqBoutonsOrientes = {}
+  createButton()
   addSilhouetteButton()
 end
 
-function createButton(rotation)
+function onRotate(spin, flip, player_color, old_spin, old_flip)
+  isqMajBoutons(flip)
+end
+
+function createButton()
   local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
   local btnTint = gameData.getTable("battlefieldTint")
   self.createButton({
@@ -25,13 +35,14 @@ function createButton(rotation)
     label = "R",
     tooltip = "Spawn Range Ruler",
     position = {-0.2, 0.1, 1.15},
-    rotation = rotation,
+    rotation = isqOrientationBouton(0),
     width = 230,
     height = 180,
     font_size = 100,
     color= {btnTint["r"], btnTint["g"], btnTint["b"], 0.7},
     font_color= {1, 1, 1, 100}
   })
+  isqEnregistrerBouton("R", 0)
 end
 
 function onDestroy()
@@ -81,6 +92,7 @@ function addSilhouetteButton()
       label = "SIL",
       tooltip = "Toggle silhouettes on this unit",
       position = {0.2, 0.1, 1.15},
+      rotation = isqOrientationBouton(0),
       width = 230,
       height = 180,
       font_size = 100,
@@ -88,6 +100,8 @@ function addSilhouetteButton()
       font_color= {1, 1, 1, 100}
     }
     self.createButton(btnData)
+    -- il n'avait aucune rotation : au verso il se lisait en miroir lui aussi
+    isqEnregistrerBouton("SIL", 0)
   end    
 
   function toggleSilhouettes()

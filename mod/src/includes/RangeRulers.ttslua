@@ -1,3 +1,64 @@
+
+-- ============ Iron Squadron : boutons orientes selon la face visible ==========
+-- Un bouton TTS est attache au repere de l'objet : jeton retourne, on le voit
+-- depuis l'autre face et son angle dans le plan apparait NIE — ce n'est plus le
+-- bon cote du bouton qui longe le bord du jeton.
+--
+-- La reponse d'origine etait de creer DEUX boutons superposes, le second en
+-- {0,0,180} pour le verso. Ca passe a peu pres sur un « R » (on lit un R un peu
+-- etrange), mais pas des qu'on ajoute une autre lettre : deux « E » superposes se
+-- lisent « H ». On garde donc UN bouton et on le reoriente au retournement.
+--
+-- ⚠⚠ UN SEUL ANGLE PAR BOUTON : son angle de PLACEMENT sur le cercle (phi),
+-- mesure depuis l'avant du jeton. L'orientation de l'etiquette se deduit, et elle
+-- vaut -phi : TTS tourne l'etiquette dans le sens INVERSE du placement. Avoir
+-- expose deux angles a coute une erreur — en passant le meme signe aux deux, le
+-- bouton se retrouvait decale de 2*phi par rapport au rayon, et c'etait sa
+-- largeur, et non sa longueur, qui longeait le bord du jeton.
+--
+-- Formule : a l'endroit { 0, -phi, 0 }, au verso { 0, phi, 180 }.
+-- Controle : phi = 0 redonne {0,0,180}, soit exactement l'ancien second bouton.
+--
+-- ⚠ Le fait qu'un bouton apparaisse de l'AUTRE COTE au verso n'est pas un
+-- defaut : c'est le meme objet vu depuis l'autre face.
+--
+-- ⚠ Ces fonctions vivent ICI, dans RangeRulers, parce que POI ne passe PAS par
+-- TokenWithRangeRuler — il a sa propre copie du bouton. En revanche onRotate
+-- n'est PAS defini ici : ce fichier est aussi inclus par le Global, l'Order Token
+-- et les BombCarts, qui n'ont pas de bouton a reorienter. Chaque porteur de
+-- boutons declare son propre onRotate appelant isqMajBoutons.
+ISQ_BOUTON_RAYON = 0.7
+
+isqBoutonsOrientes = {}
+
+function isqOrientationBouton(phi, flip)
+  if flip == nil then flip = self.getRotation().z end
+  if flip > 90 and flip < 270 then return { 0, phi, 180 } end
+  return { 0, -phi, 0 }
+end
+
+function isqPositionBouton(phi)
+  local r = math.rad(phi)
+  return { ISQ_BOUTON_RAYON * math.sin(r), 0.1, ISQ_BOUTON_RAYON * math.cos(r) }
+end
+
+-- A appeler apres avoir cree un bouton pour qu'il suive la face visible.
+function isqEnregistrerBouton(libelle, phi)
+  table.insert(isqBoutonsOrientes, { libelle = libelle, phi = phi })
+end
+
+function isqMajBoutons(flip)
+  for _, e in ipairs(isqBoutonsOrientes) do
+    for _, b in ipairs(self.getButtons() or {}) do
+      if b.label == e.libelle then
+        self.editButton({ index = b.index, rotation = isqOrientationBouton(e.phi, flip) })
+        break
+      end
+    end
+  end
+end
+-- =============================================================================
+
 require('!/data/RangeRulerLinks')
 require('!/IsqBridge')
 
