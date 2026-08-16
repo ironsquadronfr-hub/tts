@@ -142,6 +142,116 @@ local ISQ_TOKEN_RINGS = {
     ["Condition Token"] = ISQ_ASSETS .. "token05_27mm_isq_v1.unity3d",
 }
 
+-- The magenta the Mac players see, and why it is fixed here rather than in the
+-- mod's own link tables.
+--
+-- Range, Cohesion and Movement all spawn Custom AssetBundles built around the
+-- BucketheadBits/Projector shaders. Those bundles were compiled without a Metal
+-- variant, so on macOS the shader is missing at load and Unity falls back to
+-- its error material: a solid pink projector, on every base, every game. It is
+-- the mod's oldest platform bug and it has nothing to do with the URLs, which
+-- resolve fine -- the file downloads, the shader inside it does not run.
+--
+-- All 40 of them have a repaired, bi-platform rebuild: same prefabs, same
+-- geometry, same shader source, recompiled for both graphics APIs. They are
+-- byte for byte the ones validated in game, and shipped as the "Metal fix"
+-- release. Windows reads the same variant it always did.
+--
+-- The real cure is for the mod to re-upload them to Steam UGC and repoint its
+-- own link tables. UGC entries are immutable, so that means new entries, new
+-- URLs, and the mod's publishing account -- none of which is ours to do. Until
+-- then we substitute at the last moment: whatever bundle this module is about
+-- to spawn, if it is one of the broken ones, it spawns the repaired twin
+-- instead. Delete this table and the module falls straight back to vanilla.
+--
+-- Keyed by the vanilla URL, not by base size or by kind, so it keeps working if
+-- the mod ever remaps which key points at which bundle.
+local ISQ_METAL_REBUILDS = {
+    -- Movement, from getMovementLinks: 8 base sizes x 3 speeds.
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204398/3BF983176395A82824EF4EE3FB5846C1CB0D94C1/"] =
+        ISQ_ASSETS .. "movement_27mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204455/0328A5B6A65A6CCC03783F90F2F9ADBADBE51F16/"] =
+        ISQ_ASSETS .. "movement_27mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204508/3B461A9ED5C8FD15A9CE994B2EF4A23D1FE620B8/"] =
+        ISQ_ASSETS .. "movement_27mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204556/87F73A7126B6689E33C649AFF7EB066088058675/"] =
+        ISQ_ASSETS .. "movement_50mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204612/C9441D6D7226BC856FD32B1393EBCFEEF4BE06BC/"] =
+        ISQ_ASSETS .. "movement_50mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204654/31AE6A35319E67A7FA5F3FA095924FDB83EFE9BD/"] =
+        ISQ_ASSETS .. "movement_50mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204703/498144067F964315AB9FFE0BE79524FA0BD82A78/"] =
+        ISQ_ASSETS .. "movement_70mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204750/FD705459AEB3C1E5C0A7EA8F2822CB2956EC1D48/"] =
+        ISQ_ASSETS .. "movement_70mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204808/B32F1BE12E4BA2E650E2A7C752BA456A8F833416/"] =
+        ISQ_ASSETS .. "movement_70mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204854/B728B49E1E03ECC40F2318700652525ECE1B1961/"] =
+        ISQ_ASSETS .. "movement_100mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204904/5249FC634B658DF12ADC4D2ED7C952DAF4097F2C/"] =
+        ISQ_ASSETS .. "movement_100mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204949/BC9B663C90D3BFEFE8E9BF351A8B44E5B34954CE/"] =
+        ISQ_ASSETS .. "movement_100mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004204999/3D0E5B5EFA5A4D016847502CA7D7EA651D8118D2/"] =
+        ISQ_ASSETS .. "movement_120mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205042/114008A17C31BE35A59FA82DDB4D746026D34599/"] =
+        ISQ_ASSETS .. "movement_120mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205092/FA8D1FEA3F65886CEBD36F5FDC2C8C55455CECE0/"] =
+        ISQ_ASSETS .. "movement_120mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205159/3D78003849E8563AB0ECAE3E3188B038425D44AE/"] =
+        ISQ_ASSETS .. "movement_150mm_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205214/5C61176C31C6785328C6C1E5D2C9C87CA803858A/"] =
+        ISQ_ASSETS .. "movement_150mm_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205245/ACAA917CA1F56999CCCDDC60266DB3D78C131866/"] =
+        ISQ_ASSETS .. "movement_150mm_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205310/A960CABCFD4E95BF5174136D4C1FB456C67C5477/"] =
+        ISQ_ASSETS .. "movement_oblong_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205355/D4CACF1FDABB078937B0ABD3D6CF73EB3A3E6C82/"] =
+        ISQ_ASSETS .. "movement_oblong_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1687149777004205405/5AB008BF976CF4FE3BDDB8939D5BD0A5324D617B/"] =
+        ISQ_ASSETS .. "movement_oblong_speed3_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1924743543116064734/122782FB31D01159AF6C8D9026C56C7D8A43FBD0/"] =
+        ISQ_ASSETS .. "movement_snail_speed1_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1924743543116064779/7F5AA0014CA66891FABEDA407BCB7043DEAF85ED/"] =
+        ISQ_ASSETS .. "movement_snail_speed2_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1924743543116064825/1198CC05646024F0A4BDD3048C9237BA78350274/"] =
+        ISQ_ASSETS .. "movement_snail_speed3_metal_v1.unity3d",
+    -- Range rulers, from getRangeRulerLinks.
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393064/133FD5E0FD2801C320C6F4D271E9860A9383A2D2/"] =
+        ISQ_ASSETS .. "projector_27mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393102/9F0A824003577BA4AE2CE1AE03ADA4DD7796EBC9/"] =
+        ISQ_ASSETS .. "projector_50mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393137/2B21FA95AD74281B47EC248CB78D5648099E2735/"] =
+        ISQ_ASSETS .. "projector_70mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393174/580A8DFC2CD970253A93C93197EDE29E2A0D98FA/"] =
+        ISQ_ASSETS .. "projector_100mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393255/C32C9978B04C009EAD0EDE3DBCA8A508EF4B7EAE/"] =
+        ISQ_ASSETS .. "projector_120mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393312/B4A26CDF7294AFCBB84D9836593037610519BE2B/"] =
+        ISQ_ASSETS .. "projector_150mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056393212/C1D52E052A6F31D212B4E91A3961A29FFCC47DBA/"] =
+        ISQ_ASSETS .. "projector_100mm_oblong_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/2008089545867709463/C4B55BF3BC0F3682F9D024D5C2519BC0166CBADB/"] =
+        ISQ_ASSETS .. "projector_200mm_oblong_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1838032857803650871/DB525612CDAF46A18A49B82C57A744E9A1F09D79/"] =
+        ISQ_ASSETS .. "projector_bomb_cart_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1848161512056387710/E5CB0DCCC147802B3E276B5922237171E0D53185/"] =
+        ISQ_ASSETS .. "projector_smoketoken_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1841415725493967222/CCEB0E06A39A2CB77FF9BCFEF8992F17B6E81C09/"] =
+        ISQ_ASSETS .. "projector_token_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/1841415725493967724/6AB27B28FEAA00EDDBBA9FCCB6BDED249836596A/"] =
+        ISQ_ASSETS .. "projector_tokenrangetwo_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/2482129948495938224/AE12E3C12026D934AFE5A96D511D39D385411CEA/"] =
+        ISQ_ASSETS .. "poi_3in_metal_v1.unity3d",
+    -- Cohesion rings, from getCohesionLinks.
+    ["https://steamusercontent-a.akamaihd.net/ugc/2482129948496305632/EBBE2560D4336E6C96317EDDA787E225CF0E5B48/"] =
+        ISQ_ASSETS .. "halfcohesion_27mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/2482129948496305877/719896A3F975D8C914D47DC22507816A512C4839/"] =
+        ISQ_ASSETS .. "halfcohesion_50mm_metal_v1.unity3d",
+    ["https://steamusercontent-a.akamaihd.net/ugc/2482129948496305957/A977453A781738EA5AF2935A4562670012881080/"] =
+        ISQ_ASSETS .. "halfcohesion_70mm_metal_v1.unity3d",
+}
+
 -- Per family: the name TTS gives the spawned object, whether it tracks its
 -- figure, and the pitch the vanilla spawn uses.
 --
@@ -178,7 +288,7 @@ end
 -- Which bundle this overlay shows. MaxMove carries its own in params:
 -- getMovementLinks lives in the Order Token's scope, not reachable from
 -- Global.
-local function macResolveBundle(kind, fig, params)
+local function macPickBundle(kind, fig, params)
     params = params or {}
     if params.bundle then return params.bundle end
 
@@ -218,6 +328,15 @@ local function macResolveBundle(kind, fig, params)
     end
 
     return nil
+end
+
+-- Every bundle this module spawns goes through here. The mod's own ones are
+-- swapped for their Metal-capable rebuild; ours pass through untouched, they
+-- were built bi-platform from the start.
+local function macResolveBundle(kind, fig, params)
+    local url = macPickBundle(kind, fig, params)
+    if url == nil then return nil end
+    return ISQ_METAL_REBUILDS[url] or url
 end
 
 local function macSpawnProjector(kind, fig, params)
