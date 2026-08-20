@@ -31,23 +31,29 @@ local function initListSpawner(params)
   end
 
   local function buildBattlefieldDeck(
+    tasks,
     scenario,
     objectives,
     deployments,
     conditions
   )
     local i = 0
-    for _, card in ipairs(objectives) do
-      drawBattlefieldCard(i, card, "objective", scenario)
+    local function queueCard(card, type)
+      local height = i
+      table.insert(tasks, function()
+        drawBattlefieldCard(height, card, type, scenario)
+        return true
+      end)
       i = i + 1
+    end
+    for _, card in ipairs(objectives) do
+      queueCard(card, "objective")
     end
     for _, card in ipairs(deployments) do
-      drawBattlefieldCard(i, card, "deployment", scenario)
-      i = i + 1
+      queueCard(card, "deployment")
     end
     for _, card in ipairs(conditions) do
-      drawBattlefieldCard(i, card, "condition", scenario)
-      i = i + 1
+      queueCard(card, "condition")
     end
   end
 
@@ -301,11 +307,15 @@ local function initListSpawner(params)
     tokenObj.setLuaScript(luaScript .. globals.tokenScript)
   end
 
+  -- Runs once every model of the unit exists: writes the mini scripts, then
+  -- queues one job per command token so their spawns are paced like every
+  -- other object.
   local function initializeMiniAndCommandToken(
     index,
     unitInfo,
     faction,
-    miniData
+    miniData,
+    push
   )
     -- TODO: Remove mapping.
     if faction == "Empire" then
@@ -358,173 +368,277 @@ local function initListSpawner(params)
       tokensToSpawn = unitInfo.tokens
     end
     for i = tokensToSpawn, 1, -1 do
-      initializeCommandToken({
-        name          = commandName,
-        commandType   = commandType,
-        pos           = position,
-        rot           = rotation,
-        baseSize      = unitInfo.size,
-        selectedSpeed = unitInfo.speed,
-      })
+      push(function()
+        initializeCommandToken({
+          name          = commandName,
+          commandType   = commandType,
+          pos           = position,
+          rot           = rotation,
+          baseSize      = unitInfo.size,
+          selectedSpeed = unitInfo.speed,
+        })
+        return true
+      end)
     end
   end
 
+  -- Queues everything one unit needs, in order: its cards, its unit ID
+  -- token, one job per model, then - once every model exists - the mini
+  -- scripts and one job per command token. `push` appends a job to the
+  -- running import's queue; a job returns true when it spawned an object.
   local function spawnUnit(
     unit,
     index,
     faction,
-    totalUnits
+    push
   )
     --Min JSON Payload
     local name = unit.name
     local upgrades = unit.upgrades or {}
     local loadout = unit.loadout or {}
 
-    --if we spawn via JSON we don't have
-    --enough data to parse silhs anymore...
-    --we need type and any custom values
-    --so load everything off the deck if needed
-    local completeUnitData
+    -- Shared by the jobs below, which run in queue order: the unit card job
+    -- fills them, the later jobs read them.
+    local offsets
+    local rotation
+    local miniData
 
-    local type = unit.type    
-    local silhData = unit.silhData or {}
+    push(function()
+      --if we spawn via JSON we don't have
+      --enough data to parse silhs anymore...
+      --we need type and any custom values
+      --so load everything off the deck if needed
+      local completeUnitData
 
-    if unit.silhData == nil then
-      silhData = {}
-      completeUnitData = deck:getUnitByFactionAndName(faction, name)
-      if completeUnitData.silhouette ~= nil then
-        for k, v in pairs(completeUnitData.silhouette) do
-          table.insert(silhData, completeUnitData.silhouette[k])
+      local type = unit.type
+      local silhData = unit.silhData or {}
+
+      if unit.silhData == nil then
+        silhData = {}
+        completeUnitData = deck:getUnitByFactionAndName(faction, name)
+        if completeUnitData.silhouette ~= nil then
+          for k, v in pairs(completeUnitData.silhouette) do
+            table.insert(silhData, completeUnitData.silhouette[k])
+          end
         end
       end
-    end
 
-    if unit.type == nil then
-      if completeUnitData == nil then
-        completeUnitData = deck:getUnitByFactionAndName(faction, name)
+      if unit.type == nil then
+        if completeUnitData == nil then
+          completeUnitData = deck:getUnitByFactionAndName(faction, name)
+        end
+        type = completeUnitData.type
       end
-      type = completeUnitData.type
-    end
 
-    -- Prep unit card spawn locations.
-    local offsets = computeSpawnPositions(index)
-    local rotation = self.getRotation()
-    local unitCard = deck:spawnUnitCard(faction, name)
-    unitCard.setPosition(offsets.adjustedPos)
-    unitCard.setRotation({0, rotation.y + 180, 0})
+      -- Prep unit card spawn locations.
+      offsets = computeSpawnPositions(index)
+      rotation = self.getRotation()
+      local unitCard = deck:spawnUnitCard(faction, name)
+      unitCard.setPosition(offsets.adjustedPos)
+      unitCard.setRotation({0, rotation.y + 180, 0})
+
+      miniData = {
+        name            = name,
+        colorSide       = color:lower(),
+        miniObjs        = {},
+        -- Intentionally omitted. We use the name assigned from the spawned model.
+        displayName     = nil,
+        unitID          = index,
+        unitCardGUID    = unitCard.getGUID(),
+        leaderIndex     = 1,
+        upgrades        = upgrades,
+        type            = type,
+        silhData        = silhData
+      }
+      return true
+    end)
 
     -- Spawn upgrade cards.
     for i, upgrade in ipairs(upgrades) do
-      local uOffsets = computeUpgradePositions(i)
-      local upgradeCard = deck:spawnUpgradeCard(upgrade)
-      upgradeCard.setPosition(
-        simpleTranslatePos(
-          offsets.adjustedPos,
-          uOffsets.xOffset * offsets.xOffset * -1,
-          uOffsets.zOffset * offsets.zOffset
+      push(function()
+        local uOffsets = computeUpgradePositions(i)
+        local upgradeCard = deck:spawnUpgradeCard(upgrade)
+        upgradeCard.setPosition(
+          simpleTranslatePos(
+            offsets.adjustedPos,
+            uOffsets.xOffset * offsets.xOffset * -1,
+            uOffsets.zOffset * offsets.zOffset
+          )
         )
-      )
-      upgradeCard.setRotation({0, rotation.y + 180, 0})
+        upgradeCard.setRotation({0, rotation.y + 180, 0})
+        return true
+      end)
     end
 
     -- Spawn unit ID token.
-    local unitId = unitTokens.takeObject({
-      position = offsets.adjustedPos,
-      rotation = {0, rotation.y + 180, 0},
-      smooth   = false,
-    })
+    push(function()
+      local unitId = unitTokens.takeObject({
+        position = offsets.adjustedPos,
+        rotation = {0, rotation.y + 180, 0},
+        smooth   = false,
+      })
 
-    local unitIdState = ((index - 1) % 10) + 1
+      local unitIdState = ((index - 1) % 10) + 1
 
-    if unitIdState > 1 then
-      unitId = unitId.setState(unitIdState)
-    end
+      if unitIdState > 1 then
+        unitId = unitId.setState(unitIdState)
+      end
 
-    local miniData = {
-      name            = name,
-      colorSide       = color:lower(),
-      upgrades        = {},
-      miniObjs        = {},
-      -- Intentionally omitted. We use the name assigned from the spawned model.
-      displayName     = nil,
-      unitID          = index,
-      unitCardGUID    = unitCard.getGUID(),
-      unitIDTokenGUID = unitId.getGUID(),
-      leaderIndex     = 1,
-      upgrades        = upgrades,
-      type            = type,
-      silhData        = silhData
-    }
+      miniData.unitIDTokenGUID = unitId.getGUID()
+      return true
+    end)
 
-    -- Spawn loadout and addon cards.
-    local additional = {
-      position = offsets.adjustedPos,
-      rotation  = rotation,
-    }
-    if #loadout > 0 then
-      additional.callback = function(spawnedBag)
-        for _, upgrade in ipairs(loadout) do
-          local upgradeCard = deck:spawnUpgradeCard(upgrade)
-          spawnedBag.putObject(upgradeCard)
+    -- Plan the models: one queued job per model, then the scripts and
+    -- command tokens once the last one has spawned.
+    push(function()
+      -- Spawn loadout and addon cards.
+      local additional = {
+        position = offsets.adjustedPos,
+        rotation  = rotation,
+      }
+      if #loadout > 0 then
+        additional.callback = function(spawnedBag)
+          for _, upgrade in ipairs(loadout) do
+            local upgradeCard = deck:spawnUpgradeCard(upgrade)
+            spawnedBag.putObject(upgradeCard)
+          end
         end
       end
-    end
-    local result = shelf:spawnUnitModels({
-      faction    = faction,
-      name       = name,
-      upgrades   = upgrades,
-      additional = additional,
-      scripts    = scripts,
-      callback   = function(model, index, base)
-        local position = computeMiniPositions(
-          offsets.adjustedPos,
-          index,
-          base,
-          offsets.xOffset,
-          offsets.zOffset,
-          #upgrades
-        )
-        model.setPosition(position)
-        model.setRotation({rotation.x, rotation.y + 180, rotation.z})
-        model.setColorTint(getGlobalTint())
-        table.insert(miniData.miniObjs, {
-          obj    = model,
-          name   = model.getName(),
-          leader = index == miniData.leaderIndex,
-        })
-      end,
-    })
-
-    initializeMiniAndCommandToken(
-      index,
-      result,
-      faction,
-      miniData
-    )
+      shelf:spawnUnitModels({
+        faction    = faction,
+        name       = name,
+        upgrades   = upgrades,
+        additional = additional,
+        scripts    = scripts,
+        schedule   = push,
+        callback   = function(model, modelIndex, base)
+          local position = computeMiniPositions(
+            offsets.adjustedPos,
+            modelIndex,
+            base,
+            offsets.xOffset,
+            offsets.zOffset,
+            #upgrades
+          )
+          model.setPosition(position)
+          model.setRotation({rotation.x, rotation.y + 180, rotation.z})
+          model.setColorTint(getGlobalTint())
+          table.insert(miniData.miniObjs, {
+            obj    = model,
+            name   = model.getName(),
+            leader = modelIndex == miniData.leaderIndex,
+          })
+        end,
+        done       = function(result)
+          initializeMiniAndCommandToken(
+            index,
+            result,
+            faction,
+            miniData,
+            push
+          )
+        end,
+      })
+      return false
+    end)
   end
 
   return function(listData)
+    -- The synchronous version spawned the whole list in the frame of the
+    -- import: ~120 objects instantiated at once froze the table for
+    -- seconds. Instead the import builds a queue of jobs and a pump spawns
+    -- one object per frame, folding zero-spawn jobs into the same frame
+    -- within a small time budget, so the table stays interactive while the
+    -- list fills in.
+    --
+    -- A fresh import obsoletes any queue still draining (importing again
+    -- while the previous list spawns): bumping the shared generation makes
+    -- the old pump stop on its next frame. Intentionally a global: both
+    -- imports run in this object's VM, whichever initListSpawner call they
+    -- came from.
+    __isqSpawnGeneration = (__isqSpawnGeneration or 0) + 1
+    local generation = __isqSpawnGeneration
+
+    -- One frozen schema per import; unpinned in the final task so anything
+    -- outside an import keeps reading the live table.
+    deck:pinSchema()
+    shelf:pinSchema()
+
+    -- `jobs` is the fine-grained queue the current unit expands into;
+    -- `tasks` holds the coarse steps (each card deal, each unit, the final
+    -- scenario call) in list order. Draining jobs before tasks makes a
+    -- unit's models follow its own cards instead of every card in the list
+    -- preceding every model.
+    local jobs = {}
+    local function push(job)
+      table.insert(jobs, job)
+    end
+    local tasks = {}
+
     for _, c in ipairs(listData.commandCards) do
-      dealCommandCard(c, false)
+      table.insert(tasks, function()
+        dealCommandCard(c, false)
+        return true
+      end)
     end
     for _, c in ipairs(listData.contingencies) do
-      dealCommandCard(c, true)
+      table.insert(tasks, function()
+        dealCommandCard(c, true)
+        return true
+      end)
     end
     local scenario = listData.battlefieldDeck.scenario or "standard"
     buildBattlefieldDeck(
+      tasks,
       scenario,
       listData.battlefieldDeck.objective,
       listData.battlefieldDeck.deployment,
       listData.battlefieldDeck.condition or listData.battlefieldDeck.conditions
     )
     for i, unit in ipairs(listData.units) do
-      spawnUnit(
-        unit,
-        i,
-        listData.armyFaction,
-        #listData.units
-      )
+      table.insert(tasks, function()
+        spawnUnit(unit, i, listData.armyFaction, push)
+        return false
+      end)
     end
-    mount.call("setScenario", {name = scenario})
+    table.insert(tasks, function()
+      mount.call("setScenario", {name = scenario})
+      deck:unpinSchema()
+      shelf:unpinSchema()
+      return false
+    end)
+
+    local function pump()
+      if generation ~= __isqSpawnGeneration then
+        return
+      end
+      local deadline = os.clock() + 0.03
+      repeat
+        -- No shortcutting through table.remove(t, 1) here: TTS's Lua
+        -- (MoonSharp) throws "position out of bounds" on an empty table
+        -- where standard Lua returns nil.
+        local job
+        if #jobs > 0 then
+          job = table.remove(jobs, 1)
+        elseif #tasks > 0 then
+          job = table.remove(tasks, 1)
+        end
+        if job == nil then
+          return
+        end
+        -- A failing job abandons the rest of the queue, like a failing
+        -- unit abandoned the rest of the synchronous pass - but the pins
+        -- must not outlive the import, or everything the builder reads
+        -- outside an import would keep seeing this frozen copy.
+        local ok, spawned = pcall(job)
+        if not ok then
+          deck:unpinSchema()
+          shelf:unpinSchema()
+          error(spawned, 0)
+        end
+      until spawned or os.clock() >= deadline
+      Wait.frames(pump, 1)
+    end
+    pump()
   end
 end
