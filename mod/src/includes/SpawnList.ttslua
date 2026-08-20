@@ -184,7 +184,14 @@ local function initListSpawner(params)
     return getObjectFromGUID(Global.getVar("gameDataGUID")).getTable("battlefieldTint")
   end
 
-  function initializeMini(pMiniTable)
+  -- Names and describes every model of a unit, then queues one job per
+  -- model to attach its script: giving an object a script costs a flat
+  -- ~70-140 ms in TTS however small the script is (creating the script
+  -- context; measured 21/08 - size, spawn path and attach order change
+  -- nothing), so attaching a whole squad's scripts in one frame is what
+  -- used to freeze it. The strings are built here and now - every model
+  -- already exists, so every GUID is known.
+  function initializeMini(pMiniTable, push)
     local strColor = pMiniTable.colorSide
     strColor = strColor:gsub("^%l", string.upper)
 
@@ -266,11 +273,18 @@ local function initListSpawner(params)
       end
 
       -- SET SCRIPT
-      objEntry.obj.setLuaScript(selectedMiniScript)
+      local obj = objEntry.obj
+      local script = selectedMiniScript
+      push(function()
+        obj.setLuaScript(script)
+        return true
+      end)
     end
   end
 
-  function initializeCommandToken(cData)
+  -- Spawns one command token; its script attaches in a follow-up job (the
+  -- attach costs a flat ~70-140 ms, see initializeMini).
+  function initializeCommandToken(cData, push)
     local tokenObj = spawnObject({
       type           = "Custom_Model",
       rotation       = cData.rot,
@@ -304,7 +318,10 @@ local function initListSpawner(params)
       tostring(cData.selectedSpeed),
       tostring(cData.baseSize:lower() ~= "small")
     )
-    tokenObj.setLuaScript(luaScript .. globals.tokenScript)
+    push(function()
+      tokenObj.setLuaScript(luaScript .. globals.tokenScript)
+      return true
+    end)
   end
 
   -- Runs once every model of the unit exists: writes the mini scripts, then
@@ -353,7 +370,7 @@ local function initListSpawner(params)
     miniData.silhData = miniData.silhData or {}
     miniData.type = miniData.type
 
-    initializeMini(miniData)
+    initializeMini(miniData, push)
 
     local commandTray = getObjectFromGUID(
       Global.getTable("commandTokenTrayData")[color:lower()][commandType]
@@ -376,7 +393,7 @@ local function initListSpawner(params)
           rot           = rotation,
           baseSize      = unitInfo.size,
           selectedSpeed = unitInfo.speed,
-        })
+        }, push)
         return true
       end)
     end
