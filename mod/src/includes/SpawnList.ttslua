@@ -581,6 +581,20 @@ local function initListSpawner(params)
     deck:pinSchema()
     shelf:pinSchema()
 
+    -- The importing banner (top of screen, in the Global UI): the
+    -- spread-out spawn takes a few seconds, so say so - paced work reads
+    -- as loading when it is labeled, and as lag when it is not. The
+    -- progress bar fills unit by unit, tinted the importing player's color.
+    local banner = "IMPORTING " .. color:upper() .. " LIST"
+    Global.UI.setAttribute(
+      "importProgressBar",
+      "fillImageColor",
+      color:lower() == "red" and "#FF5A5A" or "#58A6FF"
+    )
+    Global.UI.setAttribute("importProgressBar", "percentage", 0)
+    Global.UI.setValue("importProgressText", banner)
+    Global.UI.setAttribute("importProgress", "active", true)
+
     -- `jobs` is the fine-grained queue the current unit expands into;
     -- `tasks` holds the coarse steps (each card deal, each unit, the final
     -- scenario call) in list order. Draining jobs before tasks makes a
@@ -612,14 +626,25 @@ local function initListSpawner(params)
       listData.battlefieldDeck.deployment,
       listData.battlefieldDeck.condition or listData.battlefieldDeck.conditions
     )
+    local totalUnits = #listData.units
     for i, unit in ipairs(listData.units) do
       table.insert(tasks, function()
+        Global.UI.setValue(
+          "importProgressText",
+          banner .. "  ·  UNIT " .. i .. "/" .. totalUnits
+        )
+        Global.UI.setAttribute(
+          "importProgressBar",
+          "percentage",
+          math.floor((i - 1) * 100 / totalUnits)
+        )
         spawnUnit(unit, i, listData.armyFaction, push)
         return false
       end)
     end
     table.insert(tasks, function()
       mount.call("setScenario", {name = scenario})
+      Global.UI.setAttribute("importProgress", "active", false)
       deck:unpinSchema()
       shelf:unpinSchema()
       return false
@@ -649,6 +674,7 @@ local function initListSpawner(params)
         -- outside an import would keep seeing this frozen copy.
         local ok, spawned = pcall(job)
         if not ok then
+          Global.UI.setAttribute("importProgress", "active", false)
           deck:unpinSchema()
           shelf:unpinSchema()
           error(spawned, 0)

@@ -321,6 +321,18 @@
       {
         "Name": "isqLogo",
         "URL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/iron_squadron_logo_v2.png"
+      },
+      {
+        "Name": "isqUiPill",
+        "URL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/import-toast-pill.png"
+      },
+      {
+        "Name": "isqUiTrack",
+        "URL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/import-toast-track.png"
+      },
+      {
+        "Name": "isqUiFill",
+        "URL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/import-toast-fill.png"
       }
     ],
     "ObjectStates": []

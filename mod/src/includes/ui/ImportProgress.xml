@@ -1,0 +1,37 @@
+<!-- The import toast: a rounded dark pill (sprite, soft drop shadow) with
+     a small bold label and a thin rounded progress bar tinted the importing
+     player's color. The pill sprite carries 24 px of shadow margin on every
+     side, hence the anchored children instead of a layout. -->
+<Panel
+  id="importProgress"
+  active="false"
+  rectAlignment="UpperCenter"
+  offsetXY="0 -28"
+  width="388"
+  height="104"
+  image="isqUiPill"
+>
+  <Text
+    id="importProgressText"
+    rectAlignment="UpperCenter"
+    offsetXY="0 -38"
+    width="300"
+    height="20"
+    fontSize="15"
+    color="#EDEDF2"
+    fontStyle="Bold"
+    alignment="MiddleCenter"
+  >IMPORTING LIST</Text>
+  <ProgressBar
+    id="importProgressBar"
+    rectAlignment="UpperCenter"
+    offsetXY="0 -64"
+    width="300"
+    height="10"
+    percentage="0"
+    showPercentageText="false"
+    image="isqUiTrack"
+    fillImage="isqUiFill"
+    fillImageColor="#FF5A5A"
+  />
+</Panel>

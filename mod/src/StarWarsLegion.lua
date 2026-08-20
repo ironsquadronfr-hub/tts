@@ -26,6 +26,11 @@ function onload(saveData)
     CCID = sha256(tostring(Time.time))
     UUID = sha256(Player.getPlayers()[1].steam_id)
 
+    -- A save or an undo taken mid-import must not resurrect the import
+    -- banner: runtime UI state is written into saves, so force it off
+    -- here (imposed, never toggled).
+    UI.setAttribute("importProgress", "active", false)
+
     local loadData = {
       clocks = false,
       welcome = true,
