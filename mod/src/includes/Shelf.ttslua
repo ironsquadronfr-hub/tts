@@ -25,8 +25,22 @@ function Shelf:create()
   return meta
 end
 
+-- The compiled cards table weighs ~650 Kb once marshalled: every
+-- Global.getTable copies all of it from the engine into Lua. pinSchema
+-- freezes one copy for the duration of a list import (the hot path, where
+-- the copy used to be taken again for every unit and every upgrade lookup);
+-- everything else keeps reading the live table, so side-loaded homebrew
+-- shows up as soon as it is added.
 function Shelf:_getSchema()
-  return Global.getTable("CardsSchema")
+  return self._cache.schema or Global.getTable("CardsSchema")
+end
+
+function Shelf:pinSchema()
+  self._cache.schema = Global.getTable("CardsSchema")
+end
+
+function Shelf:unpinSchema()
+  self._cache.schema = nil
 end
 
 function Shelf:spawnUnitModels(params)
@@ -217,7 +231,7 @@ end
 function Shelf:_spawnComplimentaryObject(name, container, scripts)
   if not self._cache.objects then
     local cache = {}
-    for name, details in pairs(self._getSchema().objects) do
+    for name, details in pairs(self:_getSchema().objects) do
       cache[name:upper()] = details
     end
     self._cache.objects = cache
