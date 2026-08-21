@@ -93,7 +93,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">View: 1st / 3rd / top down</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">P</Text>
@@ -103,22 +103,22 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Pan camera</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">W</Text>
       </Panel>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">A</Text>
       </Panel>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">S</Text>
       </Panel>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">D</Text>
@@ -128,7 +128,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Reset camera</Text>
-      <Panel preferredWidth="55" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="55" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Space</Text>
@@ -138,21 +138,21 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Save / load view</Text>
-      <Panel preferredWidth="47" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="47" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Ctrl</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">/</Text>
-      <Panel preferredWidth="55" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="55" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Shift</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">+</Text>
-      <Panel preferredWidth="39" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="39" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">1-9</Text>
@@ -164,14 +164,14 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Rotate</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Q</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">/</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">E</Text>
@@ -181,7 +181,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Flip</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">F</Text>
@@ -191,7 +191,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Lock in place</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">L</Text>
@@ -201,7 +201,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Zoom on object</Text>
-      <Panel preferredWidth="39" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="39" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Alt</Text>
@@ -211,14 +211,14 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Multi-select</Text>
-      <Panel preferredWidth="47" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="47" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Ctrl</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">+</Text>
-      <Panel preferredWidth="55" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="55" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">click</Text>
@@ -228,7 +228,7 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Grab the one underneath</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">T</Text>
@@ -238,14 +238,14 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Peek at a card</Text>
-      <Panel preferredWidth="39" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="39" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Alt</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">+</Text>
-      <Panel preferredWidth="55" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="55" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Shift</Text>
@@ -255,14 +255,14 @@
     <HorizontalLayout preferredHeight="24" spacing="4"
       childForceExpandWidth="false" childAlignment="MiddleLeft">
       <Text fontSize="13" color="#C9D2E0" alignment="MiddleLeft">Rewind time (host)</Text>
-      <Panel preferredWidth="47" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="47" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Ctrl</Text>
       </Panel>
       <Text preferredWidth="9" flexibleWidth="0" fontSize="12"
         color="#8A93A6" alignment="MiddleCenter">+</Text>
-      <Panel preferredWidth="23" preferredHeight="21" flexibleWidth="0"
+      <Panel preferredWidth="23" preferredHeight="17" flexibleWidth="0"
         color="#0C0F14CC" outline="#E8801A" outlineSize="1 -1">
         <Text fontSize="12" fontStyle="Bold" color="#F2A657"
           alignment="MiddleCenter">Z</Text>
