@@ -30,7 +30,7 @@ local VEIL_TIMEOUT_SECONDS = 60
 -- drawn by the XML on top, so they stay put whatever the player's screen
 -- ratio does to the picture. SETUP_SHORTCUTS optionally replaces the
 -- sheet's text with an authored plate.
-local SETUP_ILLUSTRATIONS = {}
+local SETUP_ILLUSTRATIONS = {'swlBackdrop1', 'swlBackdrop2'}
 local SETUP_SHORTCUTS = nil
 
 local deployGeneration = 0

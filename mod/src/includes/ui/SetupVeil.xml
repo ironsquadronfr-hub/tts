@@ -3,7 +3,7 @@
 
      Laid out after Martin's mockup:
        - setupVeilArt, a full-bleed illustration behind everything;
-       - setupVeilCard, a 70% black band down the left quarter carrying the
+       - setupVeilCard, a 50% black band down the left quarter carrying the
          shortcut sheet — either the text below or an authored plate
          (setupVeilCardArt);
        - setupVeilBar, the thin orange rule across the top, which is the
@@ -43,7 +43,7 @@
     offsetXY="0 0"
     width="620"
     height="2400"
-    color="#000000B3"
+    color="#00000080"
   >
     <Image
       id="setupVeilCardArt"
@@ -67,9 +67,9 @@
       childForceExpandHeight="false"
     >
       <Image
-        image="isqLogo"
-        preferredHeight="86"
-        preferredWidth="86"
+        image="swlLogo"
+        preferredHeight="150"
+        preferredWidth="210"
         preserveAspect="true"
       />
       <Text
