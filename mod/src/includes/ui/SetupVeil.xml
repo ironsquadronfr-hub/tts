@@ -1,115 +1,130 @@
 <!-- The setup veil: the full-screen loading overlay shown while the setup
      crate deploys the table (see DeferredSetup.ttslua).
 
-     Laid out after Martin's mockup:
-       - setupVeilArt, a full-bleed illustration behind everything;
-       - setupVeilCard, a 50% black band down the left quarter carrying the
-         shortcut sheet — either the text below or an authored plate
-         (setupVeilCardArt);
-       - setupVeilBar, the thin orange rule across the top, which is the
-         progress bar.
+     Two root elements, because an element anchors to its PARENT's edges:
+     setupVeilGround is the oversized black ground that guarantees cover on
+     any screen, and setupVeil is a 1920x1080 stage — the reference the
+     rest of the mod's UI is drawn in — so everything inside can be placed
+     in screen coordinates. Both are shown and hidden together.
+
+     Cotes transposed from Martin's mockup (measured on the 1487x838 canvas
+     of his screenshot, scaled by 1920/1487):
+       - the band starts 147px from the left edge and is 503px wide
+         (26% of the width), full height, black at 50%;
+       - the logo is 213x148, centred in the band, its top 94px down;
+       - the orange rule is 6px tall, 5px from the top, full width — it is
+         the progress bar, filling left to right.
 
      Declared active: the veil has to be up when TTS reveals the table and
      plays its entry camera move, which happens long before Global's onload
      runs. Every path out of the load lowers it, and a timeout lowers it
-     even if onload dies halfway.
-
-     Sizes are in the 1920x1080 reference the rest of the mod's UI uses.
-     The veil ground and the band are deliberately oversized so they still
-     cover a taller or wider screen; only the top rule is width-calibrated,
-     so it reads as a full-width rule on 16:9 and merely keeps its margins
-     elsewhere. -->
+     even if onload dies halfway. -->
 <Panel
-  id="setupVeil"
+  id="setupVeilGround"
   active="true"
   rectAlignment="MiddleCenter"
   width="12000"
   height="12000"
   color="#05070CFF"
+/>
+
+<Panel
+  id="setupVeil"
+  active="true"
+  rectAlignment="MiddleCenter"
+  width="1920"
+  height="1080"
+  color="#00000000"
 >
+  <!-- Oversized so a screen wider or taller than 16:9 still shows art
+       rather than the ground; nothing clips it. -->
   <Image
     id="setupVeilArt"
     active="false"
     rectAlignment="MiddleCenter"
     offsetXY="0 0"
-    width="2560"
-    height="1440"
+    width="2208"
+    height="1242"
     preserveAspect="true"
   />
 
   <Panel
     id="setupVeilCard"
     rectAlignment="MiddleLeft"
-    offsetXY="0 0"
-    width="620"
-    height="2400"
+    offsetXY="147 0"
+    width="503"
+    height="1400"
     color="#00000080"
+  />
+
+  <Image
+    id="setupVeilCardArt"
+    active="false"
+    rectAlignment="UpperLeft"
+    offsetXY="177 -94"
+    width="443"
+    height="800"
+    preserveAspect="true"
+  />
+
+  <Image
+    id="setupVeilLogo"
+    rectAlignment="UpperLeft"
+    offsetXY="292 -94"
+    width="213"
+    height="148"
+    image="swlLogo"
+    preserveAspect="true"
+  />
+
+  <VerticalLayout
+    id="setupVeilText"
+    active="true"
+    rectAlignment="UpperLeft"
+    offsetXY="177 -286"
+    width="443"
+    height="700"
+    spacing="9"
+    childForceExpandHeight="false"
   >
-    <Image
-      id="setupVeilCardArt"
-      active="false"
-      rectAlignment="MiddleCenter"
-      offsetXY="0 0"
-      width="580"
-      height="900"
-      preserveAspect="true"
-    />
+    <Text
+      fontSize="18"
+      fontStyle="Bold"
+      color="#F5F6FA"
+      alignment="MiddleLeft"
+      preferredHeight="26"
+    >SETTING UP THE TABLE</Text>
 
-    <VerticalLayout
-      id="setupVeilText"
-      active="true"
-      rectAlignment="MiddleCenter"
-      offsetXY="0 0"
-      width="580"
-      height="900"
-      padding="30 30 10 10"
-      spacing="10"
-      childForceExpandHeight="false"
-    >
-      <Image
-        image="swlLogo"
-        preferredHeight="150"
-        preferredWidth="210"
-        preserveAspect="true"
-      />
-      <Text
-        fontSize="19"
-        fontStyle="Bold"
-        color="#F5F6FA"
-        alignment="MiddleCenter"
-        preferredHeight="26"
-      >SETTING UP THE TABLE</Text>
-
-      <Text
-        fontSize="13"
-        fontStyle="Bold"
-        color="#E8801A"
-        alignment="UpperLeft"
-        preferredHeight="20"
-      >CAMERA</Text>
-      <Text
-        fontSize="13"
-        color="#C9D2E0"
-        alignment="UpperLeft"
-        preferredHeight="76"
-      >1st / 3rd / top down   <b>P</b>
+    <Text
+      fontSize="13"
+      fontStyle="Bold"
+      color="#E8801A"
+      alignment="UpperLeft"
+      preferredHeight="19"
+    >CAMERA</Text>
+    <Text
+      fontSize="13"
+      color="#C9D2E0"
+      alignment="UpperLeft"
+      preferredHeight="74"
+    >1st / 3rd / top down   <b>P</b>
 Pan   <b>W A S D</b>      Reset   <b>Space</b>
 Save / load view   <b>Ctrl</b> / <b>Shift</b> + <b>1-9</b>
 Quick zoom   <b>Z</b></Text>
 
-      <Text
-        fontSize="13"
-        fontStyle="Bold"
-        color="#E8801A"
-        alignment="UpperLeft"
-        preferredHeight="20"
-      >OBJECTS</Text>
-      <Text
-        fontSize="13"
-        color="#C9D2E0"
-        alignment="UpperLeft"
-        preferredHeight="130"
-      >Rotate   <b>Q</b> / <b>E</b>      Flip   <b>F</b>      Lock   <b>L</b>
+    <Text
+      fontSize="13"
+      fontStyle="Bold"
+      color="#E8801A"
+      alignment="UpperLeft"
+      preferredHeight="19"
+    >OBJECTS</Text>
+    <Text
+      fontSize="13"
+      color="#C9D2E0"
+      alignment="UpperLeft"
+      preferredHeight="128"
+    >Rotate   <b>Q</b> / <b>E</b>      Flip   <b>F</b>      Lock   <b>L</b>
 Other axis   <b>Alt</b> + <b>Q</b> / <b>E</b> / <b>F</b>
 Zoom object   <b>Alt</b>      Magnify   <b>M</b>
 Multi-select   <b>Ctrl</b> + click      Grab under   <b>T</b>
@@ -117,41 +132,40 @@ Look under   <b>U</b>      Peek   <b>Alt</b> + <b>Shift</b>
 Group   <b>G</b>      Arrow / line   <b>Tab</b>
 Rewind (host)   <b>Ctrl</b> + <b>Z</b></Text>
 
-      <Text
-        fontSize="13"
-        fontStyle="Bold"
-        color="#E8801A"
-        alignment="UpperLeft"
-        preferredHeight="20"
-      >THIS MOD — bind in Options → Game Keys</Text>
-      <Text
-        fontSize="13"
-        color="#C9D2E0"
-        alignment="UpperLeft"
-        preferredHeight="92"
-      >Show range or cohesion on the hovered model
-Deliver aim, dodge, standby, surge,
-suppression, smoke, ion or wound to the cursor
-Toggle or pause the chess clocks
-Import a Legion HQ list from your LIST BUILDER</Text>
-    </VerticalLayout>
-
     <Text
-      id="setupVeilCount"
-      rectAlignment="LowerCenter"
-      offsetXY="0 40"
-      width="300"
-      height="20"
-      fontSize="12"
-      color="#7C879B"
-      alignment="MiddleCenter"
-    ></Text>
-  </Panel>
+      fontSize="13"
+      fontStyle="Bold"
+      color="#E8801A"
+      alignment="UpperLeft"
+      preferredHeight="19"
+    >THIS MOD</Text>
+    <Text
+      fontSize="13"
+      color="#C9D2E0"
+      alignment="UpperLeft"
+      preferredHeight="110"
+    >Bind these in Options → Game Keys:
+range or cohesion on the hovered model,
+aim, dodge, standby, surge, suppression,
+smoke, ion or wound to the cursor,
+toggle or pause the chess clocks.</Text>
+  </VerticalLayout>
+
+  <Text
+    id="setupVeilCount"
+    rectAlignment="LowerLeft"
+    offsetXY="177 46"
+    width="443"
+    height="20"
+    fontSize="12"
+    color="#7C879B"
+    alignment="MiddleLeft"
+  ></Text>
 
   <ProgressBar
     id="setupVeilBar"
     rectAlignment="UpperCenter"
-    offsetXY="0 0"
+    offsetXY="0 -5"
     width="1920"
     height="6"
     percentage="0"

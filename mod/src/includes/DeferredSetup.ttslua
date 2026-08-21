@@ -35,7 +35,10 @@ local SETUP_SHORTCUTS = nil
 
 local deployGeneration = 0
 
+-- The veil is two root elements — the oversized ground and the 1920x1080
+-- stage holding everything placed — so they are raised and lowered as one.
 local function veilHide()
+  UI.setAttribute('setupVeilGround', 'active', false)
   UI.setAttribute('setupVeil', 'active', false)
 end
 
@@ -57,6 +60,7 @@ local function veilDress(total)
   end
   UI.setAttribute('setupVeilBar', 'percentage', 0)
   UI.setValue('setupVeilCount', '0 / ' .. total)
+  UI.setAttribute('setupVeilGround', 'active', true)
   UI.setAttribute('setupVeil', 'active', true)
 end
 
