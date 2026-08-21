@@ -1,0 +1,164 @@
+-- Deploys the setup crate: the furniture that defer-setup.ts moved into a
+-- hidden bag at build time comes back out here, one object per frame,
+-- under a full-screen loading veil.
+--
+-- An object inside a container pays neither its script context nor its
+-- asset bind while the table loads (measured: ~40ms of loading bar per
+-- scripted object, plus its share of the first-frame freeze), and a paced
+-- takeObject costs ~40-50ms per object — invisible behind the veil.
+--
+-- The veil starts ON, declared active in the XML, so it is already up when
+-- TTS reveals the table and plays its entry camera move: by the time it
+-- comes down the table is set. Every path that can end the load lowers it,
+-- and a timeout lowers it even if onload dies halfway.
+--
+-- Idempotent by construction: an undo or a save replays Global's onload,
+-- so everything is recomputed from what actually exists — an object
+-- already on the table is never taken again, an empty crate lowers the
+-- veil at once.
+
+local CRATE_GUID = 'd3f3a0' -- must match src/lib/defer-setup.ts
+
+-- Nothing should keep the table hidden this long. If onload throws before
+-- the cascade starts, this is what gives the players their table back.
+local VEIL_TIMEOUT_SECONDS = 60
+
+local SETUP_TIPS = {
+  'Bind the mod\'s hotkeys in Options → Game Keys: show ranges or cohesion '
+    .. 'on the hovered model, or deliver aim, dodge or smoke tokens to your cursor.',
+  'The chess clocks can be toggled from the menu — and paused or switched '
+    .. 'with bindable hotkeys.',
+  'Your LIST BUILDER panel can import an army list built in Legion HQ.',
+  'The RULES PANEL spawns searchable rulebook PDFs on demand.',
+  'Homebrew cards: load a cards.json URL from the Welcome dialog, then '
+    .. 'build your army as usual.',
+}
+
+-- Veil artwork (CustomUIAssets names). SETUP_ILLUSTRATIONS are full-bleed
+-- 16:9 illustrations, one shown per load in rotation; SETUP_SHORTCUTS is
+-- an optional plate for the black card — the mod's shortcuts authored like
+-- the TTS help menu. While empty, the card falls back to the text tips.
+local SETUP_ILLUSTRATIONS = {}
+local SETUP_SHORTCUTS = nil
+
+local deployGeneration = 0
+
+local function veilHide()
+  UI.setAttribute('setupVeil', 'active', false)
+end
+
+local function veilDress(total)
+  if #SETUP_ILLUSTRATIONS > 0 then
+    UI.setAttribute('setupVeilArt', 'image',
+      SETUP_ILLUSTRATIONS[(os.time() % #SETUP_ILLUSTRATIONS) + 1])
+    UI.setAttribute('setupVeilArt', 'active', true)
+  else
+    UI.setAttribute('setupVeilArt', 'active', false)
+  end
+  if SETUP_SHORTCUTS ~= nil then
+    UI.setAttribute('setupVeilCardArt', 'image', SETUP_SHORTCUTS)
+    UI.setAttribute('setupVeilCardArt', 'active', true)
+    UI.setAttribute('setupVeilText', 'active', false)
+  else
+    UI.setAttribute('setupVeilCardArt', 'active', false)
+    UI.setAttribute('setupVeilText', 'active', true)
+    UI.setValue('setupVeilTip', SETUP_TIPS[(os.time() % #SETUP_TIPS) + 1])
+  end
+  UI.setAttribute('setupVeilBar', 'percentage', 0)
+  UI.setValue('setupVeilCount', '0 / ' .. total)
+  UI.setAttribute('setupVeil', 'active', true)
+end
+
+local function veilProgress(done, total)
+  UI.setAttribute('setupVeilBar', 'percentage', math.floor(done * 100 / total))
+  UI.setValue('setupVeilCount', done .. ' / ' .. total)
+end
+
+-- Called first thing in Global's onload, before anything that can throw.
+function armSetupVeil()
+  local gen = deployGeneration + 1
+  Wait.time(function()
+    if gen == deployGeneration then veilHide() end
+  end, VEIL_TIMEOUT_SECONDS)
+end
+
+-- What the crate could not do for objects that find each other by scanning
+-- the table rather than by GUID: once everything is out, the two load-time
+-- scans in the mod are replayed, and any deployed object may ask to be
+-- called back by defining onSetupComplete.
+local function afterDeployment(deployed)
+  for _, guid in ipairs(deployed) do
+    local obj = getObjectFromGUID(guid)
+    if obj ~= nil and obj.getVar('onSetupComplete') ~= nil then
+      pcall(function() obj.call('onSetupComplete') end)
+    end
+  end
+  pcall(standbyTokens)
+end
+
+local function deployStep(gen, crate, pending, index, total, deployed)
+  if gen ~= deployGeneration then return end
+  local entry = pending[index]
+  if entry == nil then
+    afterDeployment(deployed)
+    veilHide()
+    return
+  end
+  -- Re-checked at take time: a save made mid-cascade, then undone into,
+  -- may hold any mix of deployed and crated objects. The pcall keeps the
+  -- cascade alive even if the crate itself was destroyed under us.
+  if getObjectFromGUID(entry.g) == nil then
+    pcall(function()
+      local obj = crate.takeObject({
+        guid = entry.g,
+        position = {entry.p.x, entry.p.y, entry.p.z},
+        rotation = {entry.r.x, entry.r.y, entry.r.z},
+        smooth = false,
+      })
+      -- Locked on the returned reference, same frame: the object must not
+      -- feel gravity for even one frame.
+      if entry.l == 1 and obj ~= nil then obj.setLock(true) end
+    end)
+  end
+  deployed[#deployed + 1] = entry.g
+  veilProgress(index, total)
+  Wait.frames(function()
+    deployStep(gen, crate, pending, index + 1, total, deployed)
+  end, 1)
+end
+
+-- Called at the end of Global's onload.
+function initDeferredSetup()
+  deployGeneration = deployGeneration + 1
+  local crate = getObjectFromGUID(CRATE_GUID)
+  if crate == nil then
+    veilHide()
+    return
+  end
+  local ok, manifest = pcall(function()
+    return JSON.decode(crate.getGMNotes())
+  end)
+  if not ok or type(manifest) ~= 'table' then
+    veilHide()
+    return
+  end
+  local inCrate = {}
+  for _, item in ipairs(crate.getObjects()) do
+    inCrate[item.guid] = true
+  end
+  local pending = {}
+  for _, entry in ipairs(manifest) do
+    if inCrate[entry.g] and getObjectFromGUID(entry.g) == nil then
+      pending[#pending + 1] = entry
+    end
+  end
+  if #pending == 0 then
+    veilHide()
+    return
+  end
+  veilDress(#pending)
+  local gen = deployGeneration
+  Wait.frames(function()
+    deployStep(gen, crate, pending, 1, #pending, {})
+  end, 1)
+end

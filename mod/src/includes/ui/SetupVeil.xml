@@ -1,0 +1,112 @@
+<!-- The setup veil: a full-screen loading overlay shown while the setup
+     crate deploys the side-table furniture (see DeferredSetup.ttslua).
+
+     Three layers over a dark ground sized far beyond any screen:
+       - setupVeilArt: a full-bleed illustration (16:9, oversized so it
+         bleeds past the edges of common screens);
+       - setupVeilCard: a 70% black card over part of the illustration,
+         product-style, carrying the mod's shortcuts — either a plate
+         image authored like the TTS help menu (setupVeilCardArt) or the
+         text fallback (logo, title, rotating tip);
+       - the progress strip at the card's bottom, reusing the import
+         toast's bar sprites.
+
+     Declared active: the veil has to be up when TTS reveals the table and
+     plays its entry camera move, which happens long before Global's onload
+     runs. Every path out of the load lowers it, and a timeout lowers it
+     even if onload dies halfway. -->
+<Panel
+  id="setupVeil"
+  active="true"
+  rectAlignment="MiddleCenter"
+  width="12000"
+  height="12000"
+  color="#05070CF2"
+>
+  <Image
+    id="setupVeilArt"
+    active="false"
+    rectAlignment="MiddleCenter"
+    offsetXY="0 0"
+    width="2400"
+    height="1350"
+    preserveAspect="true"
+  />
+  <Panel
+    id="setupVeilCard"
+    rectAlignment="MiddleCenter"
+    offsetXY="-560 0"
+    width="640"
+    height="880"
+    color="#000000B3"
+  >
+    <Image
+      id="setupVeilCardArt"
+      active="false"
+      rectAlignment="UpperCenter"
+      offsetXY="0 -20"
+      width="600"
+      height="740"
+      preserveAspect="true"
+    />
+    <Panel
+      id="setupVeilText"
+      active="false"
+      rectAlignment="UpperCenter"
+      offsetXY="0 -60"
+      width="560"
+      height="660"
+    >
+      <Image
+        rectAlignment="UpperCenter"
+        offsetXY="0 0"
+        width="96"
+        height="96"
+        image="isqLogo"
+        preserveAspect="true"
+      />
+      <Text
+        rectAlignment="UpperCenter"
+        offsetXY="0 -120"
+        width="560"
+        height="30"
+        fontSize="21"
+        fontStyle="Bold"
+        color="#EDEDF2"
+        alignment="MiddleCenter"
+      >SETTING UP THE TABLE</Text>
+      <Text
+        id="setupVeilTip"
+        rectAlignment="UpperCenter"
+        offsetXY="0 -170"
+        width="540"
+        height="220"
+        fontSize="15"
+        color="#C8D2E4"
+        alignment="UpperCenter"
+      ></Text>
+    </Panel>
+    <ProgressBar
+      id="setupVeilBar"
+      rectAlignment="LowerCenter"
+      offsetXY="0 66"
+      width="540"
+      height="12"
+      percentage="0"
+      showPercentageText="false"
+      image="isqUiTrack"
+      fillImage="isqUiFill"
+      fillImageColor="#5AD1FF"
+    />
+    <Text
+      id="setupVeilCount"
+      rectAlignment="LowerCenter"
+      offsetXY="0 36"
+      width="200"
+      height="20"
+      fontSize="13"
+      color="#9AA4B8"
+      alignment="MiddleCenter"
+    ></Text>
+  </Panel>
+</Panel>
