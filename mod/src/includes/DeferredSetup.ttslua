@@ -23,21 +23,13 @@ local CRATE_GUID = 'd3f3a0' -- must match src/lib/defer-setup.ts
 -- the cascade starts, this is what gives the players their table back.
 local VEIL_TIMEOUT_SECONDS = 60
 
-local SETUP_TIPS = {
-  'Bind the mod\'s hotkeys in Options → Game Keys: show ranges or cohesion '
-    .. 'on the hovered model, or deliver aim, dodge or smoke tokens to your cursor.',
-  'The chess clocks can be toggled from the menu — and paused or switched '
-    .. 'with bindable hotkeys.',
-  'Your LIST BUILDER panel can import an army list built in Legion HQ.',
-  'The RULES PANEL spawns searchable rulebook PDFs on demand.',
-  'Homebrew cards: load a cards.json URL from the Welcome dialog, then '
-    .. 'build your army as usual.',
-}
-
--- Veil artwork (CustomUIAssets names). SETUP_ILLUSTRATIONS are full-bleed
--- 16:9 illustrations, one shown per load in rotation; SETUP_SHORTCUTS is
--- an optional plate for the black card — the mod's shortcuts authored like
--- the TTS help menu. While empty, the card falls back to the text tips.
+-- Veil artwork, by CustomUIAssets name.
+--
+-- SETUP_ILLUSTRATIONS are the backdrops, one picked per load: 16:9, no
+-- text and no dark band of their own — the band and the shortcut sheet are
+-- drawn by the XML on top, so they stay put whatever the player's screen
+-- ratio does to the picture. SETUP_SHORTCUTS optionally replaces the
+-- sheet's text with an authored plate.
 local SETUP_ILLUSTRATIONS = {}
 local SETUP_SHORTCUTS = nil
 
@@ -62,7 +54,6 @@ local function veilDress(total)
   else
     UI.setAttribute('setupVeilCardArt', 'active', false)
     UI.setAttribute('setupVeilText', 'active', true)
-    UI.setValue('setupVeilTip', SETUP_TIPS[(os.time() % #SETUP_TIPS) + 1])
   end
   UI.setAttribute('setupVeilBar', 'percentage', 0)
   UI.setValue('setupVeilCount', '0 / ' .. total)

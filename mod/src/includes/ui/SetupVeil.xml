@@ -1,112 +1,164 @@
-<!-- The setup veil: a full-screen loading overlay shown while the setup
-     crate deploys the side-table furniture (see DeferredSetup.ttslua).
+<!-- The setup veil: the full-screen loading overlay shown while the setup
+     crate deploys the table (see DeferredSetup.ttslua).
 
-     Three layers over a dark ground sized far beyond any screen:
-       - setupVeilArt: a full-bleed illustration (16:9, oversized so it
-         bleeds past the edges of common screens);
-       - setupVeilCard: a 70% black card over part of the illustration,
-         product-style, carrying the mod's shortcuts — either a plate
-         image authored like the TTS help menu (setupVeilCardArt) or the
-         text fallback (logo, title, rotating tip);
-       - the progress strip at the card's bottom, reusing the import
-         toast's bar sprites.
+     Laid out after Martin's mockup:
+       - setupVeilArt, a full-bleed illustration behind everything;
+       - setupVeilCard, a 70% black band down the left quarter carrying the
+         shortcut sheet — either the text below or an authored plate
+         (setupVeilCardArt);
+       - setupVeilBar, the thin orange rule across the top, which is the
+         progress bar.
 
      Declared active: the veil has to be up when TTS reveals the table and
      plays its entry camera move, which happens long before Global's onload
      runs. Every path out of the load lowers it, and a timeout lowers it
-     even if onload dies halfway. -->
+     even if onload dies halfway.
+
+     Sizes are in the 1920x1080 reference the rest of the mod's UI uses.
+     The veil ground and the band are deliberately oversized so they still
+     cover a taller or wider screen; only the top rule is width-calibrated,
+     so it reads as a full-width rule on 16:9 and merely keeps its margins
+     elsewhere. -->
 <Panel
   id="setupVeil"
   active="true"
   rectAlignment="MiddleCenter"
   width="12000"
   height="12000"
-  color="#05070CF2"
+  color="#05070CFF"
 >
   <Image
     id="setupVeilArt"
     active="false"
     rectAlignment="MiddleCenter"
     offsetXY="0 0"
-    width="2400"
-    height="1350"
+    width="2560"
+    height="1440"
     preserveAspect="true"
   />
+
   <Panel
     id="setupVeilCard"
-    rectAlignment="MiddleCenter"
-    offsetXY="-560 0"
-    width="640"
-    height="880"
+    rectAlignment="MiddleLeft"
+    offsetXY="0 0"
+    width="620"
+    height="2400"
     color="#000000B3"
   >
     <Image
       id="setupVeilCardArt"
       active="false"
-      rectAlignment="UpperCenter"
-      offsetXY="0 -20"
-      width="600"
-      height="740"
+      rectAlignment="MiddleCenter"
+      offsetXY="0 0"
+      width="580"
+      height="900"
       preserveAspect="true"
     />
-    <Panel
+
+    <VerticalLayout
       id="setupVeilText"
-      active="false"
-      rectAlignment="UpperCenter"
-      offsetXY="0 -60"
-      width="560"
-      height="660"
+      active="true"
+      rectAlignment="MiddleCenter"
+      offsetXY="0 0"
+      width="580"
+      height="900"
+      padding="30 30 10 10"
+      spacing="10"
+      childForceExpandHeight="false"
     >
       <Image
-        rectAlignment="UpperCenter"
-        offsetXY="0 0"
-        width="96"
-        height="96"
         image="isqLogo"
+        preferredHeight="86"
+        preferredWidth="86"
         preserveAspect="true"
       />
       <Text
-        rectAlignment="UpperCenter"
-        offsetXY="0 -120"
-        width="560"
-        height="30"
-        fontSize="21"
+        fontSize="19"
         fontStyle="Bold"
-        color="#EDEDF2"
+        color="#F5F6FA"
         alignment="MiddleCenter"
+        preferredHeight="26"
       >SETTING UP THE TABLE</Text>
+
       <Text
-        id="setupVeilTip"
-        rectAlignment="UpperCenter"
-        offsetXY="0 -170"
-        width="540"
-        height="220"
-        fontSize="15"
-        color="#C8D2E4"
-        alignment="UpperCenter"
-      ></Text>
-    </Panel>
-    <ProgressBar
-      id="setupVeilBar"
-      rectAlignment="LowerCenter"
-      offsetXY="0 66"
-      width="540"
-      height="12"
-      percentage="0"
-      showPercentageText="false"
-      image="isqUiTrack"
-      fillImage="isqUiFill"
-      fillImageColor="#5AD1FF"
-    />
+        fontSize="13"
+        fontStyle="Bold"
+        color="#E8801A"
+        alignment="UpperLeft"
+        preferredHeight="20"
+      >CAMERA</Text>
+      <Text
+        fontSize="13"
+        color="#C9D2E0"
+        alignment="UpperLeft"
+        preferredHeight="76"
+      >1st / 3rd / top down   <b>P</b>
+Pan   <b>W A S D</b>      Reset   <b>Space</b>
+Save / load view   <b>Ctrl</b> / <b>Shift</b> + <b>1-9</b>
+Quick zoom   <b>Z</b></Text>
+
+      <Text
+        fontSize="13"
+        fontStyle="Bold"
+        color="#E8801A"
+        alignment="UpperLeft"
+        preferredHeight="20"
+      >OBJECTS</Text>
+      <Text
+        fontSize="13"
+        color="#C9D2E0"
+        alignment="UpperLeft"
+        preferredHeight="130"
+      >Rotate   <b>Q</b> / <b>E</b>      Flip   <b>F</b>      Lock   <b>L</b>
+Other axis   <b>Alt</b> + <b>Q</b> / <b>E</b> / <b>F</b>
+Zoom object   <b>Alt</b>      Magnify   <b>M</b>
+Multi-select   <b>Ctrl</b> + click      Grab under   <b>T</b>
+Look under   <b>U</b>      Peek   <b>Alt</b> + <b>Shift</b>
+Group   <b>G</b>      Arrow / line   <b>Tab</b>
+Rewind (host)   <b>Ctrl</b> + <b>Z</b></Text>
+
+      <Text
+        fontSize="13"
+        fontStyle="Bold"
+        color="#E8801A"
+        alignment="UpperLeft"
+        preferredHeight="20"
+      >THIS MOD — bind in Options → Game Keys</Text>
+      <Text
+        fontSize="13"
+        color="#C9D2E0"
+        alignment="UpperLeft"
+        preferredHeight="92"
+      >Show range or cohesion on the hovered model
+Deliver aim, dodge, standby, surge,
+suppression, smoke, ion or wound to the cursor
+Toggle or pause the chess clocks
+Import a Legion HQ list from your LIST BUILDER</Text>
+    </VerticalLayout>
+
     <Text
       id="setupVeilCount"
       rectAlignment="LowerCenter"
-      offsetXY="0 36"
-      width="200"
+      offsetXY="0 40"
+      width="300"
       height="20"
-      fontSize="13"
-      color="#9AA4B8"
+      fontSize="12"
+      color="#7C879B"
       alignment="MiddleCenter"
     ></Text>
   </Panel>
+
+  <ProgressBar
+    id="setupVeilBar"
+    rectAlignment="UpperCenter"
+    offsetXY="0 0"
+    width="1920"
+    height="6"
+    percentage="0"
+    showPercentageText="false"
+    image="isqUiTrack"
+    fillImage="isqUiFill"
+    color="#00000000"
+    fillImageColor="#E8801A"
+  />
 </Panel>
