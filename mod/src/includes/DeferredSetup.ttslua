@@ -23,45 +23,73 @@ local CRATE_GUID = 'd3f3a0' -- must match src/lib/defer-setup.ts
 -- the cascade starts, this is what gives the players their table back.
 local VEIL_TIMEOUT_SECONDS = 60
 
--- Veil artwork, by CustomUIAssets name.
---
--- SETUP_ILLUSTRATIONS are the backdrops, one picked per load: 16:9, no
--- text and no dark band of their own — the band and the shortcut sheet are
--- drawn by the XML on top, so they stay put whatever the player's screen
--- ratio does to the picture. SETUP_SHORTCUTS optionally replaces the
--- sheet's text with an authored plate.
-local SETUP_ILLUSTRATIONS = {'swlBackdrop1', 'swlBackdrop2'}
+-- The veil never comes down before this: the cascade alone is over in
+-- about a second and a half, too fast to read anything and too fast for a
+-- cold backdrop to arrive. Still far less than the load time the crate
+-- saves.
+local VEIL_MINIMUM_SECONDS = 3
+
+-- Veil artwork. The backdrops are 16:9, with no text and no dark band of
+-- their own — the band and the shortcut sheet are drawn by the XML on top,
+-- so they stay put whatever the player's screen ratio does to the picture.
+-- One is picked per load; the url is here because a TTS Image gives no
+-- loaded callback, so the file is asked for over the network first and the
+-- picture is only revealed once it answers (see veilRevealArt).
+local SETUP_ILLUSTRATIONS = {
+  {name = 'swlBackdrop1', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-1-v1.jpg'},
+  {name = 'swlBackdrop2', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-2-v1.jpg'},
+}
+-- Optionally replaces the sheet's text with an authored plate.
 local SETUP_SHORTCUTS = nil
 
 local deployGeneration = 0
 
--- The veil is two root elements — the oversized ground and the 1920x1080
--- stage holding everything placed — so they are raised and lowered as one.
+-- Each piece of the veil is a root element, so they are raised and lowered
+-- together.
+local VEIL_PARTS = {
+  'setupVeilGround', 'setupVeilArt', 'setupVeilCard', 'setupVeilLogo',
+  'setupVeilText', 'setupVeilCount', 'setupVeilBar',
+}
+
 local function veilHide()
-  UI.setAttribute('setupVeilGround', 'active', false)
-  UI.setAttribute('setupVeil', 'active', false)
+  for _, id in ipairs(VEIL_PARTS) do
+    UI.setAttribute(id, 'active', false)
+  end
+  UI.setAttribute('setupVeilCardArt', 'active', false)
 end
 
-local function veilDress(total)
+-- An Image whose texture has not downloaded yet renders as a white
+-- rectangle, which washes out the sheet over it. The XML tints the picture
+-- black, and the tint is only lifted once the file has answered — so a
+-- cold cache, a dead host or no network shows the dark veil, never a white
+-- flash.
+local function veilRevealArt(gen, choice)
+  UI.setAttribute('setupVeilArt', 'image', choice.name)
+  WebRequest.get(choice.url, function(request)
+    if gen ~= deployGeneration then return end
+    if request.is_error or request.response_code ~= 200 then return end
+    UI.setAttribute('setupVeilArt', 'color', '#FFFFFFFF')
+  end)
+end
+
+local function veilDress(gen, total)
+  UI.setAttribute('setupVeilArt', 'color', '#000000FF')
   if #SETUP_ILLUSTRATIONS > 0 then
-    UI.setAttribute('setupVeilArt', 'image',
-      SETUP_ILLUSTRATIONS[(os.time() % #SETUP_ILLUSTRATIONS) + 1])
-    UI.setAttribute('setupVeilArt', 'active', true)
-  else
-    UI.setAttribute('setupVeilArt', 'active', false)
+    veilRevealArt(gen, SETUP_ILLUSTRATIONS[(os.time() % #SETUP_ILLUSTRATIONS) + 1])
   end
   if SETUP_SHORTCUTS ~= nil then
     UI.setAttribute('setupVeilCardArt', 'image', SETUP_SHORTCUTS)
     UI.setAttribute('setupVeilCardArt', 'active', true)
     UI.setAttribute('setupVeilText', 'active', false)
-  else
-    UI.setAttribute('setupVeilCardArt', 'active', false)
-    UI.setAttribute('setupVeilText', 'active', true)
   end
   UI.setAttribute('setupVeilBar', 'percentage', 0)
   UI.setValue('setupVeilCount', '0 / ' .. total)
-  UI.setAttribute('setupVeilGround', 'active', true)
-  UI.setAttribute('setupVeil', 'active', true)
+  for _, id in ipairs(VEIL_PARTS) do
+    UI.setAttribute(id, 'active', true)
+  end
+  if SETUP_SHORTCUTS ~= nil then
+    UI.setAttribute('setupVeilText', 'active', false)
+  end
 end
 
 local function veilProgress(done, total)
@@ -91,12 +119,25 @@ local function afterDeployment(deployed)
   pcall(standbyTokens)
 end
 
-local function deployStep(gen, crate, pending, index, total, deployed)
+-- Holds the veil up until the table is set AND it has been up long enough
+-- to be read; the two conditions are met in either order.
+local function veilLower(gen, raisedAt)
+  local left = VEIL_MINIMUM_SECONDS - (os.clock() - raisedAt)
+  if left <= 0 then
+    veilHide()
+    return
+  end
+  Wait.time(function()
+    if gen == deployGeneration then veilHide() end
+  end, left)
+end
+
+local function deployStep(gen, crate, pending, index, total, deployed, raisedAt)
   if gen ~= deployGeneration then return end
   local entry = pending[index]
   if entry == nil then
     afterDeployment(deployed)
-    veilHide()
+    veilLower(gen, raisedAt)
     return
   end
   -- Re-checked at take time: a save made mid-cascade, then undone into,
@@ -118,7 +159,7 @@ local function deployStep(gen, crate, pending, index, total, deployed)
   deployed[#deployed + 1] = entry.g
   veilProgress(index, total)
   Wait.frames(function()
-    deployStep(gen, crate, pending, index + 1, total, deployed)
+    deployStep(gen, crate, pending, index + 1, total, deployed, raisedAt)
   end, 1)
 end
 
@@ -151,9 +192,10 @@ function initDeferredSetup()
     veilHide()
     return
   end
-  veilDress(#pending)
   local gen = deployGeneration
+  veilDress(gen, #pending)
+  local raisedAt = os.clock()
   Wait.frames(function()
-    deployStep(gen, crate, pending, 1, #pending, {})
+    deployStep(gen, crate, pending, 1, #pending, {}, raisedAt)
   end, 1)
 end
