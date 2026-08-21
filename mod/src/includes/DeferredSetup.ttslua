@@ -72,6 +72,7 @@ end
 -- cold cache, a dead host or no network shows the dark veil, never a white
 -- flash.
 local function veilRevealArt(gen, choice)
+  if choice == nil then return end
   UI.setAttribute('setupVeilArt', 'image', choice.name)
   WebRequest.get(choice.url, function(request)
     if gen ~= deployGeneration then return end
@@ -83,7 +84,11 @@ end
 local function veilDress(gen, total)
   UI.setAttribute('setupVeilArt', 'color', '#000000FF')
   if #SETUP_ILLUSTRATIONS > 0 then
-    veilRevealArt(gen, SETUP_ILLUSTRATIONS[(os.time() % #SETUP_ILLUSTRATIONS) + 1])
+    -- math.floor is not decoration: MoonSharp's os.time returns a real
+    -- number, so the remainder of it is fractional and indexing a table
+    -- with 1.4 yields nil rather than the first entry.
+    local pick = (math.floor(os.time()) % #SETUP_ILLUSTRATIONS) + 1
+    veilRevealArt(gen, SETUP_ILLUSTRATIONS[pick])
   end
   if SETUP_SHORTCUTS ~= nil then
     UI.setAttribute('setupVeilCardArt', 'image', SETUP_SHORTCUTS)
@@ -92,6 +97,7 @@ local function veilDress(gen, total)
   end
   UI.setAttribute('setupVeilBar', 'percentage', 0)
   UI.setValue('setupVeilCount', '0 / ' .. total)
+  lastProgressAt = os.clock()
   for _, id in ipairs(VEIL_PARTS) do
     UI.setAttribute(id, 'active', true)
   end
@@ -100,7 +106,15 @@ local function veilDress(gen, total)
   end
 end
 
-local function veilProgress(done, total)
+-- Throttled on purpose: every UI.setAttribute makes TTS rebuild the UI,
+-- and doing that twice per frame across the cascade costs far more than
+-- the deployment itself.
+local lastProgressAt = 0
+
+local function veilProgress(done, total, force)
+  local now = os.clock()
+  if not force and now - lastProgressAt < 0.2 then return end
+  lastProgressAt = now
   UI.setAttribute('setupVeilBar', 'percentage', math.floor(done * 100 / total))
   UI.setValue('setupVeilCount', done .. ' / ' .. total)
 end
@@ -191,7 +205,7 @@ local function deployStep(gen, crate, pending, index, total, deployed, raisedAt)
     end)
   end
   deployed[#deployed + 1] = entry.g
-  veilProgress(index, total)
+  veilProgress(index, total, index == total)
   Wait.frames(function()
     deployStep(gen, crate, pending, index + 1, total, deployed, raisedAt)
   end, 1)
@@ -227,7 +241,10 @@ function initDeferredSetup()
     return
   end
   local gen = deployGeneration
-  veilDress(gen, #pending)
+  -- Dressing the veil is cosmetic; the furniture is not. An error in the
+  -- UI must never be what stops the table from being set up — which is
+  -- exactly what happened the first time this shipped.
+  pcall(function() veilDress(gen, #pending) end)
   cascadeStarted = true
   local raisedAt = os.clock()
   Wait.frames(function()
