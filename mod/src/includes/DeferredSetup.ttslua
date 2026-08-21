@@ -95,7 +95,7 @@ local function veilDress(gen, total)
     UI.setAttribute('setupVeilCardArt', 'active', true)
     UI.setAttribute('setupVeilText', 'active', false)
   end
-  UI.setAttribute('setupVeilBar', 'percentage', 0)
+  UI.setAttribute('setupVeilBarFill', 'width', '0%')
   UI.setValue('setupVeilCount', '0 / ' .. total)
   lastProgressAt = os.clock()
   for _, id in ipairs(VEIL_PARTS) do
@@ -115,7 +115,8 @@ local function veilProgress(done, total, force)
   local now = os.clock()
   if not force and now - lastProgressAt < 0.2 then return end
   lastProgressAt = now
-  UI.setAttribute('setupVeilBar', 'percentage', math.floor(done * 100 / total))
+  UI.setAttribute('setupVeilBarFill', 'width',
+    math.floor(done * 100 / total) .. '%')
   UI.setValue('setupVeilCount', done .. ' / ' .. total)
 end
 
