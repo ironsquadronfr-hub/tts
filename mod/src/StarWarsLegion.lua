@@ -238,6 +238,9 @@ function onload(saveData)
     templateInfo.losBeam = {
       -- The winding matters: the mirrored build of these meshes loads with
       -- correct bounds and renders nothing at all, every face culled.
+      -- base carries the tapered pieces (wedges, corners, cap frustums),
+      -- whose names Order_Token assembles.
+      base = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/",
       boxMesh = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/beam-box-a.obj",
       capMesh = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/beam-cap-a.obj",
       -- Opaque white: the beam gets its colour and its transparency from

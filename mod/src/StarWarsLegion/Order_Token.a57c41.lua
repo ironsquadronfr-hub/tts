@@ -1173,6 +1173,36 @@ function silhouetteOf(leaderObj)
     return radius, height, offset
 end
 
+function beamMeshUrl(name)
+    return templateInfo.losBeam.base .. "beam-" .. name .. "-a.obj"
+end
+
+-- The cap frustum meshes were generated for the base radii of templateInfo,
+-- deduplicated and sorted ascending -- the exact list the generator used.
+-- Nearest-match so float noise cannot fall between two entries.
+local beamRadii
+function beamRadiusIndex(r)
+    if not beamRadii then
+        beamRadii = {}
+        for _, diameter in pairs(templateInfo.baseRadius) do
+            local radius = diameter / 2
+            local seen = false
+            for _, known in ipairs(beamRadii) do
+                if math.abs(known - radius) < 0.000001 then seen = true end
+            end
+            if not seen then table.insert(beamRadii, radius) end
+        end
+        table.sort(beamRadii)
+    end
+    local best, bestGap = 1, math.huge
+    for i, known in ipairs(beamRadii) do
+        if math.abs(known - r) < bestGap then
+            best, bestGap = i, math.abs(known - r)
+        end
+    end
+    return best
+end
+
 function spawnBeamPiece(mesh, position, rotation, scale, pieces)
     local piece = spawnObject({
         type = "Custom_Model",
@@ -1195,18 +1225,22 @@ function spawnBeamPiece(mesh, position, rotation, scale, pieces)
     piece.interactable = false
 
     -- A line of sight is not a wall: minis and dice must pass through it. The
-    -- colliders only exist once the mesh has finished loading, hence the wait;
-    -- the piece may also be gone by then if DONE came first.
+    -- colliders only exist once the mesh has finished loading, hence the wait.
+    -- The piece may be gone by then if DONE came first, and a dead handle can
+    -- throw on any access, so both closures shield themselves.
     Wait.condition(function()
-        if piece ~= nil and not piece.isDestroyed() then
+        pcall(function()
             for _, colliderName in ipairs({"MeshCollider", "BoxCollider"}) do
                 for _, collider in ipairs(piece.getComponentsInChildren(colliderName) or {}) do
                     collider.set("enabled", false)
                 end
             end
-        end
+        end)
     end, function()
-        return piece == nil or piece.isDestroyed() or not piece.loading_custom
+        local ok, ready = pcall(function()
+            return piece.isDestroyed() or not piece.loading_custom
+        end)
+        return not ok or ready
     end)
 
     table.insert(pieces, piece)
@@ -1247,12 +1281,6 @@ function spawnLosBeam(aOriginObj, aTargetObj, aTargetLeaderObj, pieces)
     end
     local ground = math.sqrt(dx * dx + dz * dz)
 
-    -- Two silhouettes of different sizes sweep a tapered volume, which a
-    -- uniform mesh cannot follow. Until that case is designed, draw the
-    -- narrower of the two: it never claims a wider line of sight than there is.
-    local radius = math.min(originRadius, targetRadius)
-    local height = math.min(originHeight, targetHeight)
-
     local sine = math.abs(dy) / length
     local cosine = ground / length
     local yaw = 0
@@ -1262,27 +1290,85 @@ function spawnLosBeam(aOriginObj, aTargetObj, aTargetLeaderObj, pieces)
     local pitch = -math.deg(math.asin(dy / length))
 
     local middle = {(a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2}
-    -- Which way is "up" for a beam that is itself tilted. Straight overhead the
-    -- beam has no lean to speak of, so any perpendicular will do.
+    -- Which way is "up" and "sideways" for a beam that is itself tilted.
+    -- Straight overhead the beam has no lean to speak of, so any
+    -- perpendicular will do.
     local up = {1, 0, 0}
+    local right = {1, 0, 0}
     if ground > 0.001 then
         up = {-dx * dy / (length * ground), ground / length, -dz * dy / (length * ground)}
+        right = {dz / ground, 0, -dx / ground}
+    end
+    local function beamPos(rx, uy)
+        return {middle[1] + right[1] * rx + up[1] * uy,
+                middle[2] + right[2] * rx + up[2] * uy,
+                middle[3] + right[3] * rx + up[3] * uy}
+    end
+    local rot = {pitch, yaw, 0}
+
+    -- The beam tapers from the attacker's footprint to the defender's. One
+    -- stretched mesh cannot change its end ratio, so the taper is assembled
+    -- exactly: a core box at the smaller of the two sections, wedges along
+    -- each growing side, corner pieces where both sides grow, and caps that
+    -- taper by base-radius pair. Pieces whose growth is nil are skipped, so
+    -- two equal silhouettes still cost only three objects.
+    -- Kept off zero so a perfectly flat or perfectly vertical shot still
+    -- spawns its pieces, and the beam never turns into a zero scaled object.
+    local w1, w2 = 2 * originRadius, 2 * targetRadius
+    local bh1 = math.max(originHeight * cosine, 0.002)
+    local bh2 = math.max(targetHeight * cosine, 0.002)
+    local wMin, bMin = math.min(w1, w2), math.min(bh1, bh2)
+    local dW, dB = (w2 - w1) / 2, (bh2 - bh1) / 2
+    local aW, aB = math.abs(dW), math.abs(dB)
+    local eps = 0.01
+
+    spawnBeamPiece(templateInfo.losBeam.boxMesh, middle, rot,
+        {wMin, bMin, length}, pieces)
+
+    -- pz meshes grow toward +z, which points at the defender.
+    if aW > eps then
+        local dirW = dW > 0 and "pz" or "nz"
+        spawnBeamPiece(beamMeshUrl("wedge-xp-" .. dirW), beamPos(wMin / 2, 0),
+            rot, {aW, bMin, length}, pieces)
+        spawnBeamPiece(beamMeshUrl("wedge-xn-" .. dirW), beamPos(-wMin / 2, 0),
+            rot, {aW, bMin, length}, pieces)
+    end
+    if aB > eps then
+        local dirB = dB > 0 and "pz" or "nz"
+        spawnBeamPiece(beamMeshUrl("wedge-yp-" .. dirB), beamPos(0, bMin / 2),
+            rot, {wMin, aB, length}, pieces)
+        spawnBeamPiece(beamMeshUrl("wedge-yn-" .. dirB), beamPos(0, -bMin / 2),
+            rot, {wMin, aB, length}, pieces)
+    end
+    if aW > eps and aB > eps then
+        local pattern
+        if dW > 0 and dB > 0 then pattern = "cpz"
+        elseif dW < 0 and dB < 0 then pattern = "cnz"
+        elseif dW > 0 then pattern = "sxz"
+        else pattern = "syz" end
+        for _, q in ipairs({{"pp", 1, 1}, {"pn", 1, -1}, {"np", -1, 1}, {"nn", -1, -1}}) do
+            spawnBeamPiece(beamMeshUrl("corner-" .. q[1] .. "-" .. pattern),
+                beamPos(q[2] * wMin / 2, q[3] * bMin / 2), rot,
+                {aW, aB, length}, pieces)
+        end
     end
 
-    -- Kept off zero so a perfectly flat or perfectly vertical shot still spawns
-    -- three pieces, and the beam never turns into a zero scaled object.
-    local boxHeight = math.max(height * cosine, 0.002)
-    local capHeight = math.max(2 * radius * sine, 0.002)
-    local rise = {up[1] * boxHeight / 2, up[2] * boxHeight / 2, up[3] * boxHeight / 2}
-
-    spawnBeamPiece(templateInfo.losBeam.boxMesh, middle, {pitch, yaw, 0},
-        {2 * radius, boxHeight, length}, pieces)
-    spawnBeamPiece(templateInfo.losBeam.capMesh,
-        {middle[1] + rise[1], middle[2] + rise[2], middle[3] + rise[3]},
-        {pitch, yaw, 0}, {2 * radius, capHeight, length}, pieces)
-    spawnBeamPiece(templateInfo.losBeam.capMesh,
-        {middle[1] - rise[1], middle[2] - rise[2], middle[3] - rise[3]},
-        {pitch, yaw, 180}, {2 * radius, capHeight, length}, pieces)
+    -- The caps ride the box's top and bottom faces, which are themselves
+    -- tilted when the silhouette heights differ, hence the extra pitch. Cap
+    -- meshes are picked by base-radius pair; equal radii keep the straight
+    -- one from the v3 bench.
+    local i1, i2 = beamRadiusIndex(originRadius), beamRadiusIndex(targetRadius)
+    local capMesh = templateInfo.losBeam.capMesh
+    if i1 ~= i2 then
+        capMesh = beamMeshUrl("capfrust-" .. i1 .. "-" .. i2)
+    end
+    local capHeight = math.max(2 * originRadius * sine, 0.002)
+    local capTilt = math.deg(math.atan2(dB, length))
+    local yMid = (bh1 + bh2) / 4
+    spawnBeamPiece(capMesh, beamPos(0, yMid), {pitch - capTilt, yaw, 0},
+        {w1, capHeight, length}, pieces)
+    spawnBeamPiece(capMesh, beamPos(0, -yMid), {pitch + capTilt, yaw, 180},
+        {w1, capHeight, length}, pieces)
 end
 
 function getAngle(originObj, angleTargetObj)
