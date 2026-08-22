@@ -464,18 +464,12 @@ local function initListSpawner(params)
       -- A unit the deck cannot find comes back as nil, and reading a
       -- silhouette or a type off it took the whole import down with an
       -- "attempt to index a nil value" naming nothing. The card itself has
-      -- always spawned as a labelled dud in that case, so let the rest of
-      -- the list follow the same rule: say which unit is unknown, and carry
-      -- on without the data the deck could not supply.
+      -- always spawned as a labelled dud in that case, so follow the same
+      -- rule: skip what the data cannot supply and carry on with the list.
+      -- The player is told once, by the command-token stage, which sees the
+      -- same unit come back from the shelf as a bare dud.
       if unit.silhData == nil or unit.type == nil then
         completeUnitData = deck:getUnitByFactionAndName(faction, name)
-        if completeUnitData == nil then
-          broadcastToAll(
-            "Unknown unit \"" .. tostring(name) .. "\" ("
-              .. tostring(faction) .. "): spawned without silhouette data.",
-            {1, 0.6, 0}
-          )
-        end
       end
 
       if unit.silhData == nil then
@@ -634,13 +628,13 @@ local function initListSpawner(params)
     local textId = "importProgressText" .. suffix
     local barId = "importProgressBar" .. suffix
 
-    if __isqImportInFlight then
-      -- This object's previous import is the one being obsoleted above; its
-      -- pump stops on its next frame and will never reach the closing task.
-      countImports(-1)
+    -- An import already in flight on this object is the one being obsoleted
+    -- above: its pump stops on its next frame and never reaches the closing
+    -- task, so its seat in the count simply carries over to this import.
+    if not __isqImportInFlight then
+      __isqImportInFlight = true
+      countImports(1)
     end
-    __isqImportInFlight = true
-    countImports(1)
 
     local function closeImport()
       Global.UI.setAttribute(panelId, "active", false)
