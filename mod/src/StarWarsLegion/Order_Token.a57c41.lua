@@ -834,6 +834,17 @@ function clearAttackLine()
         end
         attackLine = nil
     end
+    if beamSilhouetteGUIDs then
+        for _, guid in pairs(beamSilhouetteGUIDs) do
+            local leader = getObjectFromGUID(guid)
+            -- Only lower a silhouette that is still up: the player may have
+            -- toggled it off themselves mid-attack.
+            if leader ~= nil and leader.getVar("silhouetteState") then
+                leader.call("clearSilhouette")
+            end
+        end
+        beamSilhouetteGUIDs = nil
+    end
 end
 
 
@@ -1048,6 +1059,9 @@ function attackMenu(attackTargetObj)
     unhighlightEnemies()
     highlightEnemy(attackTargetObj)
     clearRangeRulers()
+    -- Switching targets goes through here again: drop the previous target's
+    -- beams and silhouettes before drawing the new ones.
+    clearAttackLine()
 
     -- this used to be configurable per unit type, which meant that we made the
     -- ion/wound/suppression buttons vertically higher to make up for variable
@@ -1084,10 +1098,21 @@ function attackMenu(attackTargetObj)
         -- Only minis still on the battlefield are shot at. This used to be a
         -- set of hardcoded table bounds, which the zone already knows.
         if obj and isMiniOnTable(obj, minisOnTable) then
-            spawnLosBeam(selectedUnitObj, obj, attackLine)
+            spawnLosBeam(selectedUnitObj, obj, attackTargetObj, attackLine)
         end
     end
 
+    -- A beam is only readable against the silhouettes it connects, especially
+    -- when attacker and defender are not the same size. Raise them on both
+    -- units, but remember which ones we raised: a silhouette the player had up
+    -- already is theirs, and stays up after the attack.
+    beamSilhouetteGUIDs = {}
+    for _, leader in ipairs({selectedUnitObj, attackTargetObj}) do
+        if leader ~= nil and not leader.getVar("silhouetteState") then
+            leader.call("showSilhouette")
+            table.insert(beamSilhouetteGUIDs, leader.getGUID())
+        end
+    end
 end
 
 function addSuppression(selectedSuppressionObj)
@@ -1127,17 +1152,20 @@ function addIon(selectedIonObj)
 end
 
 -- The silhouette a mini is judged by: a cylinder standing on its base, as wide
--- as the base and as tall as its unit's silhouette. Same rules Unit_Leader uses
--- to spawn the visible ones, so the beams line up with what SIL draws.
-function silhouetteOf(obj)
-    local baseSize = obj.getVar("baseSize") or unitData.baseSize
+-- as the base and as tall as its unit's silhouette. Base size and custom
+-- silhouettes live on the unit leader, not on each mini, so that is who gets
+-- asked. Same rules Unit_Leader uses to spawn the visible ones, so the beams
+-- line up with what SIL draws.
+function silhouetteOf(leaderObj)
+    local leaderData = leaderObj.getTable("unitData")
+    local baseSize = (leaderData and leaderData.baseSize) or "small"
     local radius = (templateInfo.baseRadius[baseSize] or templateInfo.baseRadius.small) / 2
     local height = templateInfo.silhouetteHeight.small
     local offset = 0
 
-    if obj.getVar("silhType") == "custom" then
-        height = obj.getVar("silhHeight") or templateInfo.silhouetteHeight.custom
-        offset = obj.getVar("silhOffset") or 0
+    if leaderObj.getVar("silhType") == "custom" then
+        height = leaderObj.getVar("silhHeight") or templateInfo.silhouetteHeight.custom
+        offset = leaderObj.getVar("silhOffset") or 0
     elseif baseSize ~= "small" then
         height = templateInfo.silhouetteHeight.notched
     end
@@ -1166,6 +1194,21 @@ function spawnBeamPiece(mesh, position, rotation, scale, pieces)
     piece.setLock(true)
     piece.interactable = false
 
+    -- A line of sight is not a wall: minis and dice must pass through it. The
+    -- colliders only exist once the mesh has finished loading, hence the wait;
+    -- the piece may also be gone by then if DONE came first.
+    Wait.condition(function()
+        if piece ~= nil and not piece.isDestroyed() then
+            for _, colliderName in ipairs({"MeshCollider", "BoxCollider"}) do
+                for _, collider in ipairs(piece.getComponentsInChildren(colliderName) or {}) do
+                    collider.set("enabled", false)
+                end
+            end
+        end
+    end, function()
+        return piece == nil or piece.isDestroyed() or not piece.loading_custom
+    end)
+
     table.insert(pieces, piece)
     return piece
 end
@@ -1178,9 +1221,11 @@ end
 -- flat and thins as the shot steepens, capped top and bottom by half prisms
 -- that do the opposite: at the vertical the box has vanished and the two caps
 -- meet as a round tube. Both follow from the site angle alone.
-function spawnLosBeam(aOriginObj, aTargetObj, pieces)
+-- aTargetObj is the mini being shot at, aTargetLeaderObj its unit leader: the
+-- beam lands on the mini, but the silhouette dimensions are the unit's.
+function spawnLosBeam(aOriginObj, aTargetObj, aTargetLeaderObj, pieces)
     local originRadius, originHeight, originOffset = silhouetteOf(aOriginObj)
-    local targetRadius, targetHeight, targetOffset = silhouetteOf(aTargetObj)
+    local targetRadius, targetHeight, targetOffset = silhouetteOf(aTargetLeaderObj)
 
     local originPos = aOriginObj.getPosition()
     local targetPos = aTargetObj.getPosition()
