@@ -350,6 +350,21 @@ local function initListSpawner(params)
     miniData,
     push
   )
+    -- A unit the card data does not know, and one whose models are not
+    -- implemented yet, both come back from the shelf as a bare list of dud
+    -- models: none of the fields read below exist on it, and the rank alone
+    -- took the whole import down with an "attempt to index a nil value"
+    -- naming nothing. The dud model and its card are already on the table,
+    -- so say which unit it was and let the rest of the list spawn.
+    if unitInfo == nil or unitInfo.rank == nil then
+      broadcastToAll(
+        "\"" .. tostring(miniData.name) .. "\" is not in the card data: "
+          .. "spawned as a placeholder, with no command token.",
+        {1, 0.6, 0}
+      )
+      return
+    end
+
     -- TODO: Remove mapping.
     if faction == "Empire" then
       faction = "Imperial"
@@ -446,20 +461,33 @@ local function initListSpawner(params)
       local type = unit.type
       local silhData = unit.silhData or {}
 
+      -- A unit the deck cannot find comes back as nil, and reading a
+      -- silhouette or a type off it took the whole import down with an
+      -- "attempt to index a nil value" naming nothing. The card itself has
+      -- always spawned as a labelled dud in that case, so let the rest of
+      -- the list follow the same rule: say which unit is unknown, and carry
+      -- on without the data the deck could not supply.
+      if unit.silhData == nil or unit.type == nil then
+        completeUnitData = deck:getUnitByFactionAndName(faction, name)
+        if completeUnitData == nil then
+          broadcastToAll(
+            "Unknown unit \"" .. tostring(name) .. "\" ("
+              .. tostring(faction) .. "): spawned without silhouette data.",
+            {1, 0.6, 0}
+          )
+        end
+      end
+
       if unit.silhData == nil then
         silhData = {}
-        completeUnitData = deck:getUnitByFactionAndName(faction, name)
-        if completeUnitData.silhouette ~= nil then
+        if completeUnitData ~= nil and completeUnitData.silhouette ~= nil then
           for k, v in pairs(completeUnitData.silhouette) do
             table.insert(silhData, completeUnitData.silhouette[k])
           end
         end
       end
 
-      if unit.type == nil then
-        if completeUnitData == nil then
-          completeUnitData = deck:getUnitByFactionAndName(faction, name)
-        end
+      if unit.type == nil and completeUnitData ~= nil then
         type = completeUnitData.type
       end
 
