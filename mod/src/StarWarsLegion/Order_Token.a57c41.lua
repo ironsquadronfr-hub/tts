@@ -1072,20 +1072,19 @@ function attackMenu(attackTargetObj)
         click_function = "addSuppression"..self.getGUID(), function_owner = self, label = "S", position = {0, buttonHeight, 0}, rotation = {0, 180, 0}, scale = {0.5, 0.5, 0.5}, width = 700, height = 700, font_size = 500, color = {1, 0.8723, 0, 1}, tooltip = "S"
     })
 
-    -- create attack lines
+    -- Draw one beam from the attacking unit leader to every defending mini.
     local enemyMinis = attackTargetObj.getTable("miniGUIDs")
+    local minisOnTable = battlefieldZone.getObjects()
 
     attackLine = {}
-    n = 1
 
     for k, guidEntry in pairs(enemyMinis) do
         local obj = getObjectFromGUID(guidEntry)
 
-        if obj then
-            if obj.getPosition().z <18.1 and obj.getPosition().z > -18.1 and obj.getPosition().x < 44.1 and obj.getPosition().x > -28.1 then
-                attackLine[n] = spawnAttackLine(selectedUnitObj, obj)
-                n = n + 1
-            end
+        -- Only minis still on the battlefield are shot at. This used to be a
+        -- set of hardcoded table bounds, which the zone already knows.
+        if obj and isMiniOnTable(obj, minisOnTable) then
+            spawnLosBeam(selectedUnitObj, obj, attackLine)
         end
     end
 
@@ -1127,39 +1126,118 @@ function addIon(selectedIonObj)
     })
 end
 
-function spawnAttackLine(aOriginObj,aTargetObj)
+-- The silhouette a mini is judged by: a cylinder standing on its base, as wide
+-- as the base and as tall as its unit's silhouette. Same rules Unit_Leader uses
+-- to spawn the visible ones, so the beams line up with what SIL draws.
+function silhouetteOf(obj)
+    local baseSize = obj.getVar("baseSize") or unitData.baseSize
+    local radius = (templateInfo.baseRadius[baseSize] or templateInfo.baseRadius.small) / 2
+    local height = templateInfo.silhouetteHeight.small
+    local offset = 0
 
-        distance = getDistance(aOriginObj,aTargetObj)
+    if obj.getVar("silhType") == "custom" then
+        height = obj.getVar("silhHeight") or templateInfo.silhouetteHeight.custom
+        offset = obj.getVar("silhOffset") or 0
+    elseif baseSize ~= "small" then
+        height = templateInfo.silhouetteHeight.notched
+    end
 
-        local spawnPos = aOriginObj.getPosition()
-        spawnPos.y = spawnPos.y+0.22
-        local spawnRot = getAngle(aOriginObj,aTargetObj)
-        spawnRot.y = spawnRot.y +180
-        spawnRot.x = spawnRot.x
-        spawnRot.z = spawnRot.z
+    return radius, height, offset
+end
 
-        attackLineObj = spawnObject({
-            type = "Custom_Model",
-            position = spawnPos,
-            rotation = spawnRot,
-            scale = {1,1,distance}
-        })
-        attackLineObj.setCustomObject({
-            type = 0,
-            mesh = templateInfo.attackLineMesh,
-            collider = "https://steamusercontent-a.akamaihd.net/ugc/785234780862865411/C2B5E8CA63651BE485909340212736C0A68C2754/",
-            material = 1,
-        })
-        attackLineObj.setLock(true)
-        attackLineObj.setColorTint({1,0,0})
-        attackLineObj.setName("Range Ruler")
+function spawnBeamPiece(mesh, position, rotation, scale, pieces)
+    local piece = spawnObject({
+        type = "Custom_Model",
+        position = position,
+        rotation = rotation,
+        scale = scale
+    })
+    piece.setCustomObject({
+        type = 0,
+        mesh = mesh,
+        diffuse = templateInfo.losBeam.diffuse,
+        material = 0,
+    })
+    piece.setColorTint(templateInfo.losBeam.tint)
+    -- Named "Range Ruler" so the sweep every load already runs takes care of
+    -- any beam that outlived its attack, and given no script of its own: an
+    -- attached script costs a flat 70 to 140ms whatever it contains.
+    piece.setName("Range Ruler")
+    piece.setLock(true)
+    piece.interactable = false
 
-        attackLineObj.setRotation(spawnRot)
-        attackLineObj.setPosition(spawnPos)
+    table.insert(pieces, piece)
+    return piece
+end
 
-        Wait.frames(function() attackLineObj.setRotation(spawnRot) attackLineObj.setPosition(spawnPos) end, 10)
+-- Draws the volume swept between two silhouettes, into the pieces table.
+--
+-- Seen from the far end a silhouette reads as a rectangle when both stand at
+-- the same height, as a pill on a slope, and as a circle from straight
+-- overhead. So the beam is a box that carries the full silhouette height when
+-- flat and thins as the shot steepens, capped top and bottom by half prisms
+-- that do the opposite: at the vertical the box has vanished and the two caps
+-- meet as a round tube. Both follow from the site angle alone.
+function spawnLosBeam(aOriginObj, aTargetObj, pieces)
+    local originRadius, originHeight, originOffset = silhouetteOf(aOriginObj)
+    local targetRadius, targetHeight, targetOffset = silhouetteOf(aTargetObj)
 
-        return attackLineObj
+    local originPos = aOriginObj.getPosition()
+    local targetPos = aTargetObj.getPosition()
+    local a = {
+        x = originPos.x,
+        y = originPos.y + originOffset + originHeight / 2,
+        z = originPos.z
+    }
+    local b = {
+        x = targetPos.x,
+        y = targetPos.y + targetOffset + targetHeight / 2,
+        z = targetPos.z
+    }
+
+    local dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
+    local length = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if length < 0.01 then
+        return
+    end
+    local ground = math.sqrt(dx * dx + dz * dz)
+
+    -- Two silhouettes of different sizes sweep a tapered volume, which a
+    -- uniform mesh cannot follow. Until that case is designed, draw the
+    -- narrower of the two: it never claims a wider line of sight than there is.
+    local radius = math.min(originRadius, targetRadius)
+    local height = math.min(originHeight, targetHeight)
+
+    local sine = math.abs(dy) / length
+    local cosine = ground / length
+    local yaw = 0
+    if ground > 0.001 then
+        yaw = math.deg(math.atan2(dx, dz))
+    end
+    local pitch = -math.deg(math.asin(dy / length))
+
+    local middle = {(a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2}
+    -- Which way is "up" for a beam that is itself tilted. Straight overhead the
+    -- beam has no lean to speak of, so any perpendicular will do.
+    local up = {1, 0, 0}
+    if ground > 0.001 then
+        up = {-dx * dy / (length * ground), ground / length, -dz * dy / (length * ground)}
+    end
+
+    -- Kept off zero so a perfectly flat or perfectly vertical shot still spawns
+    -- three pieces, and the beam never turns into a zero scaled object.
+    local boxHeight = math.max(height * cosine, 0.002)
+    local capHeight = math.max(2 * radius * sine, 0.002)
+    local rise = {up[1] * boxHeight / 2, up[2] * boxHeight / 2, up[3] * boxHeight / 2}
+
+    spawnBeamPiece(templateInfo.losBeam.boxMesh, middle, {pitch, yaw, 0},
+        {2 * radius, boxHeight, length}, pieces)
+    spawnBeamPiece(templateInfo.losBeam.capMesh,
+        {middle[1] + rise[1], middle[2] + rise[2], middle[3] + rise[3]},
+        {pitch, yaw, 0}, {2 * radius, capHeight, length}, pieces)
+    spawnBeamPiece(templateInfo.losBeam.capMesh,
+        {middle[1] - rise[1], middle[2] - rise[2], middle[3] - rise[3]},
+        {pitch, yaw, 180}, {2 * radius, capHeight, length}, pieces)
 end
 
 function getAngle(originObj, angleTargetObj)
