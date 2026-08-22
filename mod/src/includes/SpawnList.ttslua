@@ -1,5 +1,21 @@
 require('!/common/Tablex')
 
+-- How many lists are spawning right now, red's and blue's together. The two
+-- list builders are separate objects with separate scripts, so neither can see
+-- the other's state: the count lives on the Global, which both reach. Pass 0 to
+-- read it. A reload starts the Global fresh, so the count cannot survive as a
+-- stale value.
+local function countImports(delta)
+  local count = (Global.getVar("isqImportsInFlight") or 0) + delta
+  if count < 0 then
+    count = 0
+  end
+  if delta ~= 0 then
+    Global.setVar("isqImportsInFlight", count)
+  end
+  return count
+end
+
 local function initListSpawner(params)
   local deck = params.deck
   local shelf = params.shelf
@@ -581,19 +597,41 @@ local function initListSpawner(params)
     deck:pinSchema()
     shelf:pinSchema()
 
+    -- Both players import into their own toast and their own share of the
+    -- frame. The two builders are separate objects, so nothing here is
+    -- visible from the other one: the toast is told apart by id, and the
+    -- count of imports in flight lives on the Global, where both can see it.
+    local suffix = color:lower() == "red" and "Red" or "Blue"
+    local panelId = "importProgress" .. suffix
+    local textId = "importProgressText" .. suffix
+    local barId = "importProgressBar" .. suffix
+
+    if __isqImportInFlight then
+      -- This object's previous import is the one being obsoleted above; its
+      -- pump stops on its next frame and will never reach the closing task.
+      countImports(-1)
+    end
+    __isqImportInFlight = true
+    countImports(1)
+
+    local function closeImport()
+      Global.UI.setAttribute(panelId, "active", false)
+      deck:unpinSchema()
+      shelf:unpinSchema()
+      if __isqImportInFlight then
+        __isqImportInFlight = false
+        countImports(-1)
+      end
+    end
+
     -- The importing banner (top of screen, in the Global UI): the
     -- spread-out spawn takes a few seconds, so say so - paced work reads
     -- as loading when it is labeled, and as lag when it is not. The
     -- progress bar fills unit by unit, tinted the importing player's color.
     local banner = "IMPORTING " .. color:upper() .. " LIST"
-    Global.UI.setAttribute(
-      "importProgressBar",
-      "fillImageColor",
-      color:lower() == "red" and "#FF5A5A" or "#58A6FF"
-    )
-    Global.UI.setAttribute("importProgressBar", "percentage", 0)
-    Global.UI.setValue("importProgressText", banner)
-    Global.UI.setAttribute("importProgress", "active", true)
+    Global.UI.setAttribute(barId, "percentage", 0)
+    Global.UI.setValue(textId, banner)
+    Global.UI.setAttribute(panelId, "active", true)
 
     -- `jobs` is the fine-grained queue the current unit expands into;
     -- `tasks` holds the coarse steps (each card deal, each unit, the final
@@ -630,11 +668,11 @@ local function initListSpawner(params)
     for i, unit in ipairs(listData.units) do
       table.insert(tasks, function()
         Global.UI.setValue(
-          "importProgressText",
+          textId,
           banner .. "  ·  UNIT " .. i .. "/" .. totalUnits
         )
         Global.UI.setAttribute(
-          "importProgressBar",
+          barId,
           "percentage",
           math.floor((i - 1) * 100 / totalUnits)
         )
@@ -644,9 +682,7 @@ local function initListSpawner(params)
     end
     table.insert(tasks, function()
       mount.call("setScenario", {name = scenario})
-      Global.UI.setAttribute("importProgress", "active", false)
-      deck:unpinSchema()
-      shelf:unpinSchema()
+      closeImport()
       return false
     end)
 
@@ -654,7 +690,10 @@ local function initListSpawner(params)
       if generation ~= __isqSpawnGeneration then
         return
       end
-      local deadline = os.clock() + 0.03
+      -- Two lists importing at once would otherwise take 30ms each and hand
+      -- the table a 60ms frame, which is the freeze this whole queue exists
+      -- to avoid. Split the budget by the number of imports in flight.
+      local deadline = os.clock() + 0.03 / math.max(1, countImports(0))
       repeat
         -- No shortcutting through table.remove(t, 1) here: TTS's Lua
         -- (MoonSharp) throws "position out of bounds" on an empty table
@@ -674,9 +713,7 @@ local function initListSpawner(params)
         -- outside an import would keep seeing this frozen copy.
         local ok, spawned = pcall(job)
         if not ok then
-          Global.UI.setAttribute("importProgress", "active", false)
-          deck:unpinSchema()
-          shelf:unpinSchema()
+          closeImport()
           error(spawned, 0)
         end
       until spawned or os.clock() >= deadline
