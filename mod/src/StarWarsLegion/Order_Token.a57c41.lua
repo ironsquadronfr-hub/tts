@@ -1157,6 +1157,9 @@ end
 
 -- Rays per frame: the search spreads over frames instead of freezing.
 local LOS_CASTS_PER_FRAME = 40
+-- Terrain touching the attacker's silhouette never blocks: you shoot over
+-- the barricade you are leaning on. Contact margin against its bounds.
+local LOS_CONTACT_MARGIN = 0.35
 
 losGeneration = 0
 losCtx = nil
@@ -1231,11 +1234,65 @@ function losIsTerrain(ctx, o)
     return true
 end
 
--- Is this silhouette-to-silhouette line clear of terrain and of ground
--- vehicle silhouettes?
+-- Does this terrain piece touch the attacker's silhouette cylinder? Judged
+-- on its bounds with a margin, cached per piece for the whole search.
+function losTouchesAttackerSilhouette(ctx, o)
+    local guid = o.getGUID()
+    if ctx.touched[guid] ~= nil then return ctx.touched[guid] end
+    local b = o.getBounds()
+    local touches = false
+    if b.center.y + b.size.y / 2 >= ctx.leaderBaseY
+        and b.center.y - b.size.y / 2 <= ctx.leaderTopY then
+        local dx = math.max(math.abs(ctx.leaderPos.x - b.center.x) - b.size.x / 2, 0)
+        local dz = math.max(math.abs(ctx.leaderPos.z - b.center.z) - b.size.z / 2, 0)
+        touches = math.sqrt(dx * dx + dz * dz) <= ctx.leaderRadius + LOS_CONTACT_MARGIN
+    end
+    ctx.touched[guid] = touches
+    return touches
+end
+
+-- Segment against a world-aligned box (the slab test), for terrain that has
+-- no collider and is therefore invisible to Physics.cast.
+function losSegmentHitsBox(p, q, box)
+    local t0, t1 = 0, 1
+    for _, axis in ipairs({"x", "y", "z"}) do
+        local d = q[axis] - p[axis]
+        local lo = box.center[axis] - box.half[axis]
+        local hi = box.center[axis] + box.half[axis]
+        if math.abs(d) < 0.000001 then
+            if p[axis] < lo or p[axis] > hi then return false end
+        else
+            local ta = (lo - p[axis]) / d
+            local tb = (hi - p[axis]) / d
+            if ta > tb then ta, tb = tb, ta end
+            t0 = math.max(t0, ta)
+            t1 = math.min(t1, tb)
+            if t0 > t1 then return false end
+        end
+    end
+    return true
+end
+
+function losHasActiveCollider(o)
+    for _, colliderName in ipairs({"MeshCollider", "BoxCollider", "SphereCollider", "CapsuleCollider"}) do
+        for _, collider in ipairs(o.getComponentsInChildren(colliderName) or {}) do
+            local ok, enabled = pcall(function() return collider.get("enabled") end)
+            if not ok or enabled ~= false then return true end
+        end
+    end
+    return false
+end
+
+-- Is this silhouette-to-silhouette line clear? Blocked by terrain with a
+-- collider (Physics.cast), by terrain without one (bounding boxes), or by a
+-- third-party ground vehicle silhouette (cylinders). Terrain touching the
+-- attacker's silhouette never blocks.
 function losCastLine(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
         if losSegmentHitsCylinder(p, q, cyl) then return false end
+    end
+    for _, box in ipairs(ctx.boxBlockers) do
+        if losSegmentHitsBox(p, q, box) then return false end
     end
     local dx, dy, dz = q.x - p.x, q.y - p.y, q.z - p.z
     local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -1248,7 +1305,7 @@ function losCastLine(ctx, p, q)
     })
     for _, hit in ipairs(hits or {}) do
         local o = hit.hit_object
-        if o ~= nil and losIsTerrain(ctx, o) then
+        if o ~= nil and losIsTerrain(ctx, o) and not losTouchesAttackerSilhouette(ctx, o) then
             return false
         end
     end
@@ -1259,13 +1316,20 @@ end
 -- the silhouette cylinders of third-party ground vehicles (the only minis
 -- that block sight), and the defending minis still on the battlefield.
 function buildLosContext(attackTargetObj)
+    local leaderRadius, leaderHeight, leaderOffset = silhouetteOf(selectedUnitObj)
+    local leaderPos = selectedUnitObj.getPosition()
     local ctx = {
         gen = losGeneration,
         attackTargetObj = attackTargetObj,
-        leaderPos = selectedUnitObj.getPosition(),
+        leaderPos = leaderPos,
+        leaderRadius = leaderRadius,
+        leaderBaseY = leaderPos.y + leaderOffset,
+        leaderTopY = leaderPos.y + leaderOffset + leaderHeight,
         miniGuids = {},
         blockers = {},
+        boxBlockers = {},
         defenders = {},
+        touched = {},
     }
     local zoneObjects = battlefieldZone.getObjects()
     local attackerGUID = selectedUnitObj.getGUID()
@@ -1291,6 +1355,19 @@ function buildLosContext(attackTargetObj)
                     end
                 end
             end
+        end
+    end
+    -- Terrain without any active collider is invisible to Physics.cast, so
+    -- it would never block a line: block it through its bounding box instead.
+    -- Every mini is known by now, so losIsTerrain can already classify.
+    for _, obj in pairs(zoneObjects) do
+        if losIsTerrain(ctx, obj) and not losTouchesAttackerSilhouette(ctx, obj)
+            and not losHasActiveCollider(obj) then
+            local b = obj.getBounds()
+            table.insert(ctx.boxBlockers, {
+                center = {x = b.center.x, y = b.center.y, z = b.center.z},
+                half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
+            })
         end
     end
     for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do

@@ -82,8 +82,11 @@ function scheduleOblongButtonFix()
 end
 
 function addSilhouetteButton()
+  -- A missing game data object must not abort the button rebuild: a leader
+  -- left without buttons throws on every later recolor.
   local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
-  local btnTint = gameData.getTable("battlefieldTint")
+  local btnTint = gameData ~= nil and gameData.getTable("battlefieldTint")
+      or {r = 0.3, g = 0.3, b = 0.3}
   local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
   btnData = {
     click_function = "toggleSilhouettes",
@@ -102,8 +105,10 @@ function addSilhouetteButton()
 end
 
 function addLockButton()
+    -- Same guard as addSilhouetteButton: never abort the button rebuild.
     local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
-    local btnTint = gameData.getTable("battlefieldTint")
+    local btnTint = gameData ~= nil and gameData.getTable("battlefieldTint")
+        or {r = 0.3, g = 0.3, b = 0.3}
     local templateInfo = Global.getTable("templateInfo")
     local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
     lockBtnData = {
@@ -123,6 +128,14 @@ function addLockButton()
 end
 
 function updateLockBtnColor()
+    -- editButton on an object with no buttons raises a bare object reference
+    -- error, and every unit move recolors every leader through the unlock
+    -- sweep: a leader whose buttons failed to build once would then throw at
+    -- every table event forever.
+    local buttons = self.getButtons()
+    if buttons == nil or #buttons == 0 then
+        return
+    end
     if isLocked() then
         self.editButton({
             index = 0,
