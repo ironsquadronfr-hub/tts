@@ -1227,6 +1227,11 @@ function losIsTerrain(ctx, o)
         return false
     end
     local name = string.lower(o.getName() or "")
+    -- The table and the battlefield board are not terrain: everything rests
+    -- on them, so they always touch the attacker and only add noise.
+    if name == "table" or name == "battlefield" then
+        return false
+    end
     if string.find(name, "token") or string.find(name, "ruler")
         or string.find(name, "template") or string.find(name, "dice")
         or string.find(name, "silhouette") or string.find(name, "objective") then
@@ -1381,14 +1386,14 @@ function buildLosContext(attackTargetObj)
             })
         end
     end
-    print("[ISQ LDV] contexte : " .. #ctx.blockers .. " véhicule(s)-cylindre, "
-        .. #ctx.boxBlockers .. " boîte(s), " .. #ctx.defenders .. " défenseur(s)")
     for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do
         local m = getObjectFromGUID(guid)
         if m ~= nil and isMiniOnTable(m, zoneObjects) then
             table.insert(ctx.defenders, m)
         end
     end
+    print("[ISQ LDV] contexte : " .. #ctx.blockers .. " véhicule(s)-cylindre, "
+        .. #ctx.boxBlockers .. " boîte(s), " .. #ctx.defenders .. " défenseur(s)")
     return ctx
 end
 

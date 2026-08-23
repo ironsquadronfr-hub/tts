@@ -18,6 +18,15 @@ function setUp()
     startPosition = nil
     startRotation = nil
 
+    -- A silhouette attached before a save comes back as a phantom: the
+    -- attachment is restored but the script state is not, so nothing knows
+    -- it is up. Purge them so the leader always starts clean.
+    pcall(function()
+      for _, phantom in ipairs(self.removeAttachments() or {}) do
+        if phantom then phantom.destruct() end
+      end
+    end)
+
     lockBtnGreen = {0.2, 0.9, 0.05, 0.7}
     lockBtnRed = {0.9, 0.1, 0.05, 0.7}
 
@@ -223,21 +232,21 @@ function toggleSilhouettes()
 end
 
 -- Loops through all minis in the unit
--- Removes all attachments and destroys the first one
--- The silhouette should be the only attachment, so this should be safe to do
+-- Removes all attachments and destroys every one of them. A mini can carry
+-- more than one silhouette: one saved with the game comes back as a phantom
+-- attachment (the script state does not survive the save), and raising the
+-- silhouettes again stacks a second one on top. Destroying only the first
+-- left the other detached with no collider, falling through the world.
 function clearSilhouette()
   for k, guid in pairs(miniGUIDs) do
     local obj = getObjectFromGUID(guid)
 
     -- Guard against players who delete their minis!
     if obj then
-      -- silhouetteState is saved with the game, but the silhouette objects
-      -- themselves are not: loading a save made with silhouettes up leaves the
-      -- state true with nothing attached, and removeAttachments() returns an
-      -- empty list. Destructing that nil crashed the script.
-      local silToDestroy = obj.removeAttachments()[1]
-      if silToDestroy then
-        silToDestroy.destruct()
+      for _, silToDestroy in ipairs(obj.removeAttachments() or {}) do
+        if silToDestroy then
+          pcall(function() silToDestroy.destruct() end)
+        end
       end
     end
   end
@@ -381,27 +390,48 @@ end
 -- ISQ DEBUG (temporaire) : les leaders jettent des « Object reference not
 -- set » anonymes au chargement et à chaque balayage unlock, sans nom de
 -- fonction ni ligne. Chaque point d'entrée est enveloppé pour que l'erreur
--- dise ENFIN d'où elle vient. À retirer une fois le coupable identifié.
+-- dise ENFIN d'où elle vient. Enveloppement explicite, sans _G (dont le
+-- comportement dans le bac à sable TTS n'est pas garanti), avec une balise
+-- au chargement qui prouve que le wrapper est bien installé. À retirer une
+-- fois le coupable identifié.
 do
-  local wrapped = {
-    "onload", "setUp", "resetUnitButtons", "addLockButton",
-    "addSilhouetteButton", "scheduleOblongButtonFix", "updateLockBtnColor",
-    "evaluateLocks", "tryAddLock", "tryRemoveLock", "removeAllLocks",
-    "toggleLock", "toggleLockButton", "toggleSilhouettes", "clearSilhouette",
-    "showSilhouette", "onDropped", "checkVelocity", "onPickedUp",
-    "clearCohesionRuler", "setStartPos", "printMovement",
-  }
-  for _, name in ipairs(wrapped) do
-    local fn = _G[name]
-    if fn ~= nil then
-      _G[name] = function(...)
-        local ok, err = pcall(fn, ...)
-        if not ok then
-          print("[ISQ DEBUG] " .. tostring(self.getName()) .. " ("
-            .. self.getGUID() .. ") " .. name .. " → " .. tostring(err))
-        end
+  local function isqWrap(name, fn)
+    return function(...)
+      local r = {pcall(fn, ...)}
+      if not r[1] then
+        print("[ISQ DEBUG] " .. tostring(self.getName()) .. " ("
+          .. self.getGUID() .. ") " .. name .. " → " .. tostring(r[2]))
+        return
       end
+      return r[2], r[3]
     end
   end
+  onload = isqWrap("onload", onload)
+  setUp = isqWrap("setUp", setUp)
+  resetUnitButtons = isqWrap("resetUnitButtons", resetUnitButtons)
+  addLockButton = isqWrap("addLockButton", addLockButton)
+  addSilhouetteButton = isqWrap("addSilhouetteButton", addSilhouetteButton)
+  scheduleOblongButtonFix = isqWrap("scheduleOblongButtonFix", scheduleOblongButtonFix)
+  updateLockBtnColor = isqWrap("updateLockBtnColor", updateLockBtnColor)
+  evaluateLocks = isqWrap("evaluateLocks", evaluateLocks)
+  tryAddLock = isqWrap("tryAddLock", tryAddLock)
+  tryRemoveLock = isqWrap("tryRemoveLock", tryRemoveLock)
+  removeAllLocks = isqWrap("removeAllLocks", removeAllLocks)
+  toggleLock = isqWrap("toggleLock", toggleLock)
+  toggleLockButton = isqWrap("toggleLockButton", toggleLockButton)
+  toggleSilhouettes = isqWrap("toggleSilhouettes", toggleSilhouettes)
+  clearSilhouette = isqWrap("clearSilhouette", clearSilhouette)
+  showSilhouette = isqWrap("showSilhouette", showSilhouette)
+  spawnSilhouette = isqWrap("spawnSilhouette", spawnSilhouette)
+  onDropped = isqWrap("onDropped", onDropped)
+  checkVelocity = isqWrap("checkVelocity", checkVelocity)
+  onPickedUp = isqWrap("onPickedUp", onPickedUp)
+  clearCohesionRuler = isqWrap("clearCohesionRuler", clearCohesionRuler)
+  spawnCohesionRuler = isqWrap("spawnCohesionRuler", spawnCohesionRuler)
+  showCohesionOnHoveredModel = isqWrap("showCohesionOnHoveredModel", showCohesionOnHoveredModel)
+  setStartPos = isqWrap("setStartPos", setStartPos)
+  printMovement = isqWrap("printMovement", printMovement)
+  -- dropCoroutine volontairement non enveloppé : yield à travers un pcall.
+  print("[ISQ DEBUG] wrapper actif : " .. self.getGUID())
 end
 
