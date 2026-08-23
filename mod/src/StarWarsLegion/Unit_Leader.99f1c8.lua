@@ -290,6 +290,24 @@ function spawnSilhouette(obj, pos, rot)
       material = 3
   })
   silhouette.setColorTint({0.47,0.76,0.8,0.3})
+  -- A silhouette is a visual aid: it must not collide with minis, and it
+  -- must never block the line of sight rays Order_Token casts. Colliders
+  -- only exist once the bundle has loaded, and a dead handle can throw on
+  -- any access, hence the shielded wait.
+  Wait.condition(function()
+    pcall(function()
+      for _, colliderName in ipairs({"MeshCollider", "BoxCollider"}) do
+        for _, collider in ipairs(silhouette.getComponentsInChildren(colliderName) or {}) do
+          collider.set("enabled", false)
+        end
+      end
+    end)
+  end, function()
+    local ok, ready = pcall(function()
+      return silhouette.isDestroyed() or not silhouette.loading_custom
+    end)
+    return not ok or ready
+  end)
   if obj ~= nil then
     obj.addAttachment(silhouette)
   end

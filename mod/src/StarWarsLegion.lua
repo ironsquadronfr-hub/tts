@@ -226,29 +226,6 @@ function onload(saveData)
 
     templateInfo.attackLineMesh = "https://steamusercontent-a.akamaihd.net/ugc/785234780861452902/76204298AA245698319FD2EA590160AFFE1B488C/"
 
-    -- Line of sight beams. The old attack line was a hairline drawn between two
-    -- mini centres, which is not what the rules ask you to look at: line of
-    -- sight runs between the two silhouettes. So draw the volume the silhouettes
-    -- sweep instead. Its cross section is one silhouette's outline seen from the
-    -- other: a rectangle when both stand at the same height, a pill on a slope,
-    -- a circle from straight overhead. That is a box flanked by two half
-    -- ellipses, so a box mesh and a lying half prism, each scaled per shot, draw
-    -- it exactly -- no mesh is built at run time, which TTS cannot do anyway
-    -- (it rejects data: URIs outright).
-    templateInfo.losBeam = {
-      -- The winding matters: the mirrored build of these meshes loads with
-      -- correct bounds and renders nothing at all, every face culled.
-      -- base carries the tapered pieces (wedges, corners, cap frustums),
-      -- whose names Order_Token assembles.
-      base = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/",
-      boxMesh = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/beam-box-a.obj",
-      capMesh = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/beam-cap-a.obj",
-      -- Opaque white: the beam gets its colour and its transparency from
-      -- setColorTint, which is the only alpha TTS honours on a custom model.
-      diffuse = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-attack-assets/beam-diffuse.png",
-      tint = {1, 0.05, 0.05, 0.32},
-    }
-
     highestPoint = 0
 
     -- token Bags

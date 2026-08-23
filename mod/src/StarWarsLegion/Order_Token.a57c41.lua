@@ -828,14 +828,12 @@ function clearCohesionRulers()
 end
 
 function clearAttackLine()
-    if attackLine then
-        for k, attackLineObj in pairs(attackLine) do
-            destroyObject(attackLine[k])
-        end
-        attackLine = nil
-    end
-    if beamSilhouetteGUIDs then
-        for _, guid in pairs(beamSilhouetteGUIDs) do
+    -- Any verdict still computing is now stale: the coroutine checks the
+    -- generation at every resume point and bows out.
+    losGeneration = (losGeneration or 0) + 1
+    Global.setVectorLines({})
+    if losSilhouetteGUIDs then
+        for _, guid in pairs(losSilhouetteGUIDs) do
             local leader = getObjectFromGUID(guid)
             -- Only lower a silhouette that is still up: the player may have
             -- toggled it off themselves mid-attack.
@@ -843,7 +841,7 @@ function clearAttackLine()
                 leader.call("clearSilhouette")
             end
         end
-        beamSilhouetteGUIDs = nil
+        losSilhouetteGUIDs = nil
     end
 end
 
@@ -1086,33 +1084,10 @@ function attackMenu(attackTargetObj)
         click_function = "addSuppression"..self.getGUID(), function_owner = self, label = "S", position = {0, buttonHeight, 0}, rotation = {0, 180, 0}, scale = {0.5, 0.5, 0.5}, width = 700, height = 700, font_size = 500, color = {1, 0.8723, 0, 1}, tooltip = "S"
     })
 
-    -- Draw one beam from the attacking unit leader to every defending mini.
-    local enemyMinis = attackTargetObj.getTable("miniGUIDs")
-    local minisOnTable = battlefieldZone.getObjects()
-
-    attackLine = {}
-
-    for k, guidEntry in pairs(enemyMinis) do
-        local obj = getObjectFromGUID(guidEntry)
-
-        -- Only minis still on the battlefield are shot at. This used to be a
-        -- set of hardcoded table bounds, which the zone already knows.
-        if obj and isMiniOnTable(obj, minisOnTable) then
-            spawnLosBeam(selectedUnitObj, obj, attackTargetObj, attackLine)
-        end
-    end
-
-    -- A beam is only readable against the silhouettes it connects, especially
-    -- when attacker and defender are not the same size. Raise them on both
-    -- units, but remember which ones we raised: a silhouette the player had up
-    -- already is theirs, and stays up after the attack.
-    beamSilhouetteGUIDs = {}
-    for _, leader in ipairs({selectedUnitObj, attackTargetObj}) do
-        if leader ~= nil and not leader.getVar("silhouetteState") then
-            leader.call("showSilhouette")
-            table.insert(beamSilhouetteGUIDs, leader.getGUID())
-        end
-    end
+    -- Line of sight and cover verdict for every defending mini, computed in
+    -- the background: green/orange/red highlights, a witness ray where sight
+    -- exists, and a cover badge on the unit. Silhouettes rise when it is done.
+    computeLosVerdicts(attackTargetObj)
 end
 
 function addSuppression(selectedSuppressionObj)
@@ -1173,202 +1148,286 @@ function silhouetteOf(leaderObj)
     return radius, height, offset
 end
 
-function beamMeshUrl(name)
-    return templateInfo.losBeam.base .. "beam-" .. name .. "-a.obj"
+------------------------------------------------- LIGNE DE VUE ------------------------------------------------------------
+-- The rule: LOS runs from the attacking unit LEADER to each defending mini.
+-- If every silhouette-to-silhouette line is blocked, the mini is protected.
+-- Otherwise, if some line is blocked by terrain the leader is not in contact
+-- with and that sits within half a range band of the defending mini, the mini
+-- is protected too. Half or more minis protected: the unit is in cover.
+
+-- Range 1 is 6 table units (createRangeButton does ceil(d/6)), so half a
+-- range band, the reach of protecting terrain, is 3.
+local LOS_HALF_RANGE = 3
+-- Base-contact margin between the leader's base edge and a terrain bound.
+local LOS_CONTACT_MARGIN = 0.3
+-- Rays per frame: the verdict spreads over frames instead of freezing.
+local LOS_CASTS_PER_FRAME = 40
+
+losGeneration = 0
+losCtx = nil
+
+-- Nine sampling points of a silhouette, facing the other figure: three
+-- heights on three verticals (the facing line and both tangents). The
+-- grazing lines the rule cares about run through these contours. The facing
+-- column comes first so open terrain resolves in the very first rays.
+function losSamplePoints(obj, leaderObj, towardPos)
+    local radius, height, offset = silhouetteOf(leaderObj)
+    local p = obj.getPosition()
+    local baseY = p.y + offset
+    local dx, dz = towardPos.x - p.x, towardPos.z - p.z
+    local g = math.sqrt(dx * dx + dz * dz)
+    if g < 0.001 then dx, dz, g = 1, 0, 1 end
+    dx, dz = dx / g, dz / g
+    local r = radius * 0.95
+    local points = {}
+    for _, d in ipairs({{dx, dz}, {-dz, dx}, {dz, -dx}}) do
+        for _, y in ipairs({baseY + height / 2, baseY + height - 0.05, baseY + 0.1}) do
+            table.insert(points, {x = p.x + d[1] * r, y = y, z = p.z + d[2] * r})
+        end
+    end
+    return points
 end
 
--- The cap frustum meshes were generated for the base radii of templateInfo,
--- deduplicated and sorted ascending -- the exact list the generator used.
--- Nearest-match so float noise cannot fall between two entries.
-local beamRadii
-function beamRadiusIndex(r)
-    if not beamRadii then
-        beamRadii = {}
-        for _, diameter in pairs(templateInfo.baseRadius) do
-            local radius = diameter / 2
-            local seen = false
-            for _, known in ipairs(beamRadii) do
-                if math.abs(known - radius) < 0.000001 then seen = true end
-            end
-            if not seen then table.insert(beamRadii, radius) end
-        end
-        table.sort(beamRadii)
+-- Does a segment cross the silhouette cylinder of a third-party ground
+-- vehicle? Pure arithmetic, no physics call: a quadratic in the ground
+-- plane, then a height window over the crossed interval.
+function losSegmentHitsCylinder(p, q, cyl)
+    local dx, dz = q.x - p.x, q.z - p.z
+    local fx, fz = p.x - cyl.x, p.z - cyl.z
+    local a = dx * dx + dz * dz
+    local t0, t1
+    if a < 0.000001 then
+        if fx * fx + fz * fz > cyl.r * cyl.r then return false end
+        t0, t1 = 0, 1
+    else
+        local b = 2 * (fx * dx + fz * dz)
+        local c = fx * fx + fz * fz - cyl.r * cyl.r
+        local disc = b * b - 4 * a * c
+        if disc <= 0 then return false end
+        local s = math.sqrt(disc)
+        t0 = math.max((-b - s) / (2 * a), 0)
+        t1 = math.min((-b + s) / (2 * a), 1)
+        if t0 > t1 then return false end
     end
-    local best, bestGap = 1, math.huge
-    for i, known in ipairs(beamRadii) do
-        if math.abs(known - r) < bestGap then
-            best, bestGap = i, math.abs(known - r)
-        end
-    end
-    return best
+    local ya = p.y + (q.y - p.y) * t0
+    local yb = p.y + (q.y - p.y) * t1
+    return math.max(ya, yb) >= cyl.y0 and math.min(ya, yb) <= cyl.y1
 end
 
-function spawnBeamPiece(mesh, position, rotation, scale, pieces)
-    local piece = spawnObject({
-        type = "Custom_Model",
-        position = position,
-        rotation = rotation,
-        scale = scale
-    })
-    piece.setCustomObject({
-        type = 0,
-        mesh = mesh,
-        diffuse = templateInfo.losBeam.diffuse,
-        material = 0,
-    })
-    piece.setColorTint(templateInfo.losBeam.tint)
-    -- Named "Range Ruler" so the sweep every load already runs takes care of
-    -- any beam that outlived its attack, and given no script of its own: an
-    -- attached script costs a flat 70 to 140ms whatever it contains.
-    piece.setName("Range Ruler")
-    piece.setLock(true)
-    piece.interactable = false
+-- What counts as terrain for a ray: not a mini (minis only block through the
+-- ground-vehicle cylinders), not a game aid, not something tiny. The rest of
+-- the scenery does.
+function losIsTerrain(ctx, o)
+    if ctx.miniGuids[o.getGUID()] then return false end
+    local t = o.type
+    if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
+        return false
+    end
+    local name = string.lower(o.getName() or "")
+    if string.find(name, "token") or string.find(name, "ruler")
+        or string.find(name, "template") or string.find(name, "dice")
+        or string.find(name, "silhouette") or string.find(name, "objective") then
+        return false
+    end
+    local b = o.getBounds()
+    if b and b.size.x < 1.2 and b.size.z < 1.2 and b.size.y < 0.8 then
+        return false
+    end
+    return true
+end
 
-    -- A line of sight is not a wall: minis and dice must pass through it. The
-    -- colliders only exist once the mesh has finished loading, hence the wait.
-    -- The piece may be gone by then if DONE came first, and a dead handle can
-    -- throw on any access, so both closures shield themselves.
-    Wait.condition(function()
-        pcall(function()
-            for _, colliderName in ipairs({"MeshCollider", "BoxCollider"}) do
-                for _, collider in ipairs(piece.getComponentsInChildren(colliderName) or {}) do
-                    collider.set("enabled", false)
+-- Is the attacking leader in base contact with this terrain? Bounding box
+-- against base edge with a margin -- an assumed approximation, erring toward
+-- contact. Cached per terrain piece for the whole verdict.
+function losLeaderInContact(ctx, o)
+    local guid = o.getGUID()
+    if ctx.contact[guid] ~= nil then return ctx.contact[guid] end
+    local b = o.getBounds()
+    local dx = math.max(math.abs(ctx.leaderPos.x - b.center.x) - b.size.x / 2, 0)
+    local dz = math.max(math.abs(ctx.leaderPos.z - b.center.z) - b.size.z / 2, 0)
+    local inContact = math.sqrt(dx * dx + dz * dz) - ctx.leaderRadius <= LOS_CONTACT_MARGIN
+    ctx.contact[guid] = inContact
+    return inContact
+end
+
+-- Tests one silhouette-to-silhouette line. Returns (clear, protects):
+-- protects is true when qualifying terrain blocks it -- not in contact with
+-- the leader AND within half a range band of the defending mini, measured at
+-- the impact point, which by definition lies on the terrain piece.
+function losCastLine(ctx, p, q, defPos, defRadius)
+    for _, cyl in ipairs(ctx.blockers) do
+        if losSegmentHitsCylinder(p, q, cyl) then return false, false end
+    end
+    local dx, dy, dz = q.x - p.x, q.y - p.y, q.z - p.z
+    local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if dist < 0.01 then return true, false end
+    local hits = Physics.cast({
+        origin = p,
+        direction = {dx / dist, dy / dist, dz / dist},
+        type = 1,
+        max_distance = dist,
+    })
+    local blocked, protects = false, false
+    for _, hit in ipairs(hits or {}) do
+        local o = hit.hit_object
+        if o ~= nil and losIsTerrain(ctx, o) then
+            blocked = true
+            if not protects and not losLeaderInContact(ctx, o) then
+                local hx, hz = hit.point.x - defPos.x, hit.point.z - defPos.z
+                if math.sqrt(hx * hx + hz * hz) - defRadius <= LOS_HALF_RANGE then
+                    protects = true
                 end
             end
-        end)
-    end, function()
-        local ok, ready = pcall(function()
-            return piece.isDestroyed() or not piece.loading_custom
-        end)
-        return not ok or ready
-    end)
-
-    table.insert(pieces, piece)
-    return piece
-end
-
--- Draws the volume swept between two silhouettes, into the pieces table.
---
--- Seen from the far end a silhouette reads as a rectangle when both stand at
--- the same height, as a pill on a slope, and as a circle from straight
--- overhead. So the beam is a box that carries the full silhouette height when
--- flat and thins as the shot steepens, capped top and bottom by half prisms
--- that do the opposite: at the vertical the box has vanished and the two caps
--- meet as a round tube. Both follow from the site angle alone.
--- aTargetObj is the mini being shot at, aTargetLeaderObj its unit leader: the
--- beam lands on the mini, but the silhouette dimensions are the unit's.
-function spawnLosBeam(aOriginObj, aTargetObj, aTargetLeaderObj, pieces)
-    local originRadius, originHeight, originOffset = silhouetteOf(aOriginObj)
-    local targetRadius, targetHeight, targetOffset = silhouetteOf(aTargetLeaderObj)
-
-    local originPos = aOriginObj.getPosition()
-    local targetPos = aTargetObj.getPosition()
-    local a = {
-        x = originPos.x,
-        y = originPos.y + originOffset + originHeight / 2,
-        z = originPos.z
-    }
-    local b = {
-        x = targetPos.x,
-        y = targetPos.y + targetOffset + targetHeight / 2,
-        z = targetPos.z
-    }
-
-    local dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
-    local length = math.sqrt(dx * dx + dy * dy + dz * dz)
-    if length < 0.01 then
-        return
-    end
-    local ground = math.sqrt(dx * dx + dz * dz)
-
-    local sine = math.abs(dy) / length
-    local cosine = ground / length
-    local yaw = 0
-    if ground > 0.001 then
-        yaw = math.deg(math.atan2(dx, dz))
-    end
-    local pitch = -math.deg(math.asin(dy / length))
-
-    local middle = {(a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2}
-    -- Which way is "up" and "sideways" for a beam that is itself tilted.
-    -- Straight overhead the beam has no lean to speak of, so any
-    -- perpendicular will do.
-    local up = {1, 0, 0}
-    local right = {1, 0, 0}
-    if ground > 0.001 then
-        up = {-dx * dy / (length * ground), ground / length, -dz * dy / (length * ground)}
-        right = {dz / ground, 0, -dx / ground}
-    end
-    local function beamPos(rx, uy)
-        return {middle[1] + right[1] * rx + up[1] * uy,
-                middle[2] + right[2] * rx + up[2] * uy,
-                middle[3] + right[3] * rx + up[3] * uy}
-    end
-    local rot = {pitch, yaw, 0}
-
-    -- The beam tapers from the attacker's footprint to the defender's. One
-    -- stretched mesh cannot change its end ratio, so the taper is assembled
-    -- exactly: a core box at the smaller of the two sections, wedges along
-    -- each growing side, corner pieces where both sides grow, and caps that
-    -- taper by base-radius pair. Pieces whose growth is nil are skipped, so
-    -- two equal silhouettes still cost only three objects.
-    -- Kept off zero so a perfectly flat or perfectly vertical shot still
-    -- spawns its pieces, and the beam never turns into a zero scaled object.
-    local w1, w2 = 2 * originRadius, 2 * targetRadius
-    local bh1 = math.max(originHeight * cosine, 0.002)
-    local bh2 = math.max(targetHeight * cosine, 0.002)
-    local wMin, bMin = math.min(w1, w2), math.min(bh1, bh2)
-    local dW, dB = (w2 - w1) / 2, (bh2 - bh1) / 2
-    local aW, aB = math.abs(dW), math.abs(dB)
-    local eps = 0.01
-
-    spawnBeamPiece(templateInfo.losBeam.boxMesh, middle, rot,
-        {wMin, bMin, length}, pieces)
-
-    -- pz meshes grow toward +z, which points at the defender.
-    if aW > eps then
-        local dirW = dW > 0 and "pz" or "nz"
-        spawnBeamPiece(beamMeshUrl("wedge-xp-" .. dirW), beamPos(wMin / 2, 0),
-            rot, {aW, bMin, length}, pieces)
-        spawnBeamPiece(beamMeshUrl("wedge-xn-" .. dirW), beamPos(-wMin / 2, 0),
-            rot, {aW, bMin, length}, pieces)
-    end
-    if aB > eps then
-        local dirB = dB > 0 and "pz" or "nz"
-        spawnBeamPiece(beamMeshUrl("wedge-yp-" .. dirB), beamPos(0, bMin / 2),
-            rot, {wMin, aB, length}, pieces)
-        spawnBeamPiece(beamMeshUrl("wedge-yn-" .. dirB), beamPos(0, -bMin / 2),
-            rot, {wMin, aB, length}, pieces)
-    end
-    if aW > eps and aB > eps then
-        local pattern
-        if dW > 0 and dB > 0 then pattern = "cpz"
-        elseif dW < 0 and dB < 0 then pattern = "cnz"
-        elseif dW > 0 then pattern = "sxz"
-        else pattern = "syz" end
-        for _, q in ipairs({{"pp", 1, 1}, {"pn", 1, -1}, {"np", -1, 1}, {"nn", -1, -1}}) do
-            spawnBeamPiece(beamMeshUrl("corner-" .. q[1] .. "-" .. pattern),
-                beamPos(q[2] * wMin / 2, q[3] * bMin / 2), rot,
-                {aW, aB, length}, pieces)
         end
     end
+    return not blocked, protects
+end
 
-    -- The caps ride the box's top and bottom faces, which are themselves
-    -- tilted when the silhouette heights differ, hence the extra pitch. Cap
-    -- meshes are picked by base-radius pair; equal radii keep the straight
-    -- one from the v3 bench.
-    local i1, i2 = beamRadiusIndex(originRadius), beamRadiusIndex(targetRadius)
-    local capMesh = templateInfo.losBeam.capMesh
-    if i1 ~= i2 then
-        capMesh = beamMeshUrl("capfrust-" .. i1 .. "-" .. i2)
+-- A snapshot of the table for one verdict: every mini to ignore in the rays,
+-- the silhouette cylinders of third-party ground vehicles (the only minis
+-- that block sight), and the defending minis still on the battlefield.
+function buildLosContext(attackTargetObj)
+    local ctx = {
+        gen = losGeneration,
+        attackTargetObj = attackTargetObj,
+        leaderPos = selectedUnitObj.getPosition(),
+        leaderRadius = (silhouetteOf(selectedUnitObj)),
+        miniGuids = {},
+        blockers = {},
+        defenders = {},
+        contact = {},
+    }
+    local zoneObjects = battlefieldZone.getObjects()
+    local attackerGUID = selectedUnitObj.getGUID()
+    local targetGUID = attackTargetObj.getGUID()
+    for _, obj in pairs(zoneObjects) do
+        if obj.getVar("isAMini") == true then
+            ctx.miniGuids[obj.getGUID()] = true
+            local thirdParty = obj.getGUID() ~= attackerGUID and obj.getGUID() ~= targetGUID
+            local unitType = obj.getVar("unitType") or ""
+            local blocks = thirdParty and string.find(unitType, "Ground Vehicle") ~= nil
+            local radius, height, offset = silhouetteOf(obj)
+            for _, guid in pairs(obj.getTable("miniGUIDs") or {}) do
+                ctx.miniGuids[guid] = true
+                if blocks then
+                    local m = getObjectFromGUID(guid)
+                    if m ~= nil and isMiniOnTable(m, zoneObjects) then
+                        local mp = m.getPosition()
+                        table.insert(ctx.blockers, {
+                            x = mp.x, z = mp.z,
+                            y0 = mp.y + offset, y1 = mp.y + offset + height,
+                            r = radius,
+                        })
+                    end
+                end
+            end
+        end
     end
-    local capHeight = math.max(2 * originRadius * sine, 0.002)
-    local capTilt = math.deg(math.atan2(dB, length))
-    local yMid = (bh1 + bh2) / 4
-    spawnBeamPiece(capMesh, beamPos(0, yMid), {pitch - capTilt, yaw, 0},
-        {w1, capHeight, length}, pieces)
-    spawnBeamPiece(capMesh, beamPos(0, -yMid), {pitch + capTilt, yaw, 180},
-        {w1, capHeight, length}, pieces)
+    for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do
+        local m = getObjectFromGUID(guid)
+        if m ~= nil and isMiniOnTable(m, zoneObjects) then
+            table.insert(ctx.defenders, m)
+        end
+    end
+    return ctx
+end
+
+function computeLosVerdicts(attackTargetObj)
+    losGeneration = losGeneration + 1
+    losCtx = buildLosContext(attackTargetObj)
+    startLuaCoroutine(self, "losVerdictCoroutine")
+end
+
+-- The search stops as soon as both questions are answered for a mini: is
+-- some line clear (LOS, with a witness), and does some line cross qualifying
+-- terrain (protection). Open terrain resolves in the first facing rays; the
+-- exhaustive worst case only happens for minis that are genuinely hidden.
+function losVerdictCoroutine()
+    local ctx = losCtx
+    local casts = 0
+    local verdicts = {}
+    for _, def in ipairs(ctx.defenders) do
+        local defPos = def.getPosition()
+        local defRadius = (silhouetteOf(ctx.attackTargetObj))
+        local apts = losSamplePoints(selectedUnitObj, selectedUnitObj, defPos)
+        local dpts = losSamplePoints(def, ctx.attackTargetObj, ctx.leaderPos)
+        local hasLdv, witness, isProtected = false, nil, false
+        for _, ap in ipairs(apts) do
+            for _, dp in ipairs(dpts) do
+                local clear, protects = losCastLine(ctx, ap, dp, defPos, defRadius)
+                if clear and not hasLdv then
+                    hasLdv = true
+                    witness = {ap, dp}
+                end
+                if protects then isProtected = true end
+                casts = casts + 1
+                if casts >= LOS_CASTS_PER_FRAME then
+                    casts = 0
+                    coroutine.yield(0)
+                    if ctx.gen ~= losGeneration then return 1 end
+                end
+                if hasLdv and isProtected then break end
+            end
+            if hasLdv and isProtected then break end
+        end
+        -- LOS fully blocked IS protection, by the first clause of the rule.
+        if not hasLdv then isProtected = true end
+        table.insert(verdicts, {obj = def, hasLdv = hasLdv, witness = witness, isProtected = isProtected})
+    end
+    if ctx.gen ~= losGeneration then return 1 end
+    applyLosVerdicts(ctx, verdicts)
+    return 1
+end
+
+-- Green: seen, not protected. Orange: seen but protected. Red: LOS fully
+-- blocked. The witness ray is the actual clear line found -- it shows where
+-- the sight passes, which is what table arguments are made of.
+function applyLosVerdicts(ctx, verdicts)
+    local lines = {}
+    local protectedCount = 0
+    for _, v in ipairs(verdicts) do
+        local color
+        if not v.hasLdv then
+            color = {0.9, 0.15, 0.15}
+        elseif v.isProtected then
+            color = {1, 0.55, 0.1}
+        else
+            color = {0.2, 0.9, 0.2}
+        end
+        if v.isProtected then protectedCount = protectedCount + 1 end
+        v.obj.highlightOn(color)
+        if v.witness ~= nil then
+            table.insert(lines, {
+                points = {v.witness[1], v.witness[2]},
+                color = color,
+                thickness = 0.04,
+            })
+        end
+    end
+    Global.setVectorLines(lines)
+
+    if #verdicts > 0 then
+        local covered = protectedCount * 2 >= #verdicts
+        local buttonHeight = ctx.attackTargetObj.getVar("height") or 2
+        ctx.attackTargetObj.createButton({
+            click_function = "dud", function_owner = self,
+            label = covered and "COUVERT" or "A DECOUVERT",
+            position = {0, buttonHeight, 0.9}, rotation = {0, 180, 0},
+            scale = {0.5, 0.5, 0.5}, width = 2600, height = 500, font_size = 350,
+            color = covered and {1, 0.55, 0.1, 1} or {0.2, 0.9, 0.2, 1},
+            font_color = {0, 0, 0, 1},
+        })
+    end
+
+    -- Silhouettes only rise HERE, once the rays are done, and only on units
+    -- that did not have them up already -- those belong to the player.
+    losSilhouetteGUIDs = {}
+    for _, leader in ipairs({selectedUnitObj, ctx.attackTargetObj}) do
+        if leader ~= nil and not leader.getVar("silhouetteState") then
+            leader.call("showSilhouette")
+            table.insert(losSilhouetteGUIDs, leader.getGUID())
+        end
+    end
 end
 
 function getAngle(originObj, angleTargetObj)
