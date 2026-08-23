@@ -1161,7 +1161,7 @@ local LOS_CASTS_PER_FRAME = 400
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v17"
+local LOS_BUILD = "v18"
 
 losGeneration = 0
 losCtx = nil
@@ -1315,11 +1315,24 @@ function losMakeObb(obj)
     local b = obj.getVisualBoundsNormalized()
     local p = obj.getPosition()
     local r = obj.getRotation()
+    local s = obj.getScale()
+    -- The visual mesh URL feeds the triangle pass: every Custom_Model's OBJ
+    -- is right there in its data, so any terrain piece, present or future,
+    -- is covered with no per-map bookkeeping.
+    local url = nil
+    if obj.name == "Custom_Model" then
+        local ok, co = pcall(function() return obj.getCustomObject() end)
+        if ok and co ~= nil then url = co.mesh end
+    end
     return {
+        name = obj.getName() or "?",
         pos = p,
         rx = math.rad(r.x), ry = math.rad(r.y), rz = math.rad(r.z),
+        sx = (s.x ~= 0 and s.x or 1), sy = (s.y ~= 0 and s.y or 1),
+        sz = (s.z ~= 0 and s.z or 1),
         center = {x = b.center.x - p.x, y = b.center.y - p.y, z = b.center.z - p.z},
         half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
+        url = url,
     }
 end
 
@@ -1340,6 +1353,8 @@ end
 -- frame. Purely geometric -- what the players see is what blocks, and
 -- shooting over your own barricade works because the high silhouette
 -- points genuinely clear its top, not through any forgiveness rule.
+-- Returns nil on a miss, or the t interval of the crossing so the triangle
+-- pass can clip its work to it.
 function losSegmentHitsObb(p, q, obb)
     local lp = losToObbFrame(obb, p)
     local lq = losToObbFrame(obb, q)
@@ -1349,31 +1364,235 @@ function losSegmentHitsObb(p, q, obb)
         local lo = obb.center[axis] - obb.half[axis]
         local hi = obb.center[axis] + obb.half[axis]
         if math.abs(d) < 0.000001 then
-            if lp[axis] < lo or lp[axis] > hi then return false end
+            if lp[axis] < lo or lp[axis] > hi then return nil end
         else
             local ta = (lo - lp[axis]) / d
             local tb = (hi - lp[axis]) / d
             if ta > tb then ta, tb = tb, ta end
             t0 = math.max(t0, ta)
             t1 = math.min(t1, tb)
-            if t0 > t1 then return false end
+            if t0 > t1 then return nil end
         end
     end
+    return t0, t1
+end
+
+---------------------------------------------------------------------------
+-- PASSE MESH (précision triangle). La boîte visuelle sur-bloque par
+-- construction : une verte de la passe boîtes est donc CERTAINE, mais son
+-- absence peut être un faux négatif -- le petit angle passe dans le vide
+-- d'une boîte (coin de bâtiment, sous une antenne). Dans ce seul cas, une
+-- seconde passe rejoue les mêmes rayons contre les VRAIS triangles du mesh
+-- visuel, téléchargé une fois par type de pièce (WebRequest sur l'URL OBJ
+-- que porte tout Custom_Model) et mis en cache pour la session. Aucune
+-- donnée par carte : tout décor présent ou futur est couvert.
+---------------------------------------------------------------------------
+losMeshCache = {}
+local LOS_MESH_MAX_TRIS = 25000
+local LOS_MESH_RAYS_PER_FRAME = 30
+local LOS_MESH_MAX_RAYS = 1500
+local LOS_MESH_GRID = 16
+
+function losMeshRequest(url)
+    local entry = losMeshCache[url]
+    if entry ~= nil then return entry end
+    entry = {status = "loading"}
+    losMeshCache[url] = entry
+    WebRequest.get(url, function(req)
+        if entry.status ~= "loading" then return end
+        if req.is_error or req.text == nil or #req.text == 0 then
+            entry.status = "failed"
+        else
+            entry.text = req.text
+            entry.status = "raw"
+        end
+    end)
+    return entry
+end
+
+-- Budgeted OBJ parse, run inside the verdict coroutine: a few thousand
+-- lines per frame. Fan-triangulates polygons, keeps flat arrays (vertex,
+-- edges, box) per triangle plus a 16x16 XZ grid for the ray broad phase.
+-- Returns false if the generation moved on mid-parse (state rewinds to raw
+-- so the next attack picks the text back up).
+function losMeshParse(entry)
+    entry.status = "parsing"
+    local vx, vy, vz = {}, {}, {}
+    local T = {ax = {}, ay = {}, az = {}, e1x = {}, e1y = {}, e1z = {},
+               e2x = {}, e2y = {}, e2z = {},
+               minx = {}, maxx = {}, miny = {}, maxy = {}, minz = {}, maxz = {}}
+    local n = 0
+    local lines = 0
+    local myGen = losGeneration
+    for line in string.gmatch(entry.text, "[^\r\n]+") do
+        local head = string.sub(line, 1, 2)
+        if head == "v " then
+            local a, b, c = string.match(line, "^v%s+(%S+)%s+(%S+)%s+(%S+)")
+            if a ~= nil then
+                table.insert(vx, tonumber(a))
+                table.insert(vy, tonumber(b))
+                table.insert(vz, tonumber(c))
+            end
+        elseif head == "f " then
+            local idx = {}
+            for tok in string.gmatch(line, "%S+") do
+                local i = string.match(tok, "^(%-?%d+)")
+                if i ~= nil then
+                    i = tonumber(i)
+                    if i < 0 then i = #vx + i + 1 end
+                    table.insert(idx, i)
+                end
+            end
+            for k = 2, #idx - 1 do
+                local i1, i2, i3 = idx[1], idx[k], idx[k + 1]
+                if vx[i1] and vx[i2] and vx[i3] then
+                    n = n + 1
+                    T.ax[n], T.ay[n], T.az[n] = vx[i1], vy[i1], vz[i1]
+                    T.e1x[n] = vx[i2] - vx[i1]
+                    T.e1y[n] = vy[i2] - vy[i1]
+                    T.e1z[n] = vz[i2] - vz[i1]
+                    T.e2x[n] = vx[i3] - vx[i1]
+                    T.e2y[n] = vy[i3] - vy[i1]
+                    T.e2z[n] = vz[i3] - vz[i1]
+                    T.minx[n] = math.min(vx[i1], vx[i2], vx[i3])
+                    T.maxx[n] = math.max(vx[i1], vx[i2], vx[i3])
+                    T.miny[n] = math.min(vy[i1], vy[i2], vy[i3])
+                    T.maxy[n] = math.max(vy[i1], vy[i2], vy[i3])
+                    T.minz[n] = math.min(vz[i1], vz[i2], vz[i3])
+                    T.maxz[n] = math.max(vz[i1], vz[i2], vz[i3])
+                end
+            end
+            if n > LOS_MESH_MAX_TRIS then
+                entry.status = "toobig"
+                entry.text = nil
+                return true
+            end
+        end
+        lines = lines + 1
+        if lines % 3000 == 0 then
+            coroutine.yield(0)
+            if losGeneration ~= myGen then
+                entry.status = "raw"
+                return false
+            end
+        end
+    end
+    if n == 0 then
+        entry.status = "failed"
+        entry.text = nil
+        return true
+    end
+    -- Grille XZ des triangles pour couper chaque rayon à quelques cellules.
+    local gx0, gx1 = math.huge, -math.huge
+    local gz0, gz1 = math.huge, -math.huge
+    for i = 1, n do
+        gx0 = math.min(gx0, T.minx[i]); gx1 = math.max(gx1, T.maxx[i])
+        gz0 = math.min(gz0, T.minz[i]); gz1 = math.max(gz1, T.maxz[i])
+    end
+    local cw = math.max((gx1 - gx0) / LOS_MESH_GRID, 0.0001)
+    local ch = math.max((gz1 - gz0) / LOS_MESH_GRID, 0.0001)
+    local grid = {}
+    for i = 1, n do
+        local cx0 = math.floor((T.minx[i] - gx0) / cw)
+        local cx1 = math.floor((T.maxx[i] - gx0) / cw)
+        local cz0 = math.floor((T.minz[i] - gz0) / ch)
+        local cz1 = math.floor((T.maxz[i] - gz0) / ch)
+        for cx = math.max(cx0, 0), math.min(cx1, LOS_MESH_GRID - 1) do
+            for cz = math.max(cz0, 0), math.min(cz1, LOS_MESH_GRID - 1) do
+                local key = cx * LOS_MESH_GRID + cz + 1
+                if grid[key] == nil then grid[key] = {} end
+                table.insert(grid[key], i)
+            end
+        end
+        if i % 3000 == 0 then
+            coroutine.yield(0)
+            if losGeneration ~= myGen then
+                entry.status = "raw"
+                return false
+            end
+        end
+    end
+    entry.tris = T
+    entry.n = n
+    entry.grid = grid
+    entry.gx0, entry.gz0, entry.cw, entry.ch = gx0, gz0, cw, ch
+    entry.text = nil
+    entry.status = "ready"
     return true
+end
+
+-- Does the segment hit an actual triangle of the piece? Works in the OBJ's
+-- local, unscaled frame; clipped to the box-crossing interval; the XZ grid
+-- then per-triangle boxes cut the Moller-Trumbore tests to a handful.
+function losMeshBlocks(obb, entry, p, q, t0, t1)
+    local lp = losToObbFrame(obb, p)
+    local lq = losToObbFrame(obb, q)
+    lp.x, lp.y, lp.z = lp.x / obb.sx, lp.y / obb.sy, lp.z / obb.sz
+    lq.x, lq.y, lq.z = lq.x / obb.sx, lq.y / obb.sy, lq.z / obb.sz
+    local ta = math.max(0, t0 - 0.02)
+    local tb = math.min(1, t1 + 0.02)
+    local ox = lp.x + (lq.x - lp.x) * ta
+    local oy = lp.y + (lq.y - lp.y) * ta
+    local oz = lp.z + (lq.z - lp.z) * ta
+    local dx = lp.x + (lq.x - lp.x) * tb - ox
+    local dy = lp.y + (lq.y - lp.y) * tb - oy
+    local dz = lp.z + (lq.z - lp.z) * tb - oz
+    local sminx, smaxx = math.min(ox, ox + dx), math.max(ox, ox + dx)
+    local sminy, smaxy = math.min(oy, oy + dy), math.max(oy, oy + dy)
+    local sminz, smaxz = math.min(oz, oz + dz), math.max(oz, oz + dz)
+    local T = entry.tris
+    local cx0 = math.max(math.floor((sminx - entry.gx0) / entry.cw), 0)
+    local cx1 = math.min(math.floor((smaxx - entry.gx0) / entry.cw), LOS_MESH_GRID - 1)
+    local cz0 = math.max(math.floor((sminz - entry.gz0) / entry.ch), 0)
+    local cz1 = math.min(math.floor((smaxz - entry.gz0) / entry.ch), LOS_MESH_GRID - 1)
+    for cx = cx0, cx1 do
+        for cz = cz0, cz1 do
+            local cell = entry.grid[cx * LOS_MESH_GRID + cz + 1]
+            if cell ~= nil then
+                for _, i in ipairs(cell) do
+                    if not (T.maxx[i] < sminx or T.minx[i] > smaxx
+                        or T.maxy[i] < sminy or T.miny[i] > smaxy
+                        or T.maxz[i] < sminz or T.minz[i] > smaxz) then
+                        local pvx = dy * T.e2z[i] - dz * T.e2y[i]
+                        local pvy = dz * T.e2x[i] - dx * T.e2z[i]
+                        local pvz = dx * T.e2y[i] - dy * T.e2x[i]
+                        local det = T.e1x[i] * pvx + T.e1y[i] * pvy + T.e1z[i] * pvz
+                        if det > 0.000000001 or det < -0.000000001 then
+                            local inv = 1 / det
+                            local tvx = ox - T.ax[i]
+                            local tvy = oy - T.ay[i]
+                            local tvz = oz - T.az[i]
+                            local u = (tvx * pvx + tvy * pvy + tvz * pvz) * inv
+                            if u >= 0 and u <= 1 then
+                                local qvx = tvy * T.e1z[i] - tvz * T.e1y[i]
+                                local qvy = tvz * T.e1x[i] - tvx * T.e1z[i]
+                                local qvz = tvx * T.e1y[i] - tvy * T.e1x[i]
+                                local v = (dx * qvx + dy * qvy + dz * qvz) * inv
+                                if v >= 0 and u + v <= 1 then
+                                    local t = (T.e2x[i] * qvx + T.e2y[i] * qvy + T.e2z[i] * qvz) * inv
+                                    if t >= 0 and t <= 1 then
+                                        return true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
 end
 
 -- Is this silhouette-to-silhouette line clear? Blocked by the oriented
 -- VISUAL box of any terrain piece, or by a third-party ground vehicle
 -- silhouette (cylinders). Pure arithmetic, no physics: the mod's terrain
 -- colliders do not match what the players see.
-function losCastLine(ctx, obbs, p, q)
+function losHitsCylinders(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
-        if losSegmentHitsCylinder(p, q, cyl) then return false end
+        if losSegmentHitsCylinder(p, q, cyl) then return true end
     end
-    for _, obb in ipairs(obbs) do
-        if losSegmentHitsObb(p, q, obb) then return false end
-    end
-    return true
+    return false
 end
 
 -- A snapshot of the table for one verdict: every mini to ignore in the rays,
@@ -1489,12 +1708,22 @@ function losVerdictCoroutine()
         local obbs = losCorridorObbs(ctx, defPos, pad)
         local clearLine, blockedLine = nil, nil
         local rays = 0
+        local crossedSet = {}
         for level = 1, LOS_MAX_LEVEL do
             for _, ap in ipairs(apts) do
                 for _, dp in ipairs(dpts) do
                     if math.max(ap.lvl, dp.lvl) == level then
                         rays = rays + 1
-                        if losCastLine(ctx, obbs, ap, dp) then
+                        local blocked = losHitsCylinders(ctx, ap, dp)
+                        -- Every crossed box is recorded, not just the first:
+                        -- the triangle pass must know every mesh it may need.
+                        for _, obb in ipairs(obbs) do
+                            if losSegmentHitsObb(ap, dp, obb) then
+                                blocked = true
+                                crossedSet[obb] = true
+                            end
+                        end
+                        if not blocked then
                             if clearLine == nil then clearLine = {ap, dp, level} end
                         else
                             if blockedLine == nil then blockedLine = {ap, dp, level} end
@@ -1512,11 +1741,94 @@ function losVerdictCoroutine()
             end
             if clearLine ~= nil and blockedLine ~= nil then break end
         end
-        table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
-        print("[ISQ LDV] " .. (def.getName() or "figurine") .. " : "
+        print("[ISQ LDV] " .. (def.getName() or "figurine") .. " (boîtes) : "
             .. (clearLine and ("verte niv " .. clearLine[3]) or "PAS de verte") .. ", "
             .. (blockedLine and ("rouge niv " .. blockedLine[3]) or "PAS de rouge")
             .. " — " .. rays .. " rayons, " .. #obbs .. " boîte(s) en couloir")
+
+        -- Pas de verte par les boîtes : l'angle existe peut-être dans le
+        -- vide d'une boîte. Passe fine contre les vrais triangles, sur les
+        -- seules pièces croisées.
+        if clearLine == nil then
+            local needed = {}
+            for obb in pairs(crossedSet) do
+                if obb.url ~= nil then
+                    losMeshRequest(obb.url)
+                    table.insert(needed, obb)
+                end
+            end
+            for _, obb in ipairs(needed) do
+                local entry = losMeshCache[obb.url]
+                local waited = 0
+                while entry.status == "loading" and waited < 600 do
+                    coroutine.yield(0)
+                    waited = waited + 1
+                    if ctx.gen ~= losGeneration then return 1 end
+                end
+                if entry.status == "loading" then entry.status = "failed" end
+                if entry.status == "raw" or entry.status == "parsing" then
+                    if not losMeshParse(entry) then return 1 end
+                end
+                print("[ISQ LDV] mesh " .. obb.name .. " : " .. entry.status
+                    .. (entry.n ~= nil and (" (" .. entry.n .. " triangles)") or ""))
+            end
+
+            local meshRays = 0
+            local meshBudget = 0
+            local meshClear, meshRed = nil, nil
+            for level = 1, LOS_MAX_LEVEL do
+                for _, ap in ipairs(apts) do
+                    for _, dp in ipairs(dpts) do
+                        if math.max(ap.lvl, dp.lvl) == level then
+                            meshRays = meshRays + 1
+                            local blocked = losHitsCylinders(ctx, ap, dp)
+                            if not blocked then
+                                for _, obb in ipairs(obbs) do
+                                    local t0, t1 = losSegmentHitsObb(ap, dp, obb)
+                                    if t0 ~= nil then
+                                        local entry = obb.url ~= nil and losMeshCache[obb.url] or nil
+                                        if entry ~= nil and entry.status == "ready" then
+                                            if losMeshBlocks(obb, entry, ap, dp, t0, t1) then
+                                                blocked = true
+                                                break
+                                            end
+                                        else
+                                            -- Mesh indisponible : la boîte
+                                            -- fait foi, prudence.
+                                            blocked = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                            if not blocked then
+                                meshClear = {ap, dp, level}
+                            elseif meshRed == nil then
+                                meshRed = {ap, dp, level}
+                            end
+                            meshBudget = meshBudget + 1
+                            if meshBudget >= LOS_MESH_RAYS_PER_FRAME then
+                                meshBudget = 0
+                                coroutine.yield(0)
+                                if ctx.gen ~= losGeneration then return 1 end
+                            end
+                            if meshClear ~= nil then break end
+                            if meshRays >= LOS_MESH_MAX_RAYS then break end
+                        end
+                    end
+                    if meshClear ~= nil or meshRays >= LOS_MESH_MAX_RAYS then break end
+                end
+                if meshClear ~= nil or meshRays >= LOS_MESH_MAX_RAYS then break end
+            end
+            if meshClear ~= nil then clearLine = meshClear end
+            if meshRed ~= nil then blockedLine = meshRed end
+            print("[ISQ LDV] " .. (def.getName() or "figurine") .. " (mesh) : "
+                .. (meshClear and ("VERTE niv " .. meshClear[3]) or "pas de verte") .. ", "
+                .. (meshRed and ("rouge niv " .. meshRed[3]) or "pas de rouge")
+                .. " — " .. meshRays .. " rayons mesh")
+        end
+
+        table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
     end
     if ctx.gen ~= losGeneration then return 1 end
     drawLosWitnesses(ctx, witnesses)
