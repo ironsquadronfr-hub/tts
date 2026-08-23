@@ -1161,7 +1161,7 @@ local LOS_CASTS_PER_FRAME = 200
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v13"
+local LOS_BUILD = "v14"
 
 losGeneration = 0
 losCtx = nil
@@ -1243,6 +1243,12 @@ function losIsTerrain(ctx, o)
     if name == "table" or name == "battlefield" then
         return false
     end
+    -- The map annotates its pieces: anything tagged [No Cover] (landing
+    -- platforms, decorative floors) never blocks sight -- that is also what
+    -- lets a unit standing on such a piece shoot off it freely.
+    if string.find(name, "no cover") then
+        return false
+    end
     if string.find(name, "token") or string.find(name, "ruler")
         or string.find(name, "template") or string.find(name, "dice")
         or string.find(name, "silhouette") or string.find(name, "objective") then
@@ -1253,21 +1259,6 @@ function losIsTerrain(ctx, o)
         return false
     end
     return true
-end
-
--- Does a terrain hit land inside the attacker's silhouette cylinder? Such a
--- hit does not block: you shoot over the cover you are leaning on. Judged at
--- the exact hit point against the silhouette at its exact size (a hair of
--- tolerance for surface numerics), so a long wall or a compound terrain
--- object is only forgiven right at the attacker and still blocks anywhere
--- else along its length.
-function losHitIsOnAttacker(ctx, pt)
-    if pt.y < ctx.leaderBaseY - 0.05 or pt.y > ctx.leaderTopY + 0.05 then
-        return false
-    end
-    local dx, dz = pt.x - ctx.leaderPos.x, pt.z - ctx.leaderPos.z
-    local rr = ctx.leaderRadius + 0.05
-    return dx * dx + dz * dz <= rr * rr
 end
 
 -- The oriented visual box of a terrain piece: its renderer bounds at zero
@@ -1300,8 +1291,9 @@ function losToObbFrame(obb, pt)
 end
 
 -- Segment against the oriented visual box: slab test in the box's local
--- frame. Returns nil on a miss, or the WORLD entry point of the crossing so
--- the caller can apply the shoot-over-your-own-cover rule to it.
+-- frame. Purely geometric -- what the players see is what blocks, and
+-- shooting over your own barricade works because the high silhouette
+-- points genuinely clear its top, not through any forgiveness rule.
 function losSegmentHitsObb(p, q, obb)
     local lp = losToObbFrame(obb, p)
     local lq = losToObbFrame(obb, q)
@@ -1311,37 +1303,29 @@ function losSegmentHitsObb(p, q, obb)
         local lo = obb.center[axis] - obb.half[axis]
         local hi = obb.center[axis] + obb.half[axis]
         if math.abs(d) < 0.000001 then
-            if lp[axis] < lo or lp[axis] > hi then return nil end
+            if lp[axis] < lo or lp[axis] > hi then return false end
         else
             local ta = (lo - lp[axis]) / d
             local tb = (hi - lp[axis]) / d
             if ta > tb then ta, tb = tb, ta end
             t0 = math.max(t0, ta)
             t1 = math.min(t1, tb)
-            if t0 > t1 then return nil end
+            if t0 > t1 then return false end
         end
     end
-    return {
-        x = p.x + (q.x - p.x) * t0,
-        y = p.y + (q.y - p.y) * t0,
-        z = p.z + (q.z - p.z) * t0,
-    }
+    return true
 end
 
 -- Is this silhouette-to-silhouette line clear? Blocked by the oriented
 -- VISUAL box of any terrain piece, or by a third-party ground vehicle
 -- silhouette (cylinders). Pure arithmetic, no physics: the mod's terrain
--- colliders do not match what the players see. A terrain hit landing
--- inside the attacker's silhouette does not block (losHitIsOnAttacker).
+-- colliders do not match what the players see.
 function losCastLine(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
         if losSegmentHitsCylinder(p, q, cyl) then return false end
     end
     for _, obb in ipairs(ctx.obbs) do
-        local entry = losSegmentHitsObb(p, q, obb)
-        if entry ~= nil and not losHitIsOnAttacker(ctx, entry) then
-            return false
-        end
+        if losSegmentHitsObb(p, q, obb) then return false end
     end
     return true
 end
@@ -1350,15 +1334,10 @@ end
 -- the silhouette cylinders of third-party ground vehicles (the only minis
 -- that block sight), and the defending minis still on the battlefield.
 function buildLosContext(attackTargetObj)
-    local leaderRadius, leaderHeight, leaderOffset = silhouetteOf(selectedUnitObj)
-    local leaderPos = selectedUnitObj.getPosition()
     local ctx = {
         gen = losGeneration,
         attackTargetObj = attackTargetObj,
-        leaderPos = leaderPos,
-        leaderRadius = leaderRadius,
-        leaderBaseY = leaderPos.y + leaderOffset,
-        leaderTopY = leaderPos.y + leaderOffset + leaderHeight,
+        leaderPos = selectedUnitObj.getPosition(),
         miniGuids = {},
         blockers = {},
         obbs = {},
