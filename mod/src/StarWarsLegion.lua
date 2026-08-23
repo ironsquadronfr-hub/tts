@@ -224,8 +224,6 @@ function onload(saveData)
       snail = 14.52755906
     }
 
-    templateInfo.attackLineMesh = "https://steamusercontent-a.akamaihd.net/ugc/785234780861452902/76204298AA245698319FD2EA590160AFFE1B488C/"
-
     highestPoint = 0
 
     -- token Bags

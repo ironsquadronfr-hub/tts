@@ -1244,29 +1244,25 @@ function losIsTerrain(ctx, o)
     return true
 end
 
--- Does this terrain piece touch the attacker's silhouette cylinder? Judged
--- on its bounds against the silhouette at its exact size -- no margin, the
--- silhouette is the size it is. Cached per piece for the whole search.
-function losTouchesAttackerSilhouette(ctx, o)
-    local guid = o.getGUID()
-    if ctx.touched[guid] ~= nil then return ctx.touched[guid] end
-    local b = o.getBounds()
-    local touches = false
-    if b.center.y + b.size.y / 2 >= ctx.leaderBaseY
-        and b.center.y - b.size.y / 2 <= ctx.leaderTopY then
-        local dx = math.max(math.abs(ctx.leaderPos.x - b.center.x) - b.size.x / 2, 0)
-        local dz = math.max(math.abs(ctx.leaderPos.z - b.center.z) - b.size.z / 2, 0)
-        touches = math.sqrt(dx * dx + dz * dz) <= ctx.leaderRadius
+-- Does a terrain hit land inside the attacker's silhouette cylinder? Such a
+-- hit does not block: you shoot over the cover you are leaning on. Judged at
+-- the exact hit point against the silhouette at its exact size (a hair of
+-- tolerance for surface numerics), so a long wall or a compound terrain
+-- object is only forgiven right at the attacker and still blocks anywhere
+-- else along its length.
+function losHitIsOnAttacker(ctx, pt)
+    if pt.y < ctx.leaderBaseY - 0.05 or pt.y > ctx.leaderTopY + 0.05 then
+        return false
     end
-    ctx.touched[guid] = touches
-    if touches then
-        print("[ISQ LDV] décor au contact de l'attaquant, ignoré : " .. (o.getName() or "?"))
-    end
-    return touches
+    local dx, dz = pt.x - ctx.leaderPos.x, pt.z - ctx.leaderPos.z
+    local rr = ctx.leaderRadius + 0.05
+    return dx * dx + dz * dz <= rr * rr
 end
 
 -- Segment against a world-aligned box (the slab test), for terrain that has
--- no collider and is therefore invisible to Physics.cast.
+-- no collider and is therefore invisible to Physics.cast. Returns nil on a
+-- miss, or the entry point of the crossing so the caller can apply the
+-- shoot-over-your-own-cover rule to it.
 function losSegmentHitsBox(p, q, box)
     local t0, t1 = 0, 1
     for _, axis in ipairs({"x", "y", "z"}) do
@@ -1274,17 +1270,21 @@ function losSegmentHitsBox(p, q, box)
         local lo = box.center[axis] - box.half[axis]
         local hi = box.center[axis] + box.half[axis]
         if math.abs(d) < 0.000001 then
-            if p[axis] < lo or p[axis] > hi then return false end
+            if p[axis] < lo or p[axis] > hi then return nil end
         else
             local ta = (lo - p[axis]) / d
             local tb = (hi - p[axis]) / d
             if ta > tb then ta, tb = tb, ta end
             t0 = math.max(t0, ta)
             t1 = math.min(t1, tb)
-            if t0 > t1 then return false end
+            if t0 > t1 then return nil end
         end
     end
-    return true
+    return {
+        x = p.x + (q.x - p.x) * t0,
+        y = p.y + (q.y - p.y) * t0,
+        z = p.z + (q.z - p.z) * t0,
+    }
 end
 
 function losHasActiveCollider(o)
@@ -1299,14 +1299,17 @@ end
 
 -- Is this silhouette-to-silhouette line clear? Blocked by terrain with a
 -- collider (Physics.cast), by terrain without one (bounding boxes), or by a
--- third-party ground vehicle silhouette (cylinders). Terrain touching the
--- attacker's silhouette never blocks.
+-- third-party ground vehicle silhouette (cylinders). A terrain hit landing
+-- inside the attacker's silhouette does not block (losHitIsOnAttacker).
 function losCastLine(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
         if losSegmentHitsCylinder(p, q, cyl) then return false end
     end
     for _, box in ipairs(ctx.boxBlockers) do
-        if losSegmentHitsBox(p, q, box) then return false end
+        local entry = losSegmentHitsBox(p, q, box)
+        if entry ~= nil and not losHitIsOnAttacker(ctx, entry) then
+            return false
+        end
     end
     local dx, dy, dz = q.x - p.x, q.y - p.y, q.z - p.z
     local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -1319,7 +1322,8 @@ function losCastLine(ctx, p, q)
     })
     for _, hit in ipairs(hits or {}) do
         local o = hit.hit_object
-        if o ~= nil and losIsTerrain(ctx, o) and not losTouchesAttackerSilhouette(ctx, o) then
+        if o ~= nil and losIsTerrain(ctx, o)
+            and not losHitIsOnAttacker(ctx, hit.point) then
             return false
         end
     end
@@ -1343,7 +1347,6 @@ function buildLosContext(attackTargetObj)
         blockers = {},
         boxBlockers = {},
         defenders = {},
-        touched = {},
     }
     local zoneObjects = battlefieldZone.getObjects()
     local attackerGUID = selectedUnitObj.getGUID()
@@ -1375,8 +1378,7 @@ function buildLosContext(attackTargetObj)
     -- it would never block a line: block it through its bounding box instead.
     -- Every mini is known by now, so losIsTerrain can already classify.
     for _, obj in pairs(zoneObjects) do
-        if losIsTerrain(ctx, obj) and not losTouchesAttackerSilhouette(ctx, obj)
-            and not losHasActiveCollider(obj) then
+        if losIsTerrain(ctx, obj) and not losHasActiveCollider(obj) then
             local b = obj.getBounds()
             print("[ISQ LDV] décor sans collider, bloqué par sa boîte : "
                 .. (obj.getName() or "?"))
@@ -1472,7 +1474,9 @@ function drawLosWitnesses(ctx, witnesses)
     losSilhouetteGUIDs = {}
     for _, leader in ipairs({selectedUnitObj, ctx.attackTargetObj}) do
         if leader ~= nil and not leader.getVar("silhouetteState") then
+            print("[ISQ LDV] showSilhouette → " .. leader.getGUID() .. " …")
             leader.call("showSilhouette")
+            print("[ISQ LDV] showSilhouette ← " .. leader.getGUID() .. " ok")
             table.insert(losSilhouetteGUIDs, leader.getGUID())
         end
     end
