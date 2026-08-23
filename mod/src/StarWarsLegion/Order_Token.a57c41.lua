@@ -1157,21 +1157,35 @@ end
 
 -- Rays per frame: the search spreads over frames instead of freezing. Pure
 -- arithmetic since the engine moved off Physics.cast, so the budget is wide.
-local LOS_CASTS_PER_FRAME = 200
+local LOS_CASTS_PER_FRAME = 400
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v16"
+local LOS_BUILD = "v17"
 
 losGeneration = 0
 losCtx = nil
 
--- Fifteen sampling points of a silhouette, facing the other figure: three
--- heights on five verticals spread over the facing half of the contour (the
--- facing line, both 45-degree diagonals, both tangents). A line may leave
--- from any point of the silhouette, so the whole visible edge gets a say --
--- the corners and side edges, not just the apparent center. The facing
--- column comes first so open terrain resolves in the very first rays.
+-- Sample points refine level by level, the way a render sharpens: a narrow
+-- sight gap the coarse grid misses is caught by the finer passes, without
+-- ever paying the full grid on an open shot. Azimuths spread over the
+-- facing half of the contour, heights over the whole silhouette; each
+-- coordinate carries the level it first appears at, and a pair of points is
+-- cast exactly once, at the level its newest point joins. Level 1 is a 3x3
+-- grid per silhouette; level 4 reaches 81 points per silhouette, more than
+-- six thousand pairs, but the search still stops at the first witnesses.
+local LOS_AZIMUTHS = {
+    {0, 1}, {-90, 1}, {90, 1},
+    {-45, 2}, {45, 2},
+    {-22.5, 3}, {22.5, 3}, {-67.5, 3}, {67.5, 3},
+}
+local LOS_HEIGHTS = {
+    {0.05, 1}, {0.5, 1}, {0.97, 1},
+    {0.25, 2}, {0.75, 2},
+    {0.125, 4}, {0.375, 4}, {0.625, 4}, {0.875, 4},
+}
+local LOS_MAX_LEVEL = 4
+
 function losSamplePoints(obj, leaderObj, towardPos)
     local radius, height, offset = silhouetteOf(leaderObj)
     local p = obj.getPosition()
@@ -1180,20 +1194,49 @@ function losSamplePoints(obj, leaderObj, towardPos)
     local g = math.sqrt(dx * dx + dz * dz)
     if g < 0.001 then dx, dz, g = 1, 0, 1 end
     dx, dz = dx / g, dz / g
-    local c = math.sqrt(0.5)
     local r = radius * 0.95
     local points = {}
-    local dirs = {
-        {dx, dz},
-        {(dx - dz) * c, (dz + dx) * c}, {(dx + dz) * c, (dz - dx) * c},
-        {-dz, dx}, {dz, -dx},
-    }
-    for _, d in ipairs(dirs) do
-        for _, y in ipairs({baseY + height / 2, baseY + height - 0.05, baseY + 0.1}) do
-            table.insert(points, {x = p.x + d[1] * r, y = y, z = p.z + d[2] * r})
+    for _, az in ipairs(LOS_AZIMUTHS) do
+        local a = math.rad(az[1])
+        local c, s = math.cos(a), math.sin(a)
+        local ux, uz = dx * c - dz * s, dx * s + dz * c
+        for _, hf in ipairs(LOS_HEIGHTS) do
+            table.insert(points, {
+                x = p.x + ux * r,
+                y = baseY + height * hf[1],
+                z = p.z + uz * r,
+                lvl = math.max(az[2], hf[2]),
+            })
         end
     end
     return points
+end
+
+-- Only the boxes standing near this defender's corridor concern its rays:
+-- with a table of scenery, the filter cuts every cast from dozens of slab
+-- tests to a handful. Judged flat, from the box's worst reach (half
+-- diagonal plus its center offset) against the attacker-defender segment,
+-- padded by how far the sample points stray from the centers.
+function losCorridorObbs(ctx, defPos, pad)
+    local ax, az = ctx.leaderPos.x, ctx.leaderPos.z
+    local dx, dz = defPos.x - ax, defPos.z - az
+    local len2 = dx * dx + dz * dz
+    local kept = {}
+    for _, obb in ipairs(ctx.obbs) do
+        local bx, bz = obb.pos.x - ax, obb.pos.z - az
+        local t = 0
+        if len2 > 0.000001 then
+            t = math.max(0, math.min(1, (bx * dx + bz * dz) / len2))
+        end
+        local ex, ez = bx - t * dx, bz - t * dz
+        local reach = math.sqrt(obb.half.x ^ 2 + obb.half.y ^ 2 + obb.half.z ^ 2)
+            + math.sqrt(obb.center.x ^ 2 + obb.center.y ^ 2 + obb.center.z ^ 2)
+            + pad
+        if ex * ex + ez * ez <= reach * reach then
+            table.insert(kept, obb)
+        end
+    end
+    return kept
 end
 
 -- Does a segment cross the silhouette cylinder of a third-party ground
@@ -1323,11 +1366,11 @@ end
 -- VISUAL box of any terrain piece, or by a third-party ground vehicle
 -- silhouette (cylinders). Pure arithmetic, no physics: the mod's terrain
 -- colliders do not match what the players see.
-function losCastLine(ctx, p, q)
+function losCastLine(ctx, obbs, p, q)
     for _, cyl in ipairs(ctx.blockers) do
         if losSegmentHitsCylinder(p, q, cyl) then return false end
     end
-    for _, obb in ipairs(ctx.obbs) do
+    for _, obb in ipairs(obbs) do
         if losSegmentHitsObb(p, q, obb) then return false end
     end
     return true
@@ -1436,23 +1479,34 @@ function losVerdictCoroutine()
     local ctx = losCtx
     local casts = 0
     local witnesses = {}
+    local attackerRadius = silhouetteOf(selectedUnitObj)
+    local targetRadius = silhouetteOf(ctx.attackTargetObj)
+    local pad = math.max(attackerRadius, targetRadius) + 0.5
     for _, def in ipairs(ctx.defenders) do
         local defPos = def.getPosition()
         local apts = losSamplePoints(selectedUnitObj, selectedUnitObj, defPos)
         local dpts = losSamplePoints(def, ctx.attackTargetObj, ctx.leaderPos)
+        local obbs = losCorridorObbs(ctx, defPos, pad)
         local clearLine, blockedLine = nil, nil
-        for _, ap in ipairs(apts) do
-            for _, dp in ipairs(dpts) do
-                if losCastLine(ctx, ap, dp) then
-                    if clearLine == nil then clearLine = {ap, dp} end
-                else
-                    if blockedLine == nil then blockedLine = {ap, dp} end
-                end
-                casts = casts + 1
-                if casts >= LOS_CASTS_PER_FRAME then
-                    casts = 0
-                    coroutine.yield(0)
-                    if ctx.gen ~= losGeneration then return 1 end
+        local rays = 0
+        for level = 1, LOS_MAX_LEVEL do
+            for _, ap in ipairs(apts) do
+                for _, dp in ipairs(dpts) do
+                    if math.max(ap.lvl, dp.lvl) == level then
+                        rays = rays + 1
+                        if losCastLine(ctx, obbs, ap, dp) then
+                            if clearLine == nil then clearLine = {ap, dp, level} end
+                        else
+                            if blockedLine == nil then blockedLine = {ap, dp, level} end
+                        end
+                        casts = casts + 1
+                        if casts >= LOS_CASTS_PER_FRAME then
+                            casts = 0
+                            coroutine.yield(0)
+                            if ctx.gen ~= losGeneration then return 1 end
+                        end
+                        if clearLine ~= nil and blockedLine ~= nil then break end
+                    end
                 end
                 if clearLine ~= nil and blockedLine ~= nil then break end
             end
@@ -1460,8 +1514,9 @@ function losVerdictCoroutine()
         end
         table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
         print("[ISQ LDV] " .. (def.getName() or "figurine") .. " : "
-            .. (clearLine and "verte trouvée" or "PAS de verte") .. ", "
-            .. (blockedLine and "rouge trouvée" or "PAS de rouge"))
+            .. (clearLine and ("verte niv " .. clearLine[3]) or "PAS de verte") .. ", "
+            .. (blockedLine and ("rouge niv " .. blockedLine[3]) or "PAS de rouge")
+            .. " — " .. rays .. " rayons, " .. #obbs .. " boîte(s) en couloir")
     end
     if ctx.gen ~= losGeneration then return 1 end
     drawLosWitnesses(ctx, witnesses)
