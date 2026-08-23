@@ -1163,7 +1163,7 @@ local LOS_FRAME_BUDGET = 0.007
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v19"
+local LOS_BUILD = "v20"
 
 -- Liseré de progression en haut de l'écran (élément isqLosBar du XML
 -- global), pour voir que le calcul travaille pendant les passes longues.
@@ -1195,8 +1195,12 @@ local LOS_AZIMUTHS = {
     {-45, 2}, {45, 2},
     {-22.5, 3}, {22.5, 3}, {-67.5, 3}, {67.5, 3},
 }
+-- Heights and radius sample the EXACT silhouette contour: the rule judges
+-- silhouette to silhouette, and a sliver of visibility hugging the top or
+-- the side edge lives precisely in the last percents. The old 0.95/0.97
+-- insets were Physics.cast-era self-hit protection and ate those slivers.
 local LOS_HEIGHTS = {
-    {0.05, 1}, {0.5, 1}, {0.97, 1},
+    {0.0, 1}, {0.5, 1}, {1.0, 1},
     {0.25, 2}, {0.75, 2},
     {0.125, 4}, {0.375, 4}, {0.625, 4}, {0.875, 4},
 }
@@ -1210,7 +1214,7 @@ function losSamplePoints(obj, leaderObj, towardPos)
     local g = math.sqrt(dx * dx + dz * dz)
     if g < 0.001 then dx, dz, g = 1, 0, 1 end
     dx, dz = dx / g, dz / g
-    local r = radius * 0.95
+    local r = radius
     local points = {}
     for _, az in ipairs(LOS_AZIMUTHS) do
         local a = math.rad(az[1])
@@ -1431,7 +1435,7 @@ end
 ---------------------------------------------------------------------------
 losMeshCache = {}
 local LOS_MESH_MAX_TRIS = 25000
-local LOS_MESH_MAX_RAYS = 1500
+local LOS_MESH_MAX_RAYS = 8000
 local LOS_MESH_GRID = 16
 
 function losMeshRequest(url)
