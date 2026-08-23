@@ -1084,9 +1084,9 @@ function attackMenu(attackTargetObj)
         click_function = "addSuppression"..self.getGUID(), function_owner = self, label = "S", position = {0, buttonHeight, 0}, rotation = {0, 180, 0}, scale = {0.5, 0.5, 0.5}, width = 700, height = 700, font_size = 500, color = {1, 0.8723, 0, 1}, tooltip = "S"
     })
 
-    -- Line of sight and cover verdict for every defending mini, computed in
-    -- the background: green/orange/red highlights, a witness ray where sight
-    -- exists, and a cover badge on the unit. Silhouettes rise when it is done.
+    -- For every defending mini, draw the two witness lines (one clear of
+    -- terrain, one crossing it) in the background; the players judge line of
+    -- sight and cover themselves. Silhouettes rise when the rays are done.
     computeLosVerdicts(attackTargetObj)
 end
 
@@ -1149,18 +1149,13 @@ function silhouetteOf(leaderObj)
 end
 
 ------------------------------------------------- LIGNE DE VUE ------------------------------------------------------------
--- The rule: LOS runs from the attacking unit LEADER to each defending mini.
--- If every silhouette-to-silhouette line is blocked, the mini is protected.
--- Otherwise, if some line is blocked by terrain the leader is not in contact
--- with and that sits within half a range band of the defending mini, the mini
--- is protected too. Half or more minis protected: the unit is in cover.
+-- The tool shows evidence, the players make the ruling. For each defending
+-- mini it draws up to two lines from the attacking leader's silhouette to
+-- that mini's silhouette: a green one that crosses no terrain, and a red one
+-- that does. Line of sight and cover are then judged by eye, at the table,
+-- exactly like the rule intends -- nothing is decided by the mod.
 
--- Range 1 is 6 table units (createRangeButton does ceil(d/6)), so half a
--- range band, the reach of protecting terrain, is 3.
-local LOS_HALF_RANGE = 3
--- Base-contact margin between the leader's base edge and a terrain bound.
-local LOS_CONTACT_MARGIN = 0.3
--- Rays per frame: the verdict spreads over frames instead of freezing.
+-- Rays per frame: the search spreads over frames instead of freezing.
 local LOS_CASTS_PER_FRAME = 40
 
 losGeneration = 0
@@ -1236,51 +1231,28 @@ function losIsTerrain(ctx, o)
     return true
 end
 
--- Is the attacking leader in base contact with this terrain? Bounding box
--- against base edge with a margin -- an assumed approximation, erring toward
--- contact. Cached per terrain piece for the whole verdict.
-function losLeaderInContact(ctx, o)
-    local guid = o.getGUID()
-    if ctx.contact[guid] ~= nil then return ctx.contact[guid] end
-    local b = o.getBounds()
-    local dx = math.max(math.abs(ctx.leaderPos.x - b.center.x) - b.size.x / 2, 0)
-    local dz = math.max(math.abs(ctx.leaderPos.z - b.center.z) - b.size.z / 2, 0)
-    local inContact = math.sqrt(dx * dx + dz * dz) - ctx.leaderRadius <= LOS_CONTACT_MARGIN
-    ctx.contact[guid] = inContact
-    return inContact
-end
-
--- Tests one silhouette-to-silhouette line. Returns (clear, protects):
--- protects is true when qualifying terrain blocks it -- not in contact with
--- the leader AND within half a range band of the defending mini, measured at
--- the impact point, which by definition lies on the terrain piece.
-function losCastLine(ctx, p, q, defPos, defRadius)
+-- Is this silhouette-to-silhouette line clear of terrain and of ground
+-- vehicle silhouettes?
+function losCastLine(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
-        if losSegmentHitsCylinder(p, q, cyl) then return false, false end
+        if losSegmentHitsCylinder(p, q, cyl) then return false end
     end
     local dx, dy, dz = q.x - p.x, q.y - p.y, q.z - p.z
     local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
-    if dist < 0.01 then return true, false end
+    if dist < 0.01 then return true end
     local hits = Physics.cast({
         origin = p,
         direction = {dx / dist, dy / dist, dz / dist},
         type = 1,
         max_distance = dist,
     })
-    local blocked, protects = false, false
     for _, hit in ipairs(hits or {}) do
         local o = hit.hit_object
         if o ~= nil and losIsTerrain(ctx, o) then
-            blocked = true
-            if not protects and not losLeaderInContact(ctx, o) then
-                local hx, hz = hit.point.x - defPos.x, hit.point.z - defPos.z
-                if math.sqrt(hx * hx + hz * hz) - defRadius <= LOS_HALF_RANGE then
-                    protects = true
-                end
-            end
+            return false
         end
     end
-    return not blocked, protects
+    return true
 end
 
 -- A snapshot of the table for one verdict: every mini to ignore in the rays,
@@ -1291,11 +1263,9 @@ function buildLosContext(attackTargetObj)
         gen = losGeneration,
         attackTargetObj = attackTargetObj,
         leaderPos = selectedUnitObj.getPosition(),
-        leaderRadius = (silhouetteOf(selectedUnitObj)),
         miniGuids = {},
         blockers = {},
         defenders = {},
-        contact = {},
     }
     local zoneObjects = battlefieldZone.getObjects()
     local attackerGUID = selectedUnitObj.getGUID()
@@ -1338,86 +1308,66 @@ function computeLosVerdicts(attackTargetObj)
     startLuaCoroutine(self, "losVerdictCoroutine")
 end
 
--- The search stops as soon as both questions are answered for a mini: is
--- some line clear (LOS, with a witness), and does some line cross qualifying
--- terrain (protection). Open terrain resolves in the first facing rays; the
--- exhaustive worst case only happens for minis that are genuinely hidden.
+-- For each defending mini, find the two witness lines: the first clear one
+-- and the first blocked one, then stop. Open terrain finds its clear line on
+-- the very first facing rays; a hidden mini finds its blocked line just as
+-- fast. Only the search for a line that does not exist reads every pair.
 function losVerdictCoroutine()
     local ctx = losCtx
     local casts = 0
-    local verdicts = {}
+    local witnesses = {}
     for _, def in ipairs(ctx.defenders) do
         local defPos = def.getPosition()
-        local defRadius = (silhouetteOf(ctx.attackTargetObj))
         local apts = losSamplePoints(selectedUnitObj, selectedUnitObj, defPos)
         local dpts = losSamplePoints(def, ctx.attackTargetObj, ctx.leaderPos)
-        local hasLdv, witness, isProtected = false, nil, false
+        local clearLine, blockedLine = nil, nil
         for _, ap in ipairs(apts) do
             for _, dp in ipairs(dpts) do
-                local clear, protects = losCastLine(ctx, ap, dp, defPos, defRadius)
-                if clear and not hasLdv then
-                    hasLdv = true
-                    witness = {ap, dp}
+                if losCastLine(ctx, ap, dp) then
+                    if clearLine == nil then clearLine = {ap, dp} end
+                else
+                    if blockedLine == nil then blockedLine = {ap, dp} end
                 end
-                if protects then isProtected = true end
                 casts = casts + 1
                 if casts >= LOS_CASTS_PER_FRAME then
                     casts = 0
                     coroutine.yield(0)
                     if ctx.gen ~= losGeneration then return 1 end
                 end
-                if hasLdv and isProtected then break end
+                if clearLine ~= nil and blockedLine ~= nil then break end
             end
-            if hasLdv and isProtected then break end
+            if clearLine ~= nil and blockedLine ~= nil then break end
         end
-        -- LOS fully blocked IS protection, by the first clause of the rule.
-        if not hasLdv then isProtected = true end
-        table.insert(verdicts, {obj = def, hasLdv = hasLdv, witness = witness, isProtected = isProtected})
+        table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
     end
     if ctx.gen ~= losGeneration then return 1 end
-    applyLosVerdicts(ctx, verdicts)
+    drawLosWitnesses(ctx, witnesses)
     return 1
 end
 
--- Green: seen, not protected. Orange: seen but protected. Red: LOS fully
--- blocked. The witness ray is the actual clear line found -- it shows where
--- the sight passes, which is what table arguments are made of.
-function applyLosVerdicts(ctx, verdicts)
+-- Green: a line crossing no terrain. Red: a line crossing some. A mini with
+-- only a green line is plainly seen, one with only a red line is plainly
+-- hidden, and one with both is where the players lean in and judge cover --
+-- the mod hands them the two lines the discussion needs, nothing more.
+function drawLosWitnesses(ctx, witnesses)
     local lines = {}
-    local protectedCount = 0
-    for _, v in ipairs(verdicts) do
-        local color
-        if not v.hasLdv then
-            color = {0.9, 0.15, 0.15}
-        elseif v.isProtected then
-            color = {1, 0.55, 0.1}
-        else
-            color = {0.2, 0.9, 0.2}
-        end
-        if v.isProtected then protectedCount = protectedCount + 1 end
-        v.obj.highlightOn(color)
-        if v.witness ~= nil then
+    for _, w in ipairs(witnesses) do
+        if w.clear ~= nil then
             table.insert(lines, {
-                points = {v.witness[1], v.witness[2]},
-                color = color,
-                thickness = 0.04,
+                points = {w.clear[1], w.clear[2]},
+                color = {0.2, 0.9, 0.2},
+                thickness = 0.06,
+            })
+        end
+        if w.blocked ~= nil then
+            table.insert(lines, {
+                points = {w.blocked[1], w.blocked[2]},
+                color = {0.9, 0.15, 0.15},
+                thickness = 0.06,
             })
         end
     end
     Global.setVectorLines(lines)
-
-    if #verdicts > 0 then
-        local covered = protectedCount * 2 >= #verdicts
-        local buttonHeight = ctx.attackTargetObj.getVar("height") or 2
-        ctx.attackTargetObj.createButton({
-            click_function = "dud", function_owner = self,
-            label = covered and "COUVERT" or "A DECOUVERT",
-            position = {0, buttonHeight, 0.9}, rotation = {0, 180, 0},
-            scale = {0.5, 0.5, 0.5}, width = 2600, height = 500, font_size = 350,
-            color = covered and {1, 0.55, 0.1, 1} or {0.2, 0.9, 0.2, 1},
-            font_color = {0, 0, 0, 1},
-        })
-    end
 
     -- Silhouettes only rise HERE, once the rays are done, and only on units
     -- that did not have them up already -- those belong to the player.
