@@ -1161,7 +1161,7 @@ local LOS_CASTS_PER_FRAME = 200
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v15"
+local LOS_BUILD = "v16"
 
 losGeneration = 0
 losCtx = nil
@@ -1266,7 +1266,10 @@ end
 -- this mod can be flat resting plates a few hundredths tall) plus enough of
 -- the piece's rotation to test rays in its local frame.
 function losMakeObb(obj)
-    local b = obj.getBoundsNormalized()
+    -- getVisualBoundsNormalized, NOT getBoundsNormalized: the plain one
+    -- measures the COLLIDER (a barricade's came back 0.06 tall, its resting
+    -- plate), the visual one measures the renderers the players see.
+    local b = obj.getVisualBoundsNormalized()
     local p = obj.getPosition()
     local r = obj.getRotation()
     return {
@@ -1391,7 +1394,7 @@ function buildLosContext(attackTargetObj)
                 if ctx.dbgObb == nil
                     and string.find(string.lower(obj.getName() or ""), "barricade") then
                     ctx.dbgObb = true
-                    local b = obj.getBoundsNormalized()
+                    local b = obj.getVisualBoundsNormalized()
                     print(string.format(
                         "[ISQ LDV] obb %s pos(%.1f,%.1f,%.1f) rotY %.0f brut centre(%.2f,%.2f,%.2f) taille(%.2f,%.2f,%.2f) local(%.2f,%.2f,%.2f)",
                         obj.getName(), obb.pos.x, obb.pos.y, obb.pos.z,
