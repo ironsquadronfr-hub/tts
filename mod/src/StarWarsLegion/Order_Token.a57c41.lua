@@ -1163,7 +1163,7 @@ local LOS_FRAME_BUDGET = 0.007
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v21"
+local LOS_BUILD = "v22"
 
 -- Liseré de progression en haut de l'écran (élément isqLosBar du XML
 -- global), pour voir que le calcul travaille pendant les passes longues.
@@ -1201,9 +1201,13 @@ local LOS_AZIMUTHS = {
 -- insets were Physics.cast-era self-hit protection and ate those slivers.
 -- Mid height leads: the first clear line found is the one drawn, and a
 -- waist-high witness reads well on the table where a ground-level one
--- drowns in the terrain. The exact extremes come right behind it.
+-- drowns in the terrain. The top stays at the exact silhouette summit --
+-- that is the extreme players hunt lines with -- but the bottom stops a
+-- twentieth short: terrain meshes are not sealed against the bumpy ground,
+-- and a true base-level ray sneaks UNDER a rock's skirt and comes out
+-- "clear" through what the eye reads as solid stone.
 local LOS_HEIGHTS = {
-    {0.5, 1}, {1.0, 1}, {0.0, 1},
+    {0.5, 1}, {1.0, 1}, {0.05, 1},
     {0.25, 2}, {0.75, 2},
     {0.125, 4}, {0.375, 4}, {0.625, 4}, {0.875, 4},
 }
