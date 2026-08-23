@@ -315,13 +315,25 @@ function spawnSilhouette(obj, pos, rot)
   -- A silhouette is a visual aid: it must not collide with minis, and it
   -- must never block the line of sight rays Order_Token casts. Colliders
   -- only exist once the bundle has loaded, and a dead handle can throw on
-  -- any access, hence the shielded wait.
+  -- any access, hence the shielded wait. Attaching also waits for the load:
+  -- attaching a still-loading custom object made the engine throw a bare
+  -- object reference error at the parent when the load completed. Locked in
+  -- the meantime, so the collider-less bundle cannot fall through the world.
+  silhouette.setLock(true)
+  silhouette.use_gravity = false
   Wait.condition(function()
     pcall(function()
       for _, colliderName in ipairs({"MeshCollider", "BoxCollider"}) do
         for _, collider in ipairs(silhouette.getComponentsInChildren(colliderName) or {}) do
           collider.set("enabled", false)
         end
+      end
+      -- The player may have lowered the silhouettes while this one was
+      -- still loading: an orphan must die, not float unattached forever.
+      if not silhouetteState then
+        silhouette.destruct()
+      elseif obj ~= nil then
+        obj.addAttachment(silhouette)
       end
     end)
   end, function()
@@ -330,9 +342,6 @@ function spawnSilhouette(obj, pos, rot)
     end)
     return not ok or ready
   end)
-  if obj ~= nil then
-    obj.addAttachment(silhouette)
-  end
   return silhouette
 end
 

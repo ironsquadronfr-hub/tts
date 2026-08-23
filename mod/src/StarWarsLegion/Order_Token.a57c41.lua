@@ -1155,8 +1155,9 @@ end
 -- that does. Line of sight and cover are then judged by eye, at the table,
 -- exactly like the rule intends -- nothing is decided by the mod.
 
--- Rays per frame: the search spreads over frames instead of freezing.
-local LOS_CASTS_PER_FRAME = 40
+-- Rays per frame: the search spreads over frames instead of freezing. Pure
+-- arithmetic since the engine moved off Physics.cast, so the budget is wide.
+local LOS_CASTS_PER_FRAME = 200
 
 losGeneration = 0
 losCtx = nil
@@ -1223,7 +1224,11 @@ end
 function losIsTerrain(ctx, o)
     if ctx.miniGuids[o.getGUID()] then return false end
     local t = o.type
-    if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
+    -- Asset bundles are game aids here, never terrain: silhouettes, smoke,
+    -- rulers, effects. The map's terrain pieces are all Custom_Model. A
+    -- raised silhouette especially must not block the very rays it frames.
+    if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite"
+        or t == "Custom_Assetbundle" then
         return false
     end
     local name = string.lower(o.getName() or "")
@@ -1259,21 +1264,51 @@ function losHitIsOnAttacker(ctx, pt)
     return dx * dx + dz * dz <= rr * rr
 end
 
--- Segment against a world-aligned box (the slab test), for terrain that has
--- no collider and is therefore invisible to Physics.cast. Returns nil on a
--- miss, or the entry point of the crossing so the caller can apply the
--- shoot-over-your-own-cover rule to it.
-function losSegmentHitsBox(p, q, box)
+-- The oriented visual box of a terrain piece: its renderer bounds at zero
+-- rotation (so, the VISUAL mesh, never the collider -- terrain colliders in
+-- this mod can be flat resting plates a few hundredths tall) plus enough of
+-- the piece's rotation to test rays in its local frame.
+function losMakeObb(obj)
+    local b = obj.getBoundsNormalized()
+    local p = obj.getPosition()
+    local r = obj.getRotation()
+    return {
+        pos = p,
+        rx = math.rad(r.x), ry = math.rad(r.y), rz = math.rad(r.z),
+        center = {x = b.center.x - p.x, y = b.center.y - p.y, z = b.center.z - p.z},
+        half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
+    }
+end
+
+-- World point -> the box's local frame. Unity composes rotations as
+-- yaw(Y) * pitch(X) * roll(Z), so the inverse unwinds yaw, pitch, roll.
+function losToObbFrame(obb, pt)
+    local x, y, z = pt.x - obb.pos.x, pt.y - obb.pos.y, pt.z - obb.pos.z
+    local c, s = math.cos(obb.ry), math.sin(obb.ry)
+    x, z = x * c - z * s, x * s + z * c
+    c, s = math.cos(obb.rx), math.sin(obb.rx)
+    y, z = y * c + z * s, -y * s + z * c
+    c, s = math.cos(obb.rz), math.sin(obb.rz)
+    x, y = x * c + y * s, -x * s + y * c
+    return {x = x, y = y, z = z}
+end
+
+-- Segment against the oriented visual box: slab test in the box's local
+-- frame. Returns nil on a miss, or the WORLD entry point of the crossing so
+-- the caller can apply the shoot-over-your-own-cover rule to it.
+function losSegmentHitsObb(p, q, obb)
+    local lp = losToObbFrame(obb, p)
+    local lq = losToObbFrame(obb, q)
     local t0, t1 = 0, 1
     for _, axis in ipairs({"x", "y", "z"}) do
-        local d = q[axis] - p[axis]
-        local lo = box.center[axis] - box.half[axis]
-        local hi = box.center[axis] + box.half[axis]
+        local d = lq[axis] - lp[axis]
+        local lo = obb.center[axis] - obb.half[axis]
+        local hi = obb.center[axis] + obb.half[axis]
         if math.abs(d) < 0.000001 then
-            if p[axis] < lo or p[axis] > hi then return nil end
+            if lp[axis] < lo or lp[axis] > hi then return nil end
         else
-            local ta = (lo - p[axis]) / d
-            local tb = (hi - p[axis]) / d
+            local ta = (lo - lp[axis]) / d
+            local tb = (hi - lp[axis]) / d
             if ta > tb then ta, tb = tb, ta end
             t0 = math.max(t0, ta)
             t1 = math.min(t1, tb)
@@ -1287,43 +1322,18 @@ function losSegmentHitsBox(p, q, box)
     }
 end
 
-function losHasActiveCollider(o)
-    for _, colliderName in ipairs({"MeshCollider", "BoxCollider", "SphereCollider", "CapsuleCollider"}) do
-        for _, collider in ipairs(o.getComponentsInChildren(colliderName) or {}) do
-            local ok, enabled = pcall(function() return collider.get("enabled") end)
-            if not ok or enabled ~= false then return true end
-        end
-    end
-    return false
-end
-
--- Is this silhouette-to-silhouette line clear? Blocked by terrain with a
--- collider (Physics.cast), by terrain without one (bounding boxes), or by a
--- third-party ground vehicle silhouette (cylinders). A terrain hit landing
+-- Is this silhouette-to-silhouette line clear? Blocked by the oriented
+-- VISUAL box of any terrain piece, or by a third-party ground vehicle
+-- silhouette (cylinders). Pure arithmetic, no physics: the mod's terrain
+-- colliders do not match what the players see. A terrain hit landing
 -- inside the attacker's silhouette does not block (losHitIsOnAttacker).
 function losCastLine(ctx, p, q)
     for _, cyl in ipairs(ctx.blockers) do
         if losSegmentHitsCylinder(p, q, cyl) then return false end
     end
-    for _, box in ipairs(ctx.boxBlockers) do
-        local entry = losSegmentHitsBox(p, q, box)
+    for _, obb in ipairs(ctx.obbs) do
+        local entry = losSegmentHitsObb(p, q, obb)
         if entry ~= nil and not losHitIsOnAttacker(ctx, entry) then
-            return false
-        end
-    end
-    local dx, dy, dz = q.x - p.x, q.y - p.y, q.z - p.z
-    local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
-    if dist < 0.01 then return true end
-    local hits = Physics.cast({
-        origin = p,
-        direction = {dx / dist, dy / dist, dz / dist},
-        type = 1,
-        max_distance = dist,
-    })
-    for _, hit in ipairs(hits or {}) do
-        local o = hit.hit_object
-        if o ~= nil and losIsTerrain(ctx, o)
-            and not losHitIsOnAttacker(ctx, hit.point) then
             return false
         end
     end
@@ -1345,7 +1355,7 @@ function buildLosContext(attackTargetObj)
         leaderTopY = leaderPos.y + leaderOffset + leaderHeight,
         miniGuids = {},
         blockers = {},
-        boxBlockers = {},
+        obbs = {},
         defenders = {},
     }
     local zoneObjects = battlefieldZone.getObjects()
@@ -1374,18 +1384,14 @@ function buildLosContext(attackTargetObj)
             end
         end
     end
-    -- Terrain without any active collider is invisible to Physics.cast, so
-    -- it would never block a line: block it through its bounding box instead.
-    -- Every mini is known by now, so losIsTerrain can already classify.
+    -- Terrain blocks through its VISUAL oriented box, never its collider:
+    -- the mod's terrain colliders can be flat resting plates a few
+    -- hundredths tall (a barricade's is), so Physics.cast is blind to what
+    -- the players actually see. Every mini is known by now, so losIsTerrain
+    -- can already classify.
     for _, obj in pairs(zoneObjects) do
-        if losIsTerrain(ctx, obj) and not losHasActiveCollider(obj) then
-            local b = obj.getBounds()
-            print("[ISQ LDV] décor sans collider, bloqué par sa boîte : "
-                .. (obj.getName() or "?"))
-            table.insert(ctx.boxBlockers, {
-                center = {x = b.center.x, y = b.center.y, z = b.center.z},
-                half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
-            })
+        if losIsTerrain(ctx, obj) then
+            table.insert(ctx.obbs, losMakeObb(obj))
         end
     end
     for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do
@@ -1395,7 +1401,7 @@ function buildLosContext(attackTargetObj)
         end
     end
     print("[ISQ LDV] contexte : " .. #ctx.blockers .. " véhicule(s)-cylindre, "
-        .. #ctx.boxBlockers .. " boîte(s), " .. #ctx.defenders .. " défenseur(s)")
+        .. #ctx.obbs .. " boîte(s) de décor, " .. #ctx.defenders .. " défenseur(s)")
     return ctx
 end
 
