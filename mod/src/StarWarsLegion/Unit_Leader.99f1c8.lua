@@ -378,3 +378,30 @@ function round(num, numDecimalPlaces)
   return math.floor(num * mult + 0.5) / mult
 end
 
+-- ISQ DEBUG (temporaire) : les leaders jettent des « Object reference not
+-- set » anonymes au chargement et à chaque balayage unlock, sans nom de
+-- fonction ni ligne. Chaque point d'entrée est enveloppé pour que l'erreur
+-- dise ENFIN d'où elle vient. À retirer une fois le coupable identifié.
+do
+  local wrapped = {
+    "onload", "setUp", "resetUnitButtons", "addLockButton",
+    "addSilhouetteButton", "scheduleOblongButtonFix", "updateLockBtnColor",
+    "evaluateLocks", "tryAddLock", "tryRemoveLock", "removeAllLocks",
+    "toggleLock", "toggleLockButton", "toggleSilhouettes", "clearSilhouette",
+    "showSilhouette", "onDropped", "checkVelocity", "onPickedUp",
+    "clearCohesionRuler", "setStartPos", "printMovement",
+  }
+  for _, name in ipairs(wrapped) do
+    local fn = _G[name]
+    if fn ~= nil then
+      _G[name] = function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok then
+          print("[ISQ DEBUG] " .. tostring(self.getName()) .. " ("
+            .. self.getGUID() .. ") " .. name .. " → " .. tostring(err))
+        end
+      end
+    end
+  end
+end
+

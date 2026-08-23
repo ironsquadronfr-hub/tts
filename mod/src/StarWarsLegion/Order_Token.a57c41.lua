@@ -1157,16 +1157,15 @@ end
 
 -- Rays per frame: the search spreads over frames instead of freezing.
 local LOS_CASTS_PER_FRAME = 40
--- Terrain touching the attacker's silhouette never blocks: you shoot over
--- the barricade you are leaning on. Contact margin against its bounds.
-local LOS_CONTACT_MARGIN = 0.35
 
 losGeneration = 0
 losCtx = nil
 
--- Nine sampling points of a silhouette, facing the other figure: three
--- heights on three verticals (the facing line and both tangents). The
--- grazing lines the rule cares about run through these contours. The facing
+-- Fifteen sampling points of a silhouette, facing the other figure: three
+-- heights on five verticals spread over the facing half of the contour (the
+-- facing line, both 45-degree diagonals, both tangents). A line may leave
+-- from any point of the silhouette, so the whole visible edge gets a say --
+-- the corners and side edges, not just the apparent center. The facing
 -- column comes first so open terrain resolves in the very first rays.
 function losSamplePoints(obj, leaderObj, towardPos)
     local radius, height, offset = silhouetteOf(leaderObj)
@@ -1176,9 +1175,15 @@ function losSamplePoints(obj, leaderObj, towardPos)
     local g = math.sqrt(dx * dx + dz * dz)
     if g < 0.001 then dx, dz, g = 1, 0, 1 end
     dx, dz = dx / g, dz / g
+    local c = math.sqrt(0.5)
     local r = radius * 0.95
     local points = {}
-    for _, d in ipairs({{dx, dz}, {-dz, dx}, {dz, -dx}}) do
+    local dirs = {
+        {dx, dz},
+        {(dx - dz) * c, (dz + dx) * c}, {(dx + dz) * c, (dz - dx) * c},
+        {-dz, dx}, {dz, -dx},
+    }
+    for _, d in ipairs(dirs) do
         for _, y in ipairs({baseY + height / 2, baseY + height - 0.05, baseY + 0.1}) do
             table.insert(points, {x = p.x + d[1] * r, y = y, z = p.z + d[2] * r})
         end
@@ -1235,7 +1240,8 @@ function losIsTerrain(ctx, o)
 end
 
 -- Does this terrain piece touch the attacker's silhouette cylinder? Judged
--- on its bounds with a margin, cached per piece for the whole search.
+-- on its bounds against the silhouette at its exact size -- no margin, the
+-- silhouette is the size it is. Cached per piece for the whole search.
 function losTouchesAttackerSilhouette(ctx, o)
     local guid = o.getGUID()
     if ctx.touched[guid] ~= nil then return ctx.touched[guid] end
@@ -1245,9 +1251,12 @@ function losTouchesAttackerSilhouette(ctx, o)
         and b.center.y - b.size.y / 2 <= ctx.leaderTopY then
         local dx = math.max(math.abs(ctx.leaderPos.x - b.center.x) - b.size.x / 2, 0)
         local dz = math.max(math.abs(ctx.leaderPos.z - b.center.z) - b.size.z / 2, 0)
-        touches = math.sqrt(dx * dx + dz * dz) <= ctx.leaderRadius + LOS_CONTACT_MARGIN
+        touches = math.sqrt(dx * dx + dz * dz) <= ctx.leaderRadius
     end
     ctx.touched[guid] = touches
+    if touches then
+        print("[ISQ LDV] décor au contact de l'attaquant, ignoré : " .. (o.getName() or "?"))
+    end
     return touches
 end
 
@@ -1364,12 +1373,16 @@ function buildLosContext(attackTargetObj)
         if losIsTerrain(ctx, obj) and not losTouchesAttackerSilhouette(ctx, obj)
             and not losHasActiveCollider(obj) then
             local b = obj.getBounds()
+            print("[ISQ LDV] décor sans collider, bloqué par sa boîte : "
+                .. (obj.getName() or "?"))
             table.insert(ctx.boxBlockers, {
                 center = {x = b.center.x, y = b.center.y, z = b.center.z},
                 half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
             })
         end
     end
+    print("[ISQ LDV] contexte : " .. #ctx.blockers .. " véhicule(s)-cylindre, "
+        .. #ctx.boxBlockers .. " boîte(s), " .. #ctx.defenders .. " défenseur(s)")
     for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do
         local m = getObjectFromGUID(guid)
         if m ~= nil and isMiniOnTable(m, zoneObjects) then
@@ -1416,6 +1429,9 @@ function losVerdictCoroutine()
             if clearLine ~= nil and blockedLine ~= nil then break end
         end
         table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
+        print("[ISQ LDV] " .. (def.getName() or "figurine") .. " : "
+            .. (clearLine and "verte trouvée" or "PAS de verte") .. ", "
+            .. (blockedLine and "rouge trouvée" or "PAS de rouge"))
     end
     if ctx.gen ~= losGeneration then return 1 end
     drawLosWitnesses(ctx, witnesses)
