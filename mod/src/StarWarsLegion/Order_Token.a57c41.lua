@@ -831,6 +831,7 @@ function clearAttackLine()
     -- Any verdict still computing is now stale: the coroutine checks the
     -- generation at every resume point and bows out.
     losGeneration = (losGeneration or 0) + 1
+    losBarHide()
     Global.setVectorLines({})
     if losSilhouetteGUIDs then
         for _, guid in pairs(losSilhouetteGUIDs) do
@@ -1155,16 +1156,31 @@ end
 -- that does. Line of sight and cover are then judged by eye, at the table,
 -- exactly like the rule intends -- nothing is decided by the mod.
 
--- Rays per frame: the search spreads over frames instead of freezing. Pure
--- arithmetic since the engine moved off Physics.cast, so the budget is wide.
-local LOS_CASTS_PER_FRAME = 400
+-- Time budget per frame: the search yields as soon as it has eaten its
+-- slice of the frame, however many rays that was -- box rays are cheap,
+-- mesh rays are not, the clock does not care.
+local LOS_FRAME_BUDGET = 0.007
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v18"
+local LOS_BUILD = "v19"
+
+-- Liseré de progression en haut de l'écran (élément isqLosBar du XML
+-- global), pour voir que le calcul travaille pendant les passes longues.
+function losBarSet(pct)
+    pcall(function()
+        UI.setAttribute("isqLosBar", "active", "true")
+        UI.setAttribute("isqLosFill", "percentage", tostring(pct))
+    end)
+end
+
+function losBarHide()
+    pcall(function() UI.setAttribute("isqLosBar", "active", "false") end)
+end
 
 losGeneration = 0
 losCtx = nil
+losFrameStart = 0
 
 -- Sample points refine level by level, the way a render sharpens: a narrow
 -- sight gap the coarse grid misses is caught by the finer passes, without
@@ -1324,12 +1340,18 @@ function losMakeObb(obj)
         local ok, co = pcall(function() return obj.getCustomObject() end)
         if ok and co ~= nil then url = co.mesh end
     end
+    local rx, ry, rz = math.rad(r.x), math.rad(r.y), math.rad(r.z)
+    -- Rotations précalculées : ces cosinus servent des dizaines de milliers
+    -- de fois par verdict, jamais recalculés dans les boucles chaudes.
     return {
         name = obj.getName() or "?",
         pos = p,
-        rx = math.rad(r.x), ry = math.rad(r.y), rz = math.rad(r.z),
-        sx = (s.x ~= 0 and s.x or 1), sy = (s.y ~= 0 and s.y or 1),
-        sz = (s.z ~= 0 and s.z or 1),
+        cosy = math.cos(ry), siny = math.sin(ry),
+        cosx = math.cos(rx), sinx = math.sin(rx),
+        cosz = math.cos(rz), sinz = math.sin(rz),
+        scx = (s.x ~= 0 and s.x or 1),
+        scy = (s.y ~= 0 and s.y or 1),
+        scz = (s.z ~= 0 and s.z or 1),
         center = {x = b.center.x - p.x, y = b.center.y - p.y, z = b.center.z - p.z},
         half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
         url = url,
@@ -1338,15 +1360,16 @@ end
 
 -- World point -> the box's local frame. Unity composes rotations as
 -- yaw(Y) * pitch(X) * roll(Z), so the inverse unwinds yaw, pitch, roll.
-function losToObbFrame(obb, pt)
-    local x, y, z = pt.x - obb.pos.x, pt.y - obb.pos.y, pt.z - obb.pos.z
-    local c, s = math.cos(obb.ry), math.sin(obb.ry)
+-- Value in, values out: no table allocation on the hot path.
+function losToObbFrame(obb, wx, wy, wz)
+    local x, y, z = wx - obb.pos.x, wy - obb.pos.y, wz - obb.pos.z
+    local c, s = obb.cosy, obb.siny
     x, z = x * c - z * s, x * s + z * c
-    c, s = math.cos(obb.rx), math.sin(obb.rx)
+    c, s = obb.cosx, obb.sinx
     y, z = y * c + z * s, -y * s + z * c
-    c, s = math.cos(obb.rz), math.sin(obb.rz)
+    c, s = obb.cosz, obb.sinz
     x, y = x * c + y * s, -x * s + y * c
-    return {x = x, y = y, z = z}
+    return x, y, z
 end
 
 -- Segment against the oriented visual box: slab test in the box's local
@@ -1356,23 +1379,42 @@ end
 -- Returns nil on a miss, or the t interval of the crossing so the triangle
 -- pass can clip its work to it.
 function losSegmentHitsObb(p, q, obb)
-    local lp = losToObbFrame(obb, p)
-    local lq = losToObbFrame(obb, q)
+    local lpx, lpy, lpz = losToObbFrame(obb, p.x, p.y, p.z)
+    local lqx, lqy, lqz = losToObbFrame(obb, q.x, q.y, q.z)
+    local c, h = obb.center, obb.half
     local t0, t1 = 0, 1
-    for _, axis in ipairs({"x", "y", "z"}) do
-        local d = lq[axis] - lp[axis]
-        local lo = obb.center[axis] - obb.half[axis]
-        local hi = obb.center[axis] + obb.half[axis]
-        if math.abs(d) < 0.000001 then
-            if lp[axis] < lo or lp[axis] > hi then return nil end
-        else
-            local ta = (lo - lp[axis]) / d
-            local tb = (hi - lp[axis]) / d
-            if ta > tb then ta, tb = tb, ta end
-            t0 = math.max(t0, ta)
-            t1 = math.min(t1, tb)
-            if t0 > t1 then return nil end
-        end
+    local d = lqx - lpx
+    local lo, hi = c.x - h.x, c.x + h.x
+    if d < 0.000001 and d > -0.000001 then
+        if lpx < lo or lpx > hi then return nil end
+    else
+        local ta, tb = (lo - lpx) / d, (hi - lpx) / d
+        if ta > tb then ta, tb = tb, ta end
+        if ta > t0 then t0 = ta end
+        if tb < t1 then t1 = tb end
+        if t0 > t1 then return nil end
+    end
+    d = lqy - lpy
+    lo, hi = c.y - h.y, c.y + h.y
+    if d < 0.000001 and d > -0.000001 then
+        if lpy < lo or lpy > hi then return nil end
+    else
+        local ta, tb = (lo - lpy) / d, (hi - lpy) / d
+        if ta > tb then ta, tb = tb, ta end
+        if ta > t0 then t0 = ta end
+        if tb < t1 then t1 = tb end
+        if t0 > t1 then return nil end
+    end
+    d = lqz - lpz
+    lo, hi = c.z - h.z, c.z + h.z
+    if d < 0.000001 and d > -0.000001 then
+        if lpz < lo or lpz > hi then return nil end
+    else
+        local ta, tb = (lo - lpz) / d, (hi - lpz) / d
+        if ta > tb then ta, tb = tb, ta end
+        if ta > t0 then t0 = ta end
+        if tb < t1 then t1 = tb end
+        if t0 > t1 then return nil end
     end
     return t0, t1
 end
@@ -1389,7 +1431,6 @@ end
 ---------------------------------------------------------------------------
 losMeshCache = {}
 local LOS_MESH_MAX_TRIS = 25000
-local LOS_MESH_RAYS_PER_FRAME = 30
 local LOS_MESH_MAX_RAYS = 1500
 local LOS_MESH_GRID = 16
 
@@ -1469,8 +1510,9 @@ function losMeshParse(entry)
             end
         end
         lines = lines + 1
-        if lines % 3000 == 0 then
+        if lines % 400 == 0 and os.clock() - losFrameStart > LOS_FRAME_BUDGET then
             coroutine.yield(0)
+            losFrameStart = os.clock()
             if losGeneration ~= myGen then
                 entry.status = "raw"
                 return false
@@ -1504,8 +1546,9 @@ function losMeshParse(entry)
                 table.insert(grid[key], i)
             end
         end
-        if i % 3000 == 0 then
+        if i % 400 == 0 and os.clock() - losFrameStart > LOS_FRAME_BUDGET then
             coroutine.yield(0)
+            losFrameStart = os.clock()
             if losGeneration ~= myGen then
                 entry.status = "raw"
                 return false
@@ -1525,18 +1568,18 @@ end
 -- local, unscaled frame; clipped to the box-crossing interval; the XZ grid
 -- then per-triangle boxes cut the Moller-Trumbore tests to a handful.
 function losMeshBlocks(obb, entry, p, q, t0, t1)
-    local lp = losToObbFrame(obb, p)
-    local lq = losToObbFrame(obb, q)
-    lp.x, lp.y, lp.z = lp.x / obb.sx, lp.y / obb.sy, lp.z / obb.sz
-    lq.x, lq.y, lq.z = lq.x / obb.sx, lq.y / obb.sy, lq.z / obb.sz
+    local lpx, lpy, lpz = losToObbFrame(obb, p.x, p.y, p.z)
+    local lqx, lqy, lqz = losToObbFrame(obb, q.x, q.y, q.z)
+    lpx, lpy, lpz = lpx / obb.scx, lpy / obb.scy, lpz / obb.scz
+    lqx, lqy, lqz = lqx / obb.scx, lqy / obb.scy, lqz / obb.scz
     local ta = math.max(0, t0 - 0.02)
     local tb = math.min(1, t1 + 0.02)
-    local ox = lp.x + (lq.x - lp.x) * ta
-    local oy = lp.y + (lq.y - lp.y) * ta
-    local oz = lp.z + (lq.z - lp.z) * ta
-    local dx = lp.x + (lq.x - lp.x) * tb - ox
-    local dy = lp.y + (lq.y - lp.y) * tb - oy
-    local dz = lp.z + (lq.z - lp.z) * tb - oz
+    local ox = lpx + (lqx - lpx) * ta
+    local oy = lpy + (lqy - lpy) * ta
+    local oz = lpz + (lqz - lpz) * ta
+    local dx = lpx + (lqx - lpx) * tb - ox
+    local dy = lpy + (lqy - lpy) * tb - oy
+    local dz = lpz + (lqz - lpz) * tb - oz
     local sminx, smaxx = math.min(ox, ox + dx), math.max(ox, ox + dx)
     local sminy, smaxy = math.min(oy, oy + dy), math.max(oy, oy + dy)
     local sminz, smaxz = math.min(oz, oz + dz), math.max(oz, oz + dz)
@@ -1648,27 +1691,7 @@ function buildLosContext(attackTargetObj)
             local p = obj.getPosition()
             if math.abs(p.x - zonePos.x) <= zoneScale.x / 2 + 1
                 and math.abs(p.z - zonePos.z) <= zoneScale.z / 2 + 1 then
-                local obb = losMakeObb(obj)
-                table.insert(ctx.obbs, obb)
-                -- Diagnostic (temporaire) : la première barricade imprime sa
-                -- boîte et se tire un rayon vertical dessus. RATE = la boîte
-                -- est construite au mauvais endroit, sans rien supposer.
-                if ctx.dbgObb == nil
-                    and string.find(string.lower(obj.getName() or ""), "barricade") then
-                    ctx.dbgObb = true
-                    local b = obj.getVisualBoundsNormalized()
-                    print(string.format(
-                        "[ISQ LDV] obb %s pos(%.1f,%.1f,%.1f) rotY %.0f brut centre(%.2f,%.2f,%.2f) taille(%.2f,%.2f,%.2f) local(%.2f,%.2f,%.2f)",
-                        obj.getName(), obb.pos.x, obb.pos.y, obb.pos.z,
-                        math.deg(obb.ry), b.center.x, b.center.y, b.center.z,
-                        b.size.x, b.size.y, b.size.z,
-                        obb.center.x, obb.center.y, obb.center.z))
-                    local hit = losSegmentHitsObb(
-                        {x = obb.pos.x, y = obb.pos.y + 10, z = obb.pos.z},
-                        {x = obb.pos.x, y = obb.pos.y - 1, z = obb.pos.z}, obb)
-                    print("[ISQ LDV] autotest rayon vertical sur elle : "
-                        .. (hit and "TOUCHE" or "RATE"))
-                end
+                table.insert(ctx.obbs, losMakeObb(obj))
             end
         end
     end
@@ -1696,16 +1719,17 @@ end
 -- fast. Only the search for a line that does not exist reads every pair.
 function losVerdictCoroutine()
     local ctx = losCtx
-    local casts = 0
     local witnesses = {}
     local attackerRadius = silhouetteOf(selectedUnitObj)
     local targetRadius = silhouetteOf(ctx.attackTargetObj)
     local pad = math.max(attackerRadius, targetRadius) + 0.5
+    losFrameStart = os.clock()
     for _, def in ipairs(ctx.defenders) do
         local defPos = def.getPosition()
         local apts = losSamplePoints(selectedUnitObj, selectedUnitObj, defPos)
         local dpts = losSamplePoints(def, ctx.attackTargetObj, ctx.leaderPos)
         local obbs = losCorridorObbs(ctx, defPos, pad)
+        local totalPairs = #apts * #dpts
         local clearLine, blockedLine = nil, nil
         local rays = 0
         local crossedSet = {}
@@ -1728,11 +1752,11 @@ function losVerdictCoroutine()
                         else
                             if blockedLine == nil then blockedLine = {ap, dp, level} end
                         end
-                        casts = casts + 1
-                        if casts >= LOS_CASTS_PER_FRAME then
-                            casts = 0
+                        if os.clock() - losFrameStart > LOS_FRAME_BUDGET then
+                            losBarSet(math.floor(40 * rays / totalPairs))
                             coroutine.yield(0)
-                            if ctx.gen ~= losGeneration then return 1 end
+                            losFrameStart = os.clock()
+                            if ctx.gen ~= losGeneration then losBarHide() return 1 end
                         end
                         if clearLine ~= nil and blockedLine ~= nil then break end
                     end
@@ -1750,6 +1774,7 @@ function losVerdictCoroutine()
         -- vide d'une boîte. Passe fine contre les vrais triangles, sur les
         -- seules pièces croisées.
         if clearLine == nil then
+            losBarSet(40)
             local needed = {}
             for obb in pairs(crossedSet) do
                 if obb.url ~= nil then
@@ -1757,24 +1782,28 @@ function losVerdictCoroutine()
                     table.insert(needed, obb)
                 end
             end
-            for _, obb in ipairs(needed) do
+            for i, obb in ipairs(needed) do
                 local entry = losMeshCache[obb.url]
                 local waited = 0
                 while entry.status == "loading" and waited < 600 do
                     coroutine.yield(0)
+                    losFrameStart = os.clock()
                     waited = waited + 1
-                    if ctx.gen ~= losGeneration then return 1 end
+                    if ctx.gen ~= losGeneration then losBarHide() return 1 end
                 end
                 if entry.status == "loading" then entry.status = "failed" end
                 if entry.status == "raw" or entry.status == "parsing" then
-                    if not losMeshParse(entry) then return 1 end
+                    if not losMeshParse(entry) then losBarHide() return 1 end
                 end
-                print("[ISQ LDV] mesh " .. obb.name .. " : " .. entry.status
-                    .. (entry.n ~= nil and (" (" .. entry.n .. " triangles)") or ""))
+                if entry.status == "ready" then
+                    print("[ISQ LDV] mesh " .. obb.name .. " : "
+                        .. entry.n .. " triangles en cache")
+                end
+                losBarSet(40 + math.floor(20 * i / #needed))
             end
 
             local meshRays = 0
-            local meshBudget = 0
+            local meshMax = math.min(totalPairs, LOS_MESH_MAX_RAYS)
             local meshClear, meshRed = nil, nil
             for level = 1, LOS_MAX_LEVEL do
                 for _, ap in ipairs(apts) do
@@ -1806,11 +1835,11 @@ function losVerdictCoroutine()
                             elseif meshRed == nil then
                                 meshRed = {ap, dp, level}
                             end
-                            meshBudget = meshBudget + 1
-                            if meshBudget >= LOS_MESH_RAYS_PER_FRAME then
-                                meshBudget = 0
+                            if os.clock() - losFrameStart > LOS_FRAME_BUDGET then
+                                losBarSet(60 + math.floor(40 * meshRays / meshMax))
                                 coroutine.yield(0)
-                                if ctx.gen ~= losGeneration then return 1 end
+                                losFrameStart = os.clock()
+                                if ctx.gen ~= losGeneration then losBarHide() return 1 end
                             end
                             if meshClear ~= nil then break end
                             if meshRays >= LOS_MESH_MAX_RAYS then break end
@@ -1830,6 +1859,7 @@ function losVerdictCoroutine()
 
         table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
     end
+    losBarHide()
     if ctx.gen ~= losGeneration then return 1 end
     drawLosWitnesses(ctx, witnesses)
     return 1
@@ -1864,9 +1894,7 @@ function drawLosWitnesses(ctx, witnesses)
     losSilhouetteGUIDs = {}
     for _, leader in ipairs({selectedUnitObj, ctx.attackTargetObj}) do
         if leader ~= nil and not leader.getVar("silhouetteState") then
-            print("[ISQ LDV] showSilhouette → " .. leader.getGUID() .. " …")
             leader.call("showSilhouette")
-            print("[ISQ LDV] showSilhouette ← " .. leader.getGUID() .. " ok")
             table.insert(losSilhouetteGUIDs, leader.getGUID())
         end
     end
