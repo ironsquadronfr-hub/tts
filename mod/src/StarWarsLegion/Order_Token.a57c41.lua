@@ -1223,12 +1223,14 @@ end
 -- the scenery does.
 function losIsTerrain(ctx, o)
     if ctx.miniGuids[o.getGUID()] then return false end
-    local t = o.type
+    if o.getVar("isAMini") == true then return false end
     -- Asset bundles are game aids here, never terrain: silhouettes, smoke,
     -- rulers, effects. The map's terrain pieces are all Custom_Model. A
     -- raised silhouette especially must not block the very rays it frames.
-    if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite"
-        or t == "Custom_Assetbundle" then
+    -- (.name is the internal type name; .type can report plain "Generic".)
+    if o.name == "Custom_Assetbundle" then return false end
+    local t = o.type
+    if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
         return false
     end
     local name = string.lower(o.getName() or "")
@@ -1387,11 +1389,19 @@ function buildLosContext(attackTargetObj)
     -- Terrain blocks through its VISUAL oriented box, never its collider:
     -- the mod's terrain colliders can be flat resting plates a few
     -- hundredths tall (a barricade's is), so Physics.cast is blind to what
-    -- the players actually see. Every mini is known by now, so losIsTerrain
-    -- can already classify.
-    for _, obj in pairs(zoneObjects) do
+    -- the players actually see. Swept from the full object list, NOT from
+    -- the zone: the zone's trigger misses locked scenery that never moved,
+    -- and an empty terrain list blocks nothing at all. A piece counts when
+    -- it stands within the battlefield zone's footprint.
+    local zonePos = battlefieldZone.getPosition()
+    local zoneScale = battlefieldZone.getScale()
+    for _, obj in pairs(getAllObjects()) do
         if losIsTerrain(ctx, obj) then
-            table.insert(ctx.obbs, losMakeObb(obj))
+            local p = obj.getPosition()
+            if math.abs(p.x - zonePos.x) <= zoneScale.x / 2 + 1
+                and math.abs(p.z - zonePos.z) <= zoneScale.z / 2 + 1 then
+                table.insert(ctx.obbs, losMakeObb(obj))
+            end
         end
     end
     for _, guid in pairs(attackTargetObj.getTable("miniGUIDs") or {}) do
