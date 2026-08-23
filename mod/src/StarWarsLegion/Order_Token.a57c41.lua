@@ -1158,12 +1158,20 @@ end
 
 -- Time budget per frame: the search yields as soon as it has eaten its
 -- slice of the frame, however many rays that was -- box rays are cheap,
--- mesh rays are not, the clock does not care.
-local LOS_FRAME_BUDGET = 0.007
+-- mesh rays are not, the clock does not care. Twelve milliseconds trades a
+-- little frame rate during a long verdict for half the wall-clock wait.
+local LOS_FRAME_BUDGET = 0.012
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v22"
+local LOS_BUILD = "v23"
+-- Console summaries. Cut to false for a release build: the engine stays
+-- silent and only the witness lines speak.
+local LOS_DEBUG = true
+
+local function losLog(msg)
+    if LOS_DEBUG then print("[ISQ LDV] " .. msg) end
+end
 
 -- Liseré de progression en haut de l'écran (élément isqLosBar du XML
 -- global), pour voir que le calcul travaille pendant les passes longues.
@@ -1712,7 +1720,7 @@ function buildLosContext(attackTargetObj)
             table.insert(ctx.defenders, m)
         end
     end
-    print("[ISQ LDV] " .. LOS_BUILD .. " — contexte : " .. #ctx.blockers
+    losLog(LOS_BUILD .. " — contexte : " .. #ctx.blockers
         .. " véhicule(s)-cylindre, " .. #ctx.obbs .. " boîte(s) de décor, "
         .. #ctx.defenders .. " défenseur(s)")
     return ctx
@@ -1776,7 +1784,7 @@ function losVerdictCoroutine()
             end
             if clearLine ~= nil and blockedLine ~= nil then break end
         end
-        print("[ISQ LDV] " .. (def.getName() or "figurine") .. " (boîtes) : "
+        losLog((def.getName() or "figurine") .. " (boîtes) : "
             .. (clearLine and ("verte niv " .. clearLine[3]) or "PAS de verte") .. ", "
             .. (blockedLine and ("rouge niv " .. blockedLine[3]) or "PAS de rouge")
             .. " — " .. rays .. " rayons, " .. #obbs .. " boîte(s) en couloir")
@@ -1807,7 +1815,7 @@ function losVerdictCoroutine()
                     if not losMeshParse(entry) then losBarHide() return 1 end
                 end
                 if entry.status == "ready" then
-                    print("[ISQ LDV] mesh " .. obb.name .. " : "
+                    losLog("mesh " .. obb.name .. " : "
                         .. entry.n .. " triangles en cache")
                 end
                 losBarSet(40 + math.floor(20 * i / #needed))
@@ -1862,7 +1870,7 @@ function losVerdictCoroutine()
             end
             if meshClear ~= nil then clearLine = meshClear end
             if meshRed ~= nil then blockedLine = meshRed end
-            print("[ISQ LDV] " .. (def.getName() or "figurine") .. " (mesh) : "
+            losLog((def.getName() or "figurine") .. " (mesh) : "
                 .. (meshClear and ("VERTE niv " .. meshClear[3]) or "pas de verte") .. ", "
                 .. (meshRed and ("rouge niv " .. meshRed[3]) or "pas de rouge")
                 .. " — " .. meshRays .. " rayons mesh")
