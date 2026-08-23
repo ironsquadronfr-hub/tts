@@ -1161,7 +1161,7 @@ local LOS_CASTS_PER_FRAME = 200
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v14"
+local LOS_BUILD = "v15"
 
 losGeneration = 0
 losCtx = nil
@@ -1383,7 +1383,27 @@ function buildLosContext(attackTargetObj)
             local p = obj.getPosition()
             if math.abs(p.x - zonePos.x) <= zoneScale.x / 2 + 1
                 and math.abs(p.z - zonePos.z) <= zoneScale.z / 2 + 1 then
-                table.insert(ctx.obbs, losMakeObb(obj))
+                local obb = losMakeObb(obj)
+                table.insert(ctx.obbs, obb)
+                -- Diagnostic (temporaire) : la première barricade imprime sa
+                -- boîte et se tire un rayon vertical dessus. RATE = la boîte
+                -- est construite au mauvais endroit, sans rien supposer.
+                if ctx.dbgObb == nil
+                    and string.find(string.lower(obj.getName() or ""), "barricade") then
+                    ctx.dbgObb = true
+                    local b = obj.getBoundsNormalized()
+                    print(string.format(
+                        "[ISQ LDV] obb %s pos(%.1f,%.1f,%.1f) rotY %.0f brut centre(%.2f,%.2f,%.2f) taille(%.2f,%.2f,%.2f) local(%.2f,%.2f,%.2f)",
+                        obj.getName(), obb.pos.x, obb.pos.y, obb.pos.z,
+                        math.deg(obb.ry), b.center.x, b.center.y, b.center.z,
+                        b.size.x, b.size.y, b.size.z,
+                        obb.center.x, obb.center.y, obb.center.z))
+                    local hit = losSegmentHitsObb(
+                        {x = obb.pos.x, y = obb.pos.y + 10, z = obb.pos.z},
+                        {x = obb.pos.x, y = obb.pos.y - 1, z = obb.pos.z}, obb)
+                    print("[ISQ LDV] autotest rayon vertical sur elle : "
+                        .. (hit and "TOUCHE" or "RATE"))
+                end
             end
         end
     end
