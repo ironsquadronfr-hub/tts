@@ -1163,7 +1163,7 @@ local LOS_FRAME_BUDGET = 0.007
 -- Printed with every attack so a play test can never run an older build
 -- unnoticed (the save-patching workflow makes that mistake silent). Bump it
 -- with every LoS change.
-local LOS_BUILD = "v20"
+local LOS_BUILD = "v21"
 
 -- Liseré de progression en haut de l'écran (élément isqLosBar du XML
 -- global), pour voir que le calcul travaille pendant les passes longues.
@@ -1199,8 +1199,11 @@ local LOS_AZIMUTHS = {
 -- silhouette to silhouette, and a sliver of visibility hugging the top or
 -- the side edge lives precisely in the last percents. The old 0.95/0.97
 -- insets were Physics.cast-era self-hit protection and ate those slivers.
+-- Mid height leads: the first clear line found is the one drawn, and a
+-- waist-high witness reads well on the table where a ground-level one
+-- drowns in the terrain. The exact extremes come right behind it.
 local LOS_HEIGHTS = {
-    {0.0, 1}, {0.5, 1}, {1.0, 1},
+    {0.5, 1}, {1.0, 1}, {0.0, 1},
     {0.25, 2}, {0.75, 2},
     {0.125, 4}, {0.375, 4}, {0.625, 4}, {0.875, 4},
 }
@@ -1874,18 +1877,24 @@ end
 -- hidden, and one with both is where the players lean in and judge cover --
 -- the mod hands them the two lines the discussion needs, nothing more.
 function drawLosWitnesses(ctx, witnesses)
+    -- Drawn a hair above their true height: a base-level witness line laid
+    -- exactly on the ground is half-buried in the terrain and reads as
+    -- missing. The five hundredths match the line's own thickness.
+    local function lifted(pt)
+        return {x = pt.x, y = pt.y + 0.05, z = pt.z}
+    end
     local lines = {}
     for _, w in ipairs(witnesses) do
         if w.clear ~= nil then
             table.insert(lines, {
-                points = {w.clear[1], w.clear[2]},
+                points = {lifted(w.clear[1]), lifted(w.clear[2])},
                 color = {0.2, 0.9, 0.2},
                 thickness = 0.06,
             })
         end
         if w.blocked ~= nil then
             table.insert(lines, {
-                points = {w.blocked[1], w.blocked[2]},
+                points = {lifted(w.blocked[1]), lifted(w.blocked[2])},
                 color = {0.9, 0.15, 0.15},
                 thickness = 0.06,
             })
