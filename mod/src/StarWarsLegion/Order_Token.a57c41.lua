@@ -1158,6 +1158,10 @@ end
 -- Rays per frame: the search spreads over frames instead of freezing. Pure
 -- arithmetic since the engine moved off Physics.cast, so the budget is wide.
 local LOS_CASTS_PER_FRAME = 200
+-- Printed with every attack so a play test can never run an older build
+-- unnoticed (the save-patching workflow makes that mistake silent). Bump it
+-- with every LoS change.
+local LOS_BUILD = "v13"
 
 losGeneration = 0
 losCtx = nil
@@ -1410,8 +1414,9 @@ function buildLosContext(attackTargetObj)
             table.insert(ctx.defenders, m)
         end
     end
-    print("[ISQ LDV] contexte : " .. #ctx.blockers .. " véhicule(s)-cylindre, "
-        .. #ctx.obbs .. " boîte(s) de décor, " .. #ctx.defenders .. " défenseur(s)")
+    print("[ISQ LDV] " .. LOS_BUILD .. " — contexte : " .. #ctx.blockers
+        .. " véhicule(s)-cylindre, " .. #ctx.obbs .. " boîte(s) de décor, "
+        .. #ctx.defenders .. " défenseur(s)")
     return ctx
 end
 
