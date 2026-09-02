@@ -568,6 +568,10 @@ function onload(saveData)
 end
 
 function standbyTokens()
+    -- The line-of-sight witness lines live in Global's vector lines, which a
+    -- save keeps and a reload (or an undo) brings back with no attack to own
+    -- them: wipe them like the rulers below.
+    Global.setVectorLines({})
     local allObjs = getAllObjects()
     for i, obj in pairs(allObjs) do
         if obj.getVar("isAToken") == true then

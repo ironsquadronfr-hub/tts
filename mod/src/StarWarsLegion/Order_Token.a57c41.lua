@@ -1167,14 +1167,14 @@ local LOS_FRAME_BUDGET = 0.012
 local LOS_BUILD = "v23"
 -- Console summaries. Cut to false for a release build: the engine stays
 -- silent and only the witness lines speak.
-local LOS_DEBUG = true
+local LOS_DEBUG = false
 
 local function losLog(msg)
     if LOS_DEBUG then print("[ISQ LDV] " .. msg) end
 end
 
--- Liseré de progression en haut de l'écran (élément isqLosBar du XML
--- global), pour voir que le calcul travaille pendant les passes longues.
+-- Progress rule along the top of the screen (the isqLosBar element of the
+-- Global XML), so a long pass visibly keeps working.
 function losBarSet(pct)
     pcall(function()
         UI.setAttribute("isqLosBar", "active", "true")
@@ -1360,8 +1360,8 @@ function losMakeObb(obj)
         if ok and co ~= nil then url = co.mesh end
     end
     local rx, ry, rz = math.rad(r.x), math.rad(r.y), math.rad(r.z)
-    -- Rotations précalculées : ces cosinus servent des dizaines de milliers
-    -- de fois par verdict, jamais recalculés dans les boucles chaudes.
+    -- Rotations precomputed once: these cosines serve tens of thousands
+    -- of times per verdict and are never recomputed in the hot loops.
     return {
         name = obj.getName() or "?",
         pos = p,
@@ -1439,14 +1439,14 @@ function losSegmentHitsObb(p, q, obb)
 end
 
 ---------------------------------------------------------------------------
--- PASSE MESH (précision triangle). La boîte visuelle sur-bloque par
--- construction : une verte de la passe boîtes est donc CERTAINE, mais son
--- absence peut être un faux négatif -- le petit angle passe dans le vide
--- d'une boîte (coin de bâtiment, sous une antenne). Dans ce seul cas, une
--- seconde passe rejoue les mêmes rayons contre les VRAIS triangles du mesh
--- visuel, téléchargé une fois par type de pièce (WebRequest sur l'URL OBJ
--- que porte tout Custom_Model) et mis en cache pour la session. Aucune
--- donnée par carte : tout décor présent ou futur est couvert.
+-- MESH PASS (triangle precision). The visual box over-blocks by
+-- construction: a green from the box pass is therefore CERTAIN, but its
+-- absence may be a false negative -- the narrow angle passes through the
+-- empty part of a box (a building corner, under an antenna). In that one
+-- case a second pass replays the same rays against the REAL triangles of
+-- the visual mesh, downloaded once per piece type (WebRequest on the OBJ
+-- URL the map declares), so every present or future terrain piece is
+-- covered by the map itself, not by a table kept by hand.
 ---------------------------------------------------------------------------
 losMeshCache = {}
 local LOS_MESH_MAX_TRIS = 25000
@@ -1543,7 +1543,7 @@ function losMeshParse(entry)
         entry.text = nil
         return true
     end
-    -- Grille XZ des triangles pour couper chaque rayon à quelques cellules.
+    -- XZ grid of the triangles, so each ray only visits a few cells.
     local gx0, gx1 = math.huge, -math.huge
     local gz0, gz1 = math.huge, -math.huge
     for i = 1, n do
@@ -1720,9 +1720,11 @@ function buildLosContext(attackTargetObj)
             table.insert(ctx.defenders, m)
         end
     end
-    losLog(LOS_BUILD .. " — contexte : " .. #ctx.blockers
-        .. " véhicule(s)-cylindre, " .. #ctx.obbs .. " boîte(s) de décor, "
-        .. #ctx.defenders .. " défenseur(s)")
+    if LOS_DEBUG then
+        losLog(LOS_BUILD .. " - context: " .. #ctx.blockers
+            .. " vehicle cylinder(s), " .. #ctx.obbs .. " terrain box(es), "
+            .. #ctx.defenders .. " defender(s)")
+    end
     return ctx
 end
 
@@ -1744,6 +1746,13 @@ function losVerdictCoroutine()
     local pad = math.max(attackerRadius, targetRadius) + 0.5
     losFrameStart = os.clock()
     for _, def in ipairs(ctx.defenders) do
+      -- Handles die between resumes: an attacker deleted mid-verdict ends
+      -- it, a defender deleted mid-verdict is simply skipped.
+      if selectedUnitObj == nil or selectedUnitObj.isDestroyed() then
+        losBarHide()
+        return 1
+      end
+      if def ~= nil and not def.isDestroyed() then
         local defPos = def.getPosition()
         local apts = losSamplePoints(selectedUnitObj, selectedUnitObj, defPos)
         local dpts = losSamplePoints(def, ctx.attackTargetObj, ctx.leaderPos)
@@ -1784,14 +1793,16 @@ function losVerdictCoroutine()
             end
             if clearLine ~= nil and blockedLine ~= nil then break end
         end
-        losLog((def.getName() or "figurine") .. " (boîtes) : "
-            .. (clearLine and ("verte niv " .. clearLine[3]) or "PAS de verte") .. ", "
-            .. (blockedLine and ("rouge niv " .. blockedLine[3]) or "PAS de rouge")
-            .. " — " .. rays .. " rayons, " .. #obbs .. " boîte(s) en couloir")
+        if LOS_DEBUG then
+            losLog((def.getName() or "mini") .. " (boxes): "
+                .. (clearLine and ("green lvl " .. clearLine[3]) or "NO green") .. ", "
+                .. (blockedLine and ("red lvl " .. blockedLine[3]) or "NO red")
+                .. " - " .. rays .. " rays, " .. #obbs .. " box(es) in the corridor")
+        end
 
-        -- Pas de verte par les boîtes : l'angle existe peut-être dans le
-        -- vide d'une boîte. Passe fine contre les vrais triangles, sur les
-        -- seules pièces croisées.
+        -- No green from the boxes: the angle may exist in the empty part
+        -- of a box. Fine pass against the real triangles, on the crossed
+        -- pieces only.
         if clearLine == nil then
             losBarSet(40)
             local needed = {}
@@ -1814,9 +1825,9 @@ function losVerdictCoroutine()
                 if entry.status == "raw" or entry.status == "parsing" then
                     if not losMeshParse(entry) then losBarHide() return 1 end
                 end
-                if entry.status == "ready" then
-                    losLog("mesh " .. obb.name .. " : "
-                        .. entry.n .. " triangles en cache")
+                if LOS_DEBUG and entry.status == "ready" then
+                    losLog("mesh " .. obb.name .. ": "
+                        .. entry.n .. " triangles cached")
                 end
                 losBarSet(40 + math.floor(20 * i / #needed))
             end
@@ -1841,8 +1852,8 @@ function losVerdictCoroutine()
                                                 break
                                             end
                                         else
-                                            -- Mesh indisponible : la boîte
-                                            -- fait foi, prudence.
+                                            -- Mesh unavailable: the box
+                                            -- rules, on the safe side.
                                             blocked = true
                                             break
                                         end
@@ -1870,13 +1881,16 @@ function losVerdictCoroutine()
             end
             if meshClear ~= nil then clearLine = meshClear end
             if meshRed ~= nil then blockedLine = meshRed end
-            losLog((def.getName() or "figurine") .. " (mesh) : "
-                .. (meshClear and ("VERTE niv " .. meshClear[3]) or "pas de verte") .. ", "
-                .. (meshRed and ("rouge niv " .. meshRed[3]) or "pas de rouge")
-                .. " — " .. meshRays .. " rayons mesh")
+            if LOS_DEBUG then
+                losLog((def.getName() or "mini") .. " (mesh): "
+                    .. (meshClear and ("GREEN lvl " .. meshClear[3]) or "no green") .. ", "
+                    .. (meshRed and ("red lvl " .. meshRed[3]) or "no red")
+                    .. " - " .. meshRays .. " mesh rays")
+            end
         end
 
         table.insert(witnesses, {clear = clearLine, blocked = blockedLine})
+      end
     end
     losBarHide()
     if ctx.gen ~= losGeneration then return 1 end
@@ -1923,27 +1937,6 @@ function drawLosWitnesses(ctx, witnesses)
             table.insert(losSilhouetteGUIDs, leader.getGUID())
         end
     end
-end
-
-function getAngle(originObj, angleTargetObj)
-    --local localVector = originObj.positionToLocal(angleTargetObj.getPosition())
-    local aTargetPos = angleTargetObj.getPosition()
-    local originPos = originObj.getPosition()
-
-    local localVector = {
-          x = aTargetPos.x - originPos.x,
-          y = aTargetPos.y - originPos.y,
-          z = aTargetPos.z - originPos.z}
-
-
-    local q = math.deg(math.atan2(localVector.x, localVector.z))
-
-    local c = math.sqrt((localVector.x * localVector.x) + (localVector.z * localVector.z))
-
-    local q2 = math.deg(math.atan2(localVector.y, c))
-
-    -- set rotation and rotation
-    return {x=q2,y=q,z=0}
 end
 
 function createAttackButton(leaderObj)

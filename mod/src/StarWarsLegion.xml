@@ -1,7 +1,7 @@
 <!-- #include !/ui/Menu -->
 <!-- #include !/ui/Clock -->
-<!-- Liseré de progression de la ligne de vue : collé en haut de l'écran,
-     piloté par Order_Token pendant le calcul des lignes témoins. -->
+<!-- Line-of-sight progress rule, stuck to the top of the screen and driven
+     by Order_Token while the witness lines are computed. -->
 <Panel id="isqLosBar" active="false" rectAlignment="UpperCenter" width="100%" height="7" offsetXY="0 0" color="#00000080">
   <ProgressBar id="isqLosFill" percentage="0" height="7" color="#101010C0" fillImageColor="#FF8C00" showPercentageText="false"/>
 </Panel>
