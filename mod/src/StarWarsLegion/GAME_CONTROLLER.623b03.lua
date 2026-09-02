@@ -1016,13 +1016,14 @@ DEAD_UGC_SWAPS = {
     "785234540542470239/CFB22A69010911784880172594A7106CBC1F8DF1",
   ["874120913887641068/75C737DD596381693CCA671B3BD6A1D227CCBBB8"] =
     "785234540542467139/4036C31123FF00D2459B3ED1E57CD8141ACFAC8D",
-  -- Geonosis, "Destroyed Advanced Dwarf Spider Droid": alternate mesh set
-  -- of the same object (the dead map reuses its mesh as collider, the swap
-  -- keeps that shape).
-  ["969858026283571281/F2359F847B4DFF3757D2AE27D90480A062890466"] =
-    "780734585255482064/9CA69CBC21ACD9A22F9A7C32C45C02D98253674E",
-  ["969858026283571356/2E74A89F1E80B0645764DC1B94BF4ADC2940AAAC"] =
-    "785234780858976044/D7F78E8DBEDD11DFDAF5B61785BD91DA338B1A69",
+  -- Geonosis, "Destroyed Advanced Dwarf Spider Droid": NOT substituted, on
+  -- purpose. The only other copy in circulation is a different sculpt whose
+  -- texture does not match, and swapping to it is worse than leaving the
+  -- dead link: a player who owns the real one has it in their TTS cache, and
+  -- pointing somewhere else is exactly what stops them seeing it. The two
+  -- original files survive in a cache and are waiting to be rehosted; until
+  -- then the piece is missing for a fresh install and correct for everyone
+  -- who played this map before it died.
   -- Imperial Checkpoint, "Walkway [Light Cover]" state 1: collider of the
   -- same walkway mesh as found in the other packs.
   ["924802058713318404/E46A0DB14CBAD8B6711484041D221EC8DFE6498A"] =
