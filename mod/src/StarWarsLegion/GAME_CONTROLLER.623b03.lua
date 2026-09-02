@@ -294,7 +294,13 @@ function featuredCompetitiveMenu()
   changeBackButton("featuredMapsMenu", "Go back to featured maps")
   local url = "https://raw.githubusercontent.com/swlegion/tts/master/contrib/maps/competitive.json"
   WebRequest.get(url, function(data)
-    local items = JSON.decode(data.text)
+    -- GitHub answers an outage or a hiccup with an HTML page, and decoding
+    -- that raises inside the download handler where nothing catches it.
+    local ok, items = pcall(function() return JSON.decode(data.text) end)
+    if not ok or type(items) ~= "table" then
+      printToAll("Could not read the featured map list. Check your connection.")
+      return mainMenu()
+    end
     local menu = {}
     for _, entry in pairs(items) do
       table.insert(menu, {
@@ -314,7 +320,13 @@ function featuredSkirmisMenu()
   changeBackButton("featuredMapsMenu", "Go back to featured maps")
   local url = "https://raw.githubusercontent.com/swlegion/tts/master/contrib/maps/skirmish.json"
   WebRequest.get(url, function(data)
-    local items = JSON.decode(data.text)
+    -- GitHub answers an outage or a hiccup with an HTML page, and decoding
+    -- that raises inside the download handler where nothing catches it.
+    local ok, items = pcall(function() return JSON.decode(data.text) end)
+    if not ok or type(items) ~= "table" then
+      printToAll("Could not read the featured map list. Check your connection.")
+      return mainMenu()
+    end
     local menu = {}
     for _, entry in pairs(items) do
       table.insert(menu, {
@@ -857,9 +869,16 @@ end
 
 function placeTerrain(paObj)
     local spawnPos = paObj.getTable("position")
-    paObj.setPosition(spawnPos)
-
     local spawnRot = paObj.getTable("rotation")
+    -- A cartridge holds where each piece goes in the piece's own script. A
+    -- piece saved without one, or whose asset failed to build, has neither —
+    -- and setPosition(nil) raises, which used to kill the rest of the map.
+    -- Leave it where it landed and name it instead.
+    if spawnPos == nil or spawnRot == nil then
+      printToAll("Map piece has no saved position: " .. tostring(paObj.getName()))
+      return
+    end
+    paObj.setPosition(spawnPos)
     paObj.setRotation(spawnRot)
 
     if paObj.getVar("scripted") == true then
