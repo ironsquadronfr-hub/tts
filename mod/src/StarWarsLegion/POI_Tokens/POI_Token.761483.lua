@@ -9,16 +9,15 @@ require('!/RangeRulers')
 -- token = 25.1mm diameter (range 1)
 -- poi = 50.8mm diameter (range 0.5 aka 3in)
 
--- ⚠ POI a sa PROPRE copie du bouton (position, dimensions et couleur qui lui sont
--- particulieres) : il ne passe pas par !/TokenWithRangeRuler. On lui applique donc
--- le meme traitement a la main — un seul bouton au lieu de deux superposes, et une
--- reorientation au retournement. Les fonctions viennent de !/RangeRulers.
--- L'ASPECT NE CHANGE PAS : position, largeur, hauteur, police et teinte sont
--- repris tels quels.
+-- The POI keeps its own copy of the range button (its own position, size and
+-- tint) and does not go through !/TokenWithRangeRuler, so it gets the same
+-- treatment by hand: one button that follows the visible face, instead of two
+-- superposed ones. The helpers come from !/RangeRulers. The look is unchanged:
+-- position, width, height, font and tint are kept as they were.
 function onLoad()
   rangeOn = false
-  isqBoutonsOrientes = {}
-  createButton()
+  createButton({0, 0, 0})
+  createButton({0, 0, 180})
   addSilhouetteButton()
 end
 
@@ -26,7 +25,13 @@ function onRotate(spin, flip, player_color, old_spin, old_flip)
   isqMajBoutons(flip)
 end
 
-function createButton()
+-- onLoad still asks for its two buttons, one per face, exactly as it always
+-- did: the first call builds the single reoriented button, the second is a
+-- no-op. The requested rotation is ignored, the visible face decides.
+local isqRangeButtonBuilt = false
+function createButton(rotation)
+  if isqRangeButtonBuilt then return end
+  isqRangeButtonBuilt = true
   local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
   local btnTint = gameData.getTable("battlefieldTint")
   self.createButton({
@@ -100,7 +105,7 @@ function addSilhouetteButton()
       font_color= {1, 1, 1, 100}
     }
     self.createButton(btnData)
-    -- il n'avait aucune rotation : au verso il se lisait en miroir lui aussi
+    -- It had no rotation at all, so it read mirrored on the back face too.
     isqEnregistrerBouton("SIL", 0)
   end    
 
