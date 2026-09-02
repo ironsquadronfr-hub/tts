@@ -666,7 +666,7 @@ function spawnFromCartridgeDelay(spawnFromCartridgeObj)
     spawnFromCartridgeObj.setLock(true)
     Wait.frames(function()
       spawnMapFromCartridge(spawnFromCartridgeObj, function()
-        destroyObject(spawnFromCartridgeObj)
+        destroyIfAlive(spawnFromCartridgeObj)
       end)
     end)
 end
@@ -679,6 +679,18 @@ end
 -- call returns.
 mapDeployGeneration = 0
 
+-- destroyObject raises on an object that is already gone, and a cartridge can
+-- disappear while its map is still deploying: a player grabs it, or saving the
+-- map sweeps the mount zone. Ask before destroying, and treat an object that
+-- cannot answer as already destroyed.
+function destroyIfAlive(obj)
+  if obj == nil then return end
+  local ok, gone = pcall(function() return obj.isDestroyed() end)
+  if ok and not gone then
+    obj.destroyObject()
+  end
+end
+
 function spawnMapFromCartridge(selectedCartridge, onDone)
     ga_event("Game", "spawnMapFromCartridge", selectedCartridge.getName())
     clearZones()
@@ -687,13 +699,18 @@ function spawnMapFromCartridge(selectedCartridge, onDone)
     local generation = mapDeployGeneration
     local total = #selectedCartridge.getObjects()
     local i = 0
+    -- onDone always runs, even when the pump gives up: it is what disposes of
+    -- the cartridge. Left undone, an abandoned featured-map cartridge stays
+    -- parked in the mount zone still holding half a map, and loadMap() picks
+    -- it up in place of the player's own. `abandoned` tells the caller not to
+    -- touch the screen, which by then belongs to whoever took over.
+    local function finish(abandoned)
+      if onDone ~= nil then onDone(abandoned) end
+    end
     local function pumpStep()
       -- a newer map load owns the screen and the battlefield now
-      if generation ~= mapDeployGeneration then return end
-      if i >= total then
-        if onDone ~= nil then onDone() end
-        return
-      end
+      if generation ~= mapDeployGeneration then return finish(true) end
+      if i >= total then return finish(false) end
       i = i + 1
       -- pcall: the cartridge can vanish mid-cascade (player grabbed it)
       local ok = pcall(function()
@@ -702,15 +719,17 @@ function spawnMapFromCartridge(selectedCartridge, onDone)
           smooth            = false,
           callback_function = function(spawnedObject)
             Wait.frames(function()
+              -- This piece was already in flight when another load took over;
+              -- placing it now would drop it onto the new map.
+              if generation ~= mapDeployGeneration then
+                return destroyIfAlive(spawnedObject)
+              end
               placeTerrain(spawnedObject)
             end)
           end,
         })
       end)
-      if not ok then
-        if onDone ~= nil then onDone() end
-        return
-      end
+      if not ok then return finish(true) end
       if i % 10 == 0 or i == total then
         printToScreen("LOADING MAP...\n\n" .. i .. " / " .. total, 80, 3)
       end
@@ -1083,9 +1102,11 @@ function unpackMap(text)
   printToScreen("UNPACKING MAP...", 80, 3)
   Wait.frames(function()
     text = repairDeadSteamHost(text)
+    -- Every way out of here either loads the map or hands the menu back:
+    -- the screen is showing UNPACKING MAP and nothing else would clear it.
     if not text:find('"ObjectStates"', 1, true) then
       printToAll("Failed to download map.")
-      return
+      return mainMenu()
     end
     local json = extractCartridgeJson(text)
     if json == nil then
@@ -1093,22 +1114,36 @@ function unpackMap(text)
       local map = JSON.decode(text)
       if not map or not map.ObjectStates or not map.ObjectStates[1] then
         printToAll("Failed to decode map.")
-        return
+        return mainMenu()
       end
       json = JSON.encode(map.ObjectStates[1])
     end
     -- Don't hold the whole file alive through the spawn cascade.
     text = nil
+    local spawned = false
     spawnObjectJSON({
       json = json,
       position = dataDiskMount.getPosition(),
       callback_function = function(disk)
-        spawnMapFromCartridge(disk, function()
-          disk.destroyObject()
-          mainMenu()
+        spawned = true
+        spawnMapFromCartridge(disk, function(abandoned)
+          -- Restore the menu first: it is what lets the player act again,
+          -- and the disk may already be gone by now.
+          if not abandoned then mainMenu() end
+          destroyIfAlive(disk)
         end)
       end
     })
+    -- extractCartridgeJson trusts the shape of the file, and the featured
+    -- list is fetched live, so one day a map may not match it. The engine
+    -- rejects JSON it cannot read by never calling back at all — without
+    -- this the screen would sit on UNPACKING MAP for ever, saying nothing.
+    Wait.time(function()
+      if not spawned then
+        printToAll("Failed to unpack map.")
+        mainMenu()
+      end
+    end, 10)
   end, 1)
 end
 
