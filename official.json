@@ -5020,7 +5020,7 @@
     "Operative Token": {
       "token": {
         "mesh": "https://steamusercontent-a.akamaihd.net/ugc/786359883314441337/A0DD41660FEC7E450F2EDF38191AF3C26E826C49/",
-        "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/2425823802350268462/8309FBD193E09BFF8FE6F51A531DC5ECD0836F09/"
+        "diffuse": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/operative_token_diffuse.png"
       },
       "target": "unit",
       "stacks": false
