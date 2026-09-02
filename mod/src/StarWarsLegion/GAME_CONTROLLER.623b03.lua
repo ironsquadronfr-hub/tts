@@ -1003,11 +1003,26 @@ DEAD_UGC_SWAPS = {
   ["http://infinitebucket.com/tts/scenesystem/dust.unity3d"] = "",
 }
 
+-- Escaped once at load: gsub needs a pattern with the magic characters
+-- quoted, find needs the raw text. Building these on every call would redo
+-- the work for every map.
+DEAD_UGC_REPAIRS = {}
+for dead, alive in pairs(DEAD_UGC_SWAPS) do
+  table.insert(DEAD_UGC_REPAIRS, {
+    dead = dead,
+    pattern = dead:gsub("%W", "%%%0"),
+    alive = (alive:gsub("%%", "%%%%")),
+  })
+end
+
 function repairDeadSteamHost(text)
   local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
-  for dead, alive in pairs(DEAD_UGC_SWAPS) do
-    -- plain-text replacement: escape Lua pattern magic in both sides
-    repaired = repaired:gsub(dead:gsub("%W", "%%%0"), (alive:gsub("%%", "%%%%")))
+  for _, repair in ipairs(DEAD_UGC_REPAIRS) do
+    -- A gsub rebuilds the whole string, and a map file is 70-160 KB, so never
+    -- run one blind: any given map carries at most one of these.
+    if repaired:find(repair.dead, 1, true) then
+      repaired = repaired:gsub(repair.pattern, repair.alive)
+    end
   end
   return repaired
 end
@@ -1015,26 +1030,70 @@ end
 function downloadMapByUrl(url)
   WebRequest.get(repairDeadSteamHost(url), function(data)
     -- TTS deletes the download handler after Wait.time, so copy the text.
-    local text = data.text
-    printToScreen("UNPACKING MAP...\n\nThis may take several seconds...")
+    unpackMap(data.text)
+  end)
+end
+
+-- Unpacking a map means repairing its links, decoding 70-160 KB of JSON and
+-- encoding the cartridge back out — three heavy synchronous steps that all
+-- ran in one frame, which is what froze the table for seconds. Give each its
+-- own frame so the screen can redraw between them, and time each one: the
+-- console line tells us which step to attack next instead of guessing.
+function unpackMap(text)
+  local state = {text = text}
+  local timings = {}
+  local steps = {
+    {"REPAIRING LINKS", function()
+      state.text = repairDeadSteamHost(state.text)
+    end},
+    {"READING MAP", function()
+      state.map = JSON.decode(state.text)
+      state.text = nil
+      if not state.map or not state.map.ObjectStates or not state.map.ObjectStates[1] then
+        return "Failed to decode map."
+      end
+    end},
+    {"UNPACKING MAP", function()
+      state.json = JSON.encode(state.map.ObjectStates[1])
+      state.map = nil
+    end},
+  }
+
+  local function runStep(index)
+    if index > #steps then
+      return spawnUnpackedMap(state.json, timings)
+    end
+    local label, work = steps[index][1], steps[index][2]
+    printToScreen(label .. "...\n\nThis may take several seconds...", 80, 3)
     Wait.frames(function()
-      local json = JSON.decode(repairDeadSteamHost(text))
-      if not json or not json.ObjectStates then
-        printToAll("Failed to decode map.")
+      local started = os.clock()
+      local failure = work()
+      table.insert(timings, string.format("%s %.2fs", label:lower(), os.clock() - started))
+      if failure then
+        printToAll(failure)
+        print("[ISQ MAP] " .. table.concat(timings, " · ") .. " — " .. failure)
         return
       end
-      spawnObjectJSON({
-        json = JSON.encode(json.ObjectStates[1]),
-        position = dataDiskMount.getPosition(),
-        callback_function = function(disk)
-          spawnMapFromCartridge(disk, function()
-            disk.destroyObject()
-            mainMenu()
-          end)
-        end
-      })
-    end)
-  end)
+      runStep(index + 1)
+    end, 1)
+  end
+  runStep(1)
+end
+
+function spawnUnpackedMap(json, timings)
+  local started = os.clock()
+  spawnObjectJSON({
+    json = json,
+    position = dataDiskMount.getPosition(),
+    callback_function = function(disk)
+      table.insert(timings, string.format("spawn %.2fs", os.clock() - started))
+      print("[ISQ MAP] " .. table.concat(timings, " · "))
+      spawnMapFromCartridge(disk, function()
+        disk.destroyObject()
+        mainMenu()
+      end)
+    end
+  })
 end
 
 function createMenu(optionTable, selectedIndex)
