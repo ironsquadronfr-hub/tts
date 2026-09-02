@@ -1034,28 +1034,79 @@ function downloadMapByUrl(url)
   end)
 end
 
--- Unpacking a map means repairing its links, decoding 70-160 KB of JSON and
--- encoding the cartridge back out — three heavy synchronous steps that all
--- ran in one frame, which is what froze the table for seconds. Give each its
--- own frame so the screen can redraw between them, and time each one: the
--- console line tells us which step to attack next instead of guessing.
+-- Walk back from an anchor over the handful of characters of whitespace and
+-- punctuation that separate two JSON tokens. Bounded on purpose: if the file
+-- is not shaped as expected we give up and the caller falls back to decoding.
+function lastCharBefore(text, char, limit)
+  local floor = math.max(1, limit - 200)
+  for i = limit - 1, floor, -1 do
+    if text:sub(i, i) == char then
+      return i
+    end
+  end
+  return nil
+end
+
+-- Cut the cartridge out of the downloaded text without parsing it.
+--
+-- Measured on Martin's machine: JSON.decode of a map costs 1.7 to 5.5 s in
+-- MoonSharp, while the engine parses the very same JSON in 0.07 s inside
+-- spawnObjectJSON. So the fastest decode is the one we never run — hand the
+-- raw substring to the engine and let it do the single parse.
+--
+-- The shape a TTS save export produces is fixed, and it holds on all ten
+-- featured maps: ObjectStates carries exactly one object, and the top-level
+-- LuaScript / LuaScriptState / XmlUI / VersionNumber keys come after it.
+-- Nested scripts appear inside JSON strings, where the quotes are escaped,
+-- so the last plain `"LuaScript"` in the file is the top-level one — and the
+-- cartridge ends at the last } before the ] just above it.
+function extractCartridgeJson(text)
+  local arrayKey = text:find('"ObjectStates"', 1, true)
+  if not arrayKey then return nil end
+  local objectStart = text:find("{", arrayKey, true)
+  if not objectStart then return nil end
+
+  local lastScript, pos = nil, arrayKey
+  while true do
+    local found = text:find('"LuaScript"', pos, true)
+    if not found then break end
+    lastScript, pos = found, found + 1
+  end
+  if not lastScript then return nil end
+
+  local arrayEnd = lastCharBefore(text, "]", lastScript)
+  if not arrayEnd then return nil end
+  local objectEnd = lastCharBefore(text, "}", arrayEnd)
+  if not objectEnd or objectEnd <= objectStart then return nil end
+
+  return text:sub(objectStart, objectEnd)
+end
+
+-- Unpacking used to repair the links, decode 70-160 KB of JSON and encode the
+-- cartridge back out, all in one frame — seconds of frozen table. Each step
+-- now gets its own frame and names itself on the screen, and each is timed
+-- into one console line so a slow map can still be diagnosed.
 function unpackMap(text)
   local state = {text = text}
   local timings = {}
   local steps = {
     {"REPAIRING LINKS", function()
       state.text = repairDeadSteamHost(state.text)
-    end},
-    {"READING MAP", function()
-      state.map = JSON.decode(state.text)
-      state.text = nil
-      if not state.map or not state.map.ObjectStates or not state.map.ObjectStates[1] then
-        return "Failed to decode map."
+      if not state.text:find('"ObjectStates"', 1, true) then
+        return "Failed to download map."
       end
     end},
     {"UNPACKING MAP", function()
-      state.json = JSON.encode(state.map.ObjectStates[1])
-      state.map = nil
+      state.json = extractCartridgeJson(state.text)
+      if state.json == nil then
+        -- Unexpected shape: pay for the full decode rather than fail.
+        local map = JSON.decode(state.text)
+        if not map or not map.ObjectStates or not map.ObjectStates[1] then
+          return "Failed to decode map."
+        end
+        state.json = JSON.encode(map.ObjectStates[1])
+      end
+      state.text = nil
     end},
   }
 
