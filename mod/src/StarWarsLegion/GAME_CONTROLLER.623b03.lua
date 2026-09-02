@@ -931,8 +931,43 @@ end
 -- cloud-3.steamusercontent.com is gone (HTTP 403 on everything); Steam now
 -- serves the same UGC paths from Akamai. Repair both the map URL itself and
 -- every asset URL inside the downloaded map JSON.
+--
+-- Six assets never made it to Akamai (404 on every host, gone from the
+-- Wayback Machine too). The community map packs ship the same terrain
+-- pieces under other UGC paths, so swap the dead paths for those live
+-- equivalents.
+DEAD_UGC_SWAPS = {
+  -- Scarif Landing, "Sand Mound (Blast Hole)": the league packs use the
+  -- plain Sand Mound assets for the same piece.
+  ["866242507558372594/6E91C689398356425C48138EC9FD73DD213DBE25"] =
+    "785234540542465659/30348E08551EAA3E8D5164E0D2931B3EB72DCEC1",
+  ["874120511627020981/C8D3FAC8EFDCDB836ECC7E1B74C7929F6C77F5EF"] =
+    "785234540542470239/CFB22A69010911784880172594A7106CBC1F8DF1",
+  ["874120913887641068/75C737DD596381693CCA671B3BD6A1D227CCBBB8"] =
+    "785234540542467139/4036C31123FF00D2459B3ED1E57CD8141ACFAC8D",
+  -- Geonosis, "Destroyed Advanced Dwarf Spider Droid": alternate mesh set
+  -- of the same object (the dead map reuses its mesh as collider, the swap
+  -- keeps that shape).
+  ["969858026283571281/F2359F847B4DFF3757D2AE27D90480A062890466"] =
+    "780734585255482064/9CA69CBC21ACD9A22F9A7C32C45C02D98253674E",
+  ["969858026283571356/2E74A89F1E80B0645764DC1B94BF4ADC2940AAAC"] =
+    "785234780858976044/D7F78E8DBEDD11DFDAF5B61785BD91DA338B1A69",
+  -- Imperial Checkpoint, "Walkway [Light Cover]" state 1: collider of the
+  -- same walkway mesh as found in the other packs.
+  ["924802058713318404/E46A0DB14CBAD8B6711484041D221EC8DFE6498A"] =
+    "785234780857945420/BD98F26583D35B354CE52BC7F624EFD69FF167A7",
+  -- Geonosis, rock formation: the map data pasted the collider gist URL
+  -- twice in a row in one ColliderURL field.
+  ["rock_formation_collider.txthttps://gist.githubusercontent.com/nashjaee/3375e9ebe255d751196483c59c545591/raw/fe2fa562af6874076a3dc4e0f74dc7c68eeafa63/rock_formation_collider.txt"] =
+    "rock_formation_collider.txt",
+}
+
 function repairDeadSteamHost(text)
   local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
+  for dead, alive in pairs(DEAD_UGC_SWAPS) do
+    -- plain-text replacement: escape Lua pattern magic in both sides
+    repaired = repaired:gsub(dead:gsub("%W", "%%%0"), (alive:gsub("%%", "%%%%")))
+  end
   return repaired
 end
 
