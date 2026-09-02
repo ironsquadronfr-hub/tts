@@ -960,6 +960,14 @@ DEAD_UGC_SWAPS = {
   -- twice in a row in one ColliderURL field.
   ["rock_formation_collider.txthttps://gist.githubusercontent.com/nashjaee/3375e9ebe255d751196483c59c545591/raw/fe2fa562af6874076a3dc4e0f74dc7c68eeafa63/rock_formation_collider.txt"] =
     "rock_formation_collider.txt",
+  -- Imperial Checkpoint: wildtextures.com no longer serves this jpg (404
+  -- page); the Wayback Machine still has the original (im_ = raw file).
+  ["http://www.wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg"] =
+    "http://web.archive.org/web/20230807160829im_/https://wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg",
+  -- Geonosis: infinitebucket.com is gone (dead DNS, nothing cached or
+  -- archived anywhere) — drop the decorative dust bundle instead of letting
+  -- every load print a red error.
+  ["http://infinitebucket.com/tts/scenesystem/dust.unity3d"] = "",
 }
 
 function repairDeadSteamHost(text)
