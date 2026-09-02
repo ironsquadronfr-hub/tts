@@ -243,10 +243,13 @@ function clearSilhouette()
 
     -- Guard against players who delete their minis!
     if obj then
-      for _, silToDestroy in ipairs(obj.removeAttachments() or {}) do
-        if silToDestroy then
-          pcall(function() silToDestroy.destruct() end)
-        end
+      -- May be empty: silhouettes are attachments and never survive a save
+      -- (setUp resets silhouetteState accordingly), and a mid-session reload
+      -- or state drift can leave nothing attached with the state still true.
+      -- Destructing that nil crashed the script.
+      local silToDestroy = obj.removeAttachments()[1]
+      if silToDestroy then
+        silToDestroy.destruct()
       end
     end
   end
