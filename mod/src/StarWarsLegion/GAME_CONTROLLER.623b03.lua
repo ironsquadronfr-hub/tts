@@ -663,27 +663,58 @@ end
 function spawnFromCartridgeDelay(spawnFromCartridgeObj)
     spawnFromCartridgeObj.setLock(true)
     Wait.frames(function()
-      spawnMapFromCartridge(spawnFromCartridgeObj)
-      destroyObject(spawnFromCartridgeObj)
+      spawnMapFromCartridge(spawnFromCartridgeObj, function()
+        destroyObject(spawnFromCartridgeObj)
+      end)
     end)
 end
 
 
-function spawnMapFromCartridge(selectedCartridge)
+-- Spawning the whole cartridge in one frame freezes the table for seconds
+-- (same failure mode as the list import): pump one object per frame instead,
+-- with progress on the screen. onDone runs once the cartridge is drained —
+-- callers that destroy the cartridge must do it there, not right after this
+-- call returns.
+mapDeployGeneration = 0
+
+function spawnMapFromCartridge(selectedCartridge, onDone)
     ga_event("Game", "spawnMapFromCartridge", selectedCartridge.getName())
     clearZones()
     changeBattlefieldTint(selectedCartridge.getTable("battlefieldTint"))
-    for i = 1, #selectedCartridge.getObjects(), 1 do
-      selectedCartridge.takeObject({
-        position          = {0,-10-i,0},
-        smooth            = false,
-        callback_function = function(spawnedObject)
-          Wait.frames(function()
-            placeTerrain(spawnedObject)
-          end)
-        end,
-    })
+    mapDeployGeneration = mapDeployGeneration + 1
+    local generation = mapDeployGeneration
+    local total = #selectedCartridge.getObjects()
+    local i = 0
+    local function pumpStep()
+      -- a newer map load owns the screen and the battlefield now
+      if generation ~= mapDeployGeneration then return end
+      if i >= total then
+        if onDone ~= nil then onDone() end
+        return
+      end
+      i = i + 1
+      -- pcall: the cartridge can vanish mid-cascade (player grabbed it)
+      local ok = pcall(function()
+        selectedCartridge.takeObject({
+          position          = {0,-10-i,0},
+          smooth            = false,
+          callback_function = function(spawnedObject)
+            Wait.frames(function()
+              placeTerrain(spawnedObject)
+            end)
+          end,
+        })
+      end)
+      if not ok then
+        if onDone ~= nil then onDone() end
+        return
+      end
+      if i % 10 == 0 or i == total then
+        printToScreen("LOADING MAP...\n\n" .. i .. " / " .. total, 80, 3)
+      end
+      Wait.frames(pumpStep, 1)
     end
+    pumpStep()
 end
 
 function clearZones()
@@ -994,9 +1025,10 @@ function downloadMapByUrl(url)
         json = JSON.encode(json.ObjectStates[1]),
         position = dataDiskMount.getPosition(),
         callback_function = function(disk)
-          spawnMapFromCartridge(disk)
-          disk.destroyObject()
-          mainMenu()
+          spawnMapFromCartridge(disk, function()
+            disk.destroyObject()
+            mainMenu()
+          end)
         end
       })
     end)
