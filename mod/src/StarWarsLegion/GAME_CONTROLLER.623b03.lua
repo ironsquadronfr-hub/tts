@@ -928,14 +928,22 @@ function downloadMap(mapIndex)
   downloadMapByUrl(url)
 end
 
+-- cloud-3.steamusercontent.com is gone (HTTP 403 on everything); Steam now
+-- serves the same UGC paths from Akamai. Repair both the map URL itself and
+-- every asset URL inside the downloaded map JSON.
+function repairDeadSteamHost(text)
+  local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
+  return repaired
+end
+
 function downloadMapByUrl(url)
-  WebRequest.get(url, function(data)
+  WebRequest.get(repairDeadSteamHost(url), function(data)
     -- TTS deletes the download handler after Wait.time, so copy the text.
     local text = data.text
     printToScreen("UNPACKING MAP...\n\nThis may take several seconds...")
     Wait.frames(function()
-      local json = JSON.decode(text)
-      if not json.ObjectStates then
+      local json = JSON.decode(repairDeadSteamHost(text))
+      if not json or not json.ObjectStates then
         printToAll("Failed to decode map.")
         return
       end
