@@ -691,7 +691,7 @@ local function initListSpawner(params)
       table.insert(tasks, function()
         Global.UI.setValue(
           textId,
-          banner .. "  ·  UNIT " .. i .. "/" .. totalUnits
+          banner .. "  -  UNIT " .. i .. "/" .. totalUnits
         )
         Global.UI.setAttribute(
           barId,

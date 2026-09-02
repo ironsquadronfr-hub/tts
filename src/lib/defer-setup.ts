@@ -8,7 +8,7 @@ import { ObjectState, SaveState } from '@matanlurey/tts-save-files';
  * Why: TTS creates a script context for every scripted object on the table
  * during the loading bar (~40ms each, measured) and binds every visible
  * asset in the first rendered frame. Objects inside a container pay neither
- * until they are taken out — and a takeObject of a scripted object costs
+ * until they are taken out - and a takeObject of a scripted object costs
  * ~40-50ms total, cheaper than the load-time path. Deferring therefore
  * shortens the loading bar and the post-load freeze, for the price of a
  * short, paced deployment cascade.
@@ -16,7 +16,7 @@ import { ObjectState, SaveState } from '@matanlurey/tts-save-files';
  * What gets deferred is COMPUTED, never listed by hand: the mod keeps
  * growing, and a hardcoded list would rot at the first object someone adds
  * or removes. An object is deferred when nothing that stays on the table
- * can miss it while the crate is still closed — see pickDeferrable.
+ * can miss it while the crate is still closed - see pickDeferrable.
  *
  * The crate's GMNotes carries the deployment manifest: original position,
  * rotation and lock state per object, in dependency order.
@@ -41,8 +41,8 @@ const NEVER_BAGGABLE = new Set([
  * script finds by scanning (getAllObjects plus a name, a tag or a GMNotes
  * mark) rather than by GUID, and that is needed before the cascade ends.
  *
- * Empty on purpose. The two load-time scans in the mod — Global's
- * standbyTokens and the rules panel indexing its lecterns — are replayed
+ * Empty on purpose. The two load-time scans in the mod - Global's
+ * standbyTokens and the rules panel indexing its lecterns - are replayed
  * once the cascade finishes, so neither needs an entry here. Add a GUID
  * with a comment saying who looks for it and why waiting is not an option.
  */
@@ -77,7 +77,7 @@ function walk(objects: ObjectState[], into: ObjectState[]): ObjectState[] {
  *
  * LuaScriptState matters as much as LuaScript: the battle decks keep the
  * GUIDs of their button and zone in their saved state and dereference them
- * in onLoad without a nil check — which is exactly how the first version
+ * in onLoad without a nil check - which is exactly how the first version
  * of this broke them.
  */
 function textsOf(objects: ObjectState[]): string[] {
@@ -103,7 +103,7 @@ function citedBy(texts: string[], guid: string): boolean {
  * resolves by GUID, computed to a fixpoint.
  *
  * The fixpoint matters. Dropping an object from the set turns it back into
- * a stayer, and a stayer's own references must then be honoured too — the
+ * a stayer, and a stayer's own references must then be honoured too - the
  * mod reaches its answer in three rounds.
  */
 function pickDeferrable(
@@ -125,7 +125,7 @@ function pickDeferrable(
 
   for (;;) {
     // The Global script stays whatever happens, and it names a great deal
-    // of the table — leaving it out was the fixpoint's first bug.
+    // of the table - leaving it out was the fixpoint's first bug.
     const stayingTexts: string[] = globalTexts.slice();
     for (const g of guids) {
       if (!candidates.has(g)) {
@@ -149,8 +149,8 @@ function pickDeferrable(
  * onLoad never resolves a sibling still in the crate. Ties keep the save's
  * own order, which keeps diffs readable.
  *
- * A reference cycle cannot be satisfied by any order — both objects would
- * need the other out first — so the whole cycle stays on the table.
+ * A reference cycle cannot be satisfied by any order - both objects would
+ * need the other out first - so the whole cycle stays on the table.
  */
 function orderForDeployment(
   roots: ObjectState[],
@@ -246,7 +246,7 @@ export function deferSetup(save: SaveState): void {
     if (citedBy(stayingTexts, guid)) {
       throw new Error(
         `Deferred ${guid} is still referenced by an object that stays on ` +
-          `the table — the deferrable fixpoint is wrong.`,
+          `the table - the deferrable fixpoint is wrong.`,
       );
     }
   }
@@ -257,10 +257,11 @@ export function deferSetup(save: SaveState): void {
       if (
         guid !== o.GUID &&
         citedBy(texts, guid) &&
-        (position.get(guid) as number) > (position.get(o.GUID as string) as number)
+        (position.get(guid) as number) >
+          (position.get(o.GUID as string) as number)
       ) {
         throw new Error(
-          `Deferred ${o.GUID} references ${guid}, which deploys later — ` +
+          `Deferred ${o.GUID} references ${guid}, which deploys later - ` +
             `the deployment sort is wrong.`,
         );
       }

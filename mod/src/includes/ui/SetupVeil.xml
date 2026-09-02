@@ -13,7 +13,7 @@
          (26% of the width), full height, black at 65%;
        - the logo is 213x148, centred in the band, its top 94px down;
        - the orange rule is 6px tall, flush with the top edge, spanning the
-         screen — it is the progress bar, filling left to right.
+         screen - it is the progress bar, filling left to right.
 
      Declared active: the veil has to be up when TTS reveals the table and
      plays its entry camera move, which happens long before Global's onload
@@ -272,7 +272,7 @@
     <Text fontSize="13" fontStyle="Bold" color="#E8801A"
       alignment="UpperLeft" preferredHeight="20">THIS MOD</Text>
     <Text fontSize="13" color="#C9D2E0" alignment="UpperLeft"
-      preferredHeight="82">Bind these in Options → Game Keys: range or
+      preferredHeight="82">Bind these in Options -> Game Keys: range or
 cohesion on the hovered model; aim, dodge, smoke or
 suppression to the cursor; the chess clocks.</Text>
 </VerticalLayout>
@@ -296,7 +296,7 @@ suppression to the cursor; the chess clocks.</Text>
      Flush with the top of the UI frame, which is as high as it goes: TTS
      starts that frame a little under the window's edge and covers the gap
      with its own toolbar, so a rule nudged above the frame is hidden
-     rather than raised — tried, and it vanished. -->
+     rather than raised - tried, and it vanished. -->
 <Panel
   id="setupVeilBar"
   active="true"

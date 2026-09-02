@@ -5,7 +5,7 @@
 -- An object inside a container pays neither its script context nor its
 -- asset bind while the table loads (measured: ~40ms of loading bar per
 -- scripted object, plus its share of the first-frame freeze), and a paced
--- takeObject costs ~40-50ms per object — invisible behind the veil.
+-- takeObject costs ~40-50ms per object - invisible behind the veil.
 --
 -- The veil starts ON, declared active in the XML, so it is already up when
 -- TTS reveals the table and plays its entry camera move: by the time it
@@ -13,7 +13,7 @@
 -- and a timeout lowers it even if onload dies halfway.
 --
 -- Idempotent by construction: an undo or a save replays Global's onload,
--- so everything is recomputed from what actually exists — an object
+-- so everything is recomputed from what actually exists - an object
 -- already on the table is never taken again, an empty crate lowers the
 -- veil at once.
 
@@ -37,7 +37,7 @@ local VEIL_MINIMUM_SECONDS = 3
 local VEIL_ASSET_WAIT_SECONDS = 90
 
 -- Veil artwork. The backdrops are 16:9, with no text and no dark band of
--- their own — the band and the shortcut sheet are drawn by the XML on top,
+-- their own - the band and the shortcut sheet are drawn by the XML on top,
 -- so they stay put whatever the player's screen ratio does to the picture.
 -- One is picked per load; the url is here because a TTS Image gives no
 -- loaded callback, so the file is asked for over the network first and the
@@ -68,7 +68,7 @@ end
 
 -- An Image whose texture has not downloaded yet renders as a white
 -- rectangle, which washes out the sheet over it. The XML tints the picture
--- black, and the tint is only lifted once the file has answered — so a
+-- black, and the tint is only lifted once the file has answered - so a
 -- cold cache, a dead host or no network shows the dark veil, never a white
 -- flash.
 local function veilRevealArt(gen, choice)
@@ -80,6 +80,9 @@ local function veilRevealArt(gen, choice)
     UI.setAttribute('setupVeilArt', 'color', '#FFFFFFFF')
   end)
 end
+
+-- Last progress repaint, shared by veilDress and veilProgress below.
+local lastProgressAt = 0
 
 local function veilDress(gen, total)
   UI.setAttribute('setupVeilArt', 'color', '#000000FF')
@@ -109,8 +112,6 @@ end
 -- Throttled on purpose: every UI.setAttribute makes TTS rebuild the UI,
 -- and doing that twice per frame across the cascade costs far more than
 -- the deployment itself.
-local lastProgressAt = 0
-
 local function veilProgress(done, total, force)
   local now = os.clock()
   if not force and now - lastProgressAt < 0.2 then return end
@@ -122,10 +123,12 @@ end
 
 -- Called first thing in Global's onload, before anything that can throw.
 function armSetupVeil()
-  local gen = deployGeneration + 1
+  -- The whole point of this timer is the onload that throws between here
+  -- and initDeferredSetup: no generation is ever opened in that case, so
+  -- the only thing worth testing is whether a cascade started at all.
   cascadeStarted = false
   Wait.time(function()
-    if gen == deployGeneration and not cascadeStarted then veilHide() end
+    if not cascadeStarted then veilHide() end
   end, VEIL_TIMEOUT_SECONDS)
 end
 
@@ -157,7 +160,7 @@ local function veilLower(gen, raisedAt)
 end
 
 -- A crated object downloads its model and texture when it is taken out,
--- not while the table loads — so on a first ever load the cascade hands
+-- not while the table loads - so on a first ever load the cascade hands
 -- the engine 85 objects with nothing to draw yet. Rather than drop the
 -- veil onto furniture texturing itself in front of the player, wait for
 -- the engine to report them all loaded (loading_custom), capped so a dead
@@ -175,7 +178,7 @@ local function waitForAssets(gen, deployed, raisedAt, waitedFor)
     veilLower(gen, raisedAt)
     return
   end
-  UI.setValue('setupVeilCount', 'downloading models — ' .. pending .. ' left')
+  UI.setValue('setupVeilCount', 'downloading models - ' .. pending .. ' left')
   Wait.time(function()
     waitForAssets(gen, deployed, raisedAt, waitedFor + 0.5)
   end, 0.5)
@@ -243,7 +246,7 @@ function initDeferredSetup()
   end
   local gen = deployGeneration
   -- Dressing the veil is cosmetic; the furniture is not. An error in the
-  -- UI must never be what stops the table from being set up — which is
+  -- UI must never be what stops the table from being set up - which is
   -- exactly what happened the first time this shipped.
   pcall(function() veilDress(gen, #pending) end)
   cascadeStarted = true
