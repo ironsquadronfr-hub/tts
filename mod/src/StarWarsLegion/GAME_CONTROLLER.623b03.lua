@@ -997,31 +997,22 @@ DEAD_UGC_SWAPS = {
   -- page); the Wayback Machine still has the original (im_ = raw file).
   ["http://www.wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg"] =
     "http://web.archive.org/web/20230807160829im_/https://wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg",
-  -- Geonosis: infinitebucket.com is gone (dead DNS, nothing cached or
-  -- archived anywhere) — drop the decorative dust bundle instead of letting
-  -- every load print a red error.
+  -- Geonosis: infinitebucket.com is gone, dead DNS, and no copy survives in
+  -- any cache or archive. Nothing can bring this decorative dust effect
+  -- back, so drop it rather than keep pointing at a host that will never
+  -- answer again.
   ["http://infinitebucket.com/tts/scenesystem/dust.unity3d"] = "",
 }
 
--- Escaped once at load: gsub needs a pattern with the magic characters
--- quoted, find needs the raw text. Building these on every call would redo
--- the work for every map.
-DEAD_UGC_REPAIRS = {}
-for dead, alive in pairs(DEAD_UGC_SWAPS) do
-  table.insert(DEAD_UGC_REPAIRS, {
-    dead = dead,
-    pattern = dead:gsub("%W", "%%%0"),
-    alive = (alive:gsub("%%", "%%%%")),
-  })
-end
-
 function repairDeadSteamHost(text)
   local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
-  for _, repair in ipairs(DEAD_UGC_REPAIRS) do
+  for dead, alive in pairs(DEAD_UGC_SWAPS) do
     -- A gsub rebuilds the whole string, and a map file is 70-160 KB, so never
-    -- run one blind: any given map carries at most one of these.
-    if repaired:find(repair.dead, 1, true) then
-      repaired = repaired:gsub(repair.pattern, repair.alive)
+    -- run one blind: a map carries at most a couple of these. Escape only the
+    -- ones that hit — gsub wants the magic characters quoted, find wants the
+    -- raw text.
+    if repaired:find(dead, 1, true) then
+      repaired = repaired:gsub(dead:gsub("%W", "%%%0"), (alive:gsub("%%", "%%%%")))
     end
   end
   return repaired
@@ -1029,7 +1020,7 @@ end
 
 function downloadMapByUrl(url)
   WebRequest.get(repairDeadSteamHost(url), function(data)
-    -- TTS deletes the download handler after Wait.time, so copy the text.
+    -- Read data.text now: TTS drops the download handler as soon as we yield.
     unpackMap(data.text)
   end)
 end
@@ -1049,8 +1040,8 @@ end
 
 -- Cut the cartridge out of the downloaded text without parsing it.
 --
--- Measured on Martin's machine: JSON.decode of a map costs 1.7 to 5.5 s in
--- MoonSharp, while the engine parses the very same JSON in 0.07 s inside
+-- Measured in game: JSON.decode of a map costs 1.7 to 5.5 s in MoonSharp,
+-- while the engine parses the very same JSON in 0.07 s inside
 -- spawnObjectJSON. So the fastest decode is the one we never run — hand the
 -- raw substring to the engine and let it do the single parse.
 --
@@ -1083,68 +1074,42 @@ function extractCartridgeJson(text)
 end
 
 -- Unpacking used to repair the links, decode 70-160 KB of JSON and encode the
--- cartridge back out, all in one frame — seconds of frozen table. Each step
--- now gets its own frame and names itself on the screen, and each is timed
--- into one console line so a slow map can still be diagnosed.
+-- cartridge back out, all in one frame — seconds of frozen table. The decode
+-- and the encode are gone (see extractCartridgeJson); the link repair still
+-- rebuilds the whole string, 0.07 to 0.41 s measured, so it waits a frame to
+-- let the label paint first. Cutting the cartridge out costs 0.14 ms and
+-- rides along in the same frame.
 function unpackMap(text)
-  local state = {text = text}
-  local timings = {}
-  local steps = {
-    {"REPAIRING LINKS", function()
-      state.text = repairDeadSteamHost(state.text)
-      if not state.text:find('"ObjectStates"', 1, true) then
-        return "Failed to download map."
-      end
-    end},
-    {"UNPACKING MAP", function()
-      state.json = extractCartridgeJson(state.text)
-      if state.json == nil then
-        -- Unexpected shape: pay for the full decode rather than fail.
-        local map = JSON.decode(state.text)
-        if not map or not map.ObjectStates or not map.ObjectStates[1] then
-          return "Failed to decode map."
-        end
-        state.json = JSON.encode(map.ObjectStates[1])
-      end
-      state.text = nil
-    end},
-  }
-
-  local function runStep(index)
-    if index > #steps then
-      return spawnUnpackedMap(state.json, timings)
+  printToScreen("UNPACKING MAP...", 80, 3)
+  Wait.frames(function()
+    text = repairDeadSteamHost(text)
+    if not text:find('"ObjectStates"', 1, true) then
+      printToAll("Failed to download map.")
+      return
     end
-    local label, work = steps[index][1], steps[index][2]
-    printToScreen(label .. "...\n\nThis may take several seconds...", 80, 3)
-    Wait.frames(function()
-      local started = os.clock()
-      local failure = work()
-      table.insert(timings, string.format("%s %.2fs", label:lower(), os.clock() - started))
-      if failure then
-        printToAll(failure)
-        print("[ISQ MAP] " .. table.concat(timings, " · ") .. " — " .. failure)
+    local json = extractCartridgeJson(text)
+    if json == nil then
+      -- Unexpected shape: pay for the full decode rather than fail.
+      local map = JSON.decode(text)
+      if not map or not map.ObjectStates or not map.ObjectStates[1] then
+        printToAll("Failed to decode map.")
         return
       end
-      runStep(index + 1)
-    end, 1)
-  end
-  runStep(1)
-end
-
-function spawnUnpackedMap(json, timings)
-  local started = os.clock()
-  spawnObjectJSON({
-    json = json,
-    position = dataDiskMount.getPosition(),
-    callback_function = function(disk)
-      table.insert(timings, string.format("spawn %.2fs", os.clock() - started))
-      print("[ISQ MAP] " .. table.concat(timings, " · "))
-      spawnMapFromCartridge(disk, function()
-        disk.destroyObject()
-        mainMenu()
-      end)
+      json = JSON.encode(map.ObjectStates[1])
     end
-  })
+    -- Don't hold the whole file alive through the spawn cascade.
+    text = nil
+    spawnObjectJSON({
+      json = json,
+      position = dataDiskMount.getPosition(),
+      callback_function = function(disk)
+        spawnMapFromCartridge(disk, function()
+          disk.destroyObject()
+          mainMenu()
+        end)
+      end
+    })
+  end, 1)
 end
 
 function createMenu(optionTable, selectedIndex)
