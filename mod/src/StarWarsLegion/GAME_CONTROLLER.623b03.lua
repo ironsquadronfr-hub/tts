@@ -686,7 +686,7 @@ end
 
 -- Spawning the whole cartridge in one frame freezes the table for seconds
 -- (same failure mode as the list import): pump one object per frame instead,
--- with progress on the screen. onDone runs once the cartridge is drained —
+-- with progress on the screen. onDone runs once the cartridge is drained -
 -- callers that destroy the cartridge must do it there, not right after this
 -- call returns.
 mapDeployGeneration = 0
@@ -741,7 +741,9 @@ function spawnMapFromCartridge(selectedCartridge, onDone)
           end,
         })
       end)
-      if not ok then return finish(true) end
+      -- The player took the cartridge: nobody else owns the screen, so the
+      -- menu must come back (the caller then drops its dead disk handle).
+      if not ok then return finish(false) end
       if i % 10 == 0 or i == total then
         printToScreen("LOADING MAP...\n\n" .. i .. " / " .. total, 80, 3)
       end
@@ -871,7 +873,7 @@ function placeTerrain(paObj)
     local spawnPos = paObj.getTable("position")
     local spawnRot = paObj.getTable("rotation")
     -- A cartridge holds where each piece goes in the piece's own script. A
-    -- piece saved without one, or whose asset failed to build, has neither —
+    -- piece saved without one, or whose asset failed to build, has neither -
     -- and setPosition(nil) raises, which used to kill the rest of the map.
     -- Leave it where it landed and name it instead.
     if spawnPos == nil or spawnRot == nil then
@@ -1048,7 +1050,7 @@ function repairDeadSteamHost(text)
   for dead, alive in pairs(DEAD_UGC_SWAPS) do
     -- A gsub rebuilds the whole string, and a map file is 70-160 KB, so never
     -- run one blind: a map carries at most a couple of these. Escape only the
-    -- ones that hit — gsub wants the magic characters quoted, find wants the
+    -- ones that hit - gsub wants the magic characters quoted, find wants the
     -- raw text.
     if repaired:find(dead, 1, true) then
       repaired = repaired:gsub(dead:gsub("%W", "%%%0"), (alive:gsub("%%", "%%%%")))
@@ -1081,15 +1083,16 @@ end
 --
 -- Measured in game: JSON.decode of a map costs 1.7 to 5.5 s in MoonSharp,
 -- while the engine parses the very same JSON in 0.07 s inside
--- spawnObjectJSON. So the fastest decode is the one we never run — hand the
+-- spawnObjectJSON. So the fastest decode is the one we never run - hand the
 -- raw substring to the engine and let it do the single parse.
 --
 -- The shape a TTS save export produces is fixed, and it holds on all ten
 -- featured maps: ObjectStates carries exactly one object, and the top-level
 -- LuaScript / LuaScriptState / XmlUI / VersionNumber keys come after it.
--- Nested scripts appear inside JSON strings, where the quotes are escaped,
--- so the last plain `"LuaScript"` in the file is the top-level one — and the
--- cartridge ends at the last } before the ] just above it.
+-- The contained objects carry plain `"LuaScript"` keys of their own, but the
+-- ObjectStates array closes before the top-level LuaScript key, so the last
+-- occurrence in the file is always the top-level one - and the cartridge
+-- ends at the last } before the ] just above it.
 function extractCartridgeJson(text)
   local arrayKey = text:find('"ObjectStates"', 1, true)
   if not arrayKey then return nil end
@@ -1113,7 +1116,7 @@ function extractCartridgeJson(text)
 end
 
 -- Unpacking used to repair the links, decode 70-160 KB of JSON and encode the
--- cartridge back out, all in one frame — seconds of frozen table. The decode
+-- cartridge back out, all in one frame - seconds of frozen table. The decode
 -- and the encode are gone (see extractCartridgeJson); the link repair still
 -- rebuilds the whole string, 0.07 to 0.41 s measured, so it waits a frame to
 -- let the label paint first. Cutting the cartridge out costs 0.14 ms and
@@ -1156,7 +1159,7 @@ function unpackMap(text)
     })
     -- extractCartridgeJson trusts the shape of the file, and the featured
     -- list is fetched live, so one day a map may not match it. The engine
-    -- rejects JSON it cannot read by never calling back at all — without
+    -- rejects JSON it cannot read by never calling back at all - without
     -- this the screen would sit on UNPACKING MAP for ever, saying nothing.
     Wait.time(function()
       if not spawned then
