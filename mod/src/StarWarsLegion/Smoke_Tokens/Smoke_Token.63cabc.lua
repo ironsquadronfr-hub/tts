@@ -25,7 +25,7 @@ require('!/TokenWithRangeRuler')
 -- ⚠ NE PAS PASSER A UN r14 : un bundle portant ce nom a ete construit le 16/08
 -- pour tester l'extinction en douceur, il n'a jamais ete publie et n'apporte
 -- rien (cf le bloc « ADOUCIR LA DISPARITION » plus bas). r13 reste la reference.
-ISQ_SMOKE_BUNDLE = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/isq_smoke_volume_r13.unity3d"
+ISQ_SMOKE_BUNDLE = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-token-assets/smoke_volume.unity3d"
 ISQ_SILH_NOTCHED = 2.707   -- templateInfo.silhouetteHeight.notched
 -- Rayon du prefab : 6.37008, releve sur l'anneau que le mod affiche deja
 -- (projector_smokeToken : demi-socle 18,8 mm + 6 pouces). Il n'apparait pas ici

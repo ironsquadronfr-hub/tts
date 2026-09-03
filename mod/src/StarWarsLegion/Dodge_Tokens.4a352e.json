@@ -38,7 +38,7 @@
     "MeshIndex": -1,
     "CustomMesh": {
       "MeshURL": "https://steamusercontent-a.akamaihd.net/ugc/786359883314442740/91C08C293B53CCF3D104B0472B60ECF7BF4B613E/",
-      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/dodge_v2_r2.jpg",
+      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-token-assets/dodge_v2.jpg",
       "NormalURL": "",
       "ColliderURL": "",
       "Convex": true,
