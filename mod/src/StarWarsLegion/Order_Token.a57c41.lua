@@ -1173,17 +1173,18 @@ local function losLog(msg)
     if LOS_DEBUG then print("[ISQ LDV] " .. msg) end
 end
 
--- Progress rule along the top of the screen (the isqLosBar element of the
--- Global XML), so a long pass visibly keeps working.
+-- The progress rule along the top of the screen (isqProgressRule in the
+-- Global XML, the same band every loading indicator of the mod uses), so a
+-- long pass visibly keeps working.
 function losBarSet(pct)
     pcall(function()
-        UI.setAttribute("isqLosBar", "active", "true")
-        UI.setAttribute("isqLosFill", "percentage", tostring(pct))
+        UI.setAttribute("isqProgressRuleFill", "width", math.floor(pct) .. "%")
+        UI.setAttribute("isqProgressRule", "active", "true")
     end)
 end
 
 function losBarHide()
-    pcall(function() UI.setAttribute("isqLosBar", "active", "false") end)
+    pcall(function() UI.setAttribute("isqProgressRule", "active", "false") end)
 end
 
 losGeneration = 0
@@ -1264,9 +1265,7 @@ function losCorridorObbs(ctx, defPos, pad)
             t = math.max(0, math.min(1, (bx * dx + bz * dz) / len2))
         end
         local ex, ez = bx - t * dx, bz - t * dz
-        local reach = math.sqrt(obb.half.x ^ 2 + obb.half.y ^ 2 + obb.half.z ^ 2)
-            + math.sqrt(obb.center.x ^ 2 + obb.center.y ^ 2 + obb.center.z ^ 2)
-            + pad
+        local reach = obb.reach + pad
         if ex * ex + ez * ez <= reach * reach then
             table.insert(kept, obb)
         end
@@ -1313,6 +1312,12 @@ function losIsTerrain(ctx, o)
     if o.name == "Custom_Assetbundle" then return false end
     local t = o.type
     if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
+        return false
+    end
+    -- Zones have bounds but nothing to see: scripting and hand zones, fog,
+    -- randomize and layout zones would otherwise become empty boxes that every
+    -- corridor ray has to test.
+    if t == "Scripting" or t == "Hand" or t == "FogOfWar" or t == "Randomize" or t == "Layout" then
         return false
     end
     local name = string.lower(o.getName() or "")
@@ -1373,6 +1378,10 @@ function losMakeObb(obj)
         scz = (s.z ~= 0 and s.z or 1),
         center = {x = b.center.x - p.x, y = b.center.y - p.y, z = b.center.z - p.z},
         half = {x = b.size.x / 2, y = b.size.y / 2, z = b.size.z / 2},
+        -- How far from its position the box can reach, in any direction:
+        -- the corridor test needs it once per box and per defender.
+        reach = math.sqrt(b.size.x ^ 2 + b.size.y ^ 2 + b.size.z ^ 2) / 2
+            + math.sqrt((b.center.x - p.x) ^ 2 + (b.center.y - p.y) ^ 2 + (b.center.z - p.z) ^ 2),
         url = url,
     }
 end
