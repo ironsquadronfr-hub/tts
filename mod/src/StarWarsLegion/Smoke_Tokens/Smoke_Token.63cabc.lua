@@ -22,6 +22,9 @@ require('!/TokenWithRangeRuler')
 -- Consequence : la hauteur ne se regle pas non plus par l'echelle. Pour
 -- descendre jusqu'a la table quand le jeton est perche, on EMPILE des copies.
 
+-- ⚠ NE PAS PASSER A UN r14 : un bundle portant ce nom a ete construit le 16/08
+-- pour tester l'extinction en douceur, il n'a jamais ete publie et n'apporte
+-- rien (cf le bloc « ADOUCIR LA DISPARITION » plus bas). r13 reste la reference.
 ISQ_SMOKE_BUNDLE = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-tokens-v2/mod/data/tokens-v2/isq_smoke_volume_r13.unity3d"
 ISQ_SILH_NOTCHED = 2.707   -- templateInfo.silhouetteHeight.notched
 -- Rayon du prefab : 6.37008, releve sur l'anneau que le mod affiche deja
@@ -31,9 +34,17 @@ ISQ_SMOKE_HAUT   = 2.707   -- hauteur du prefab
 ISQ_SMOKE_MAXCOP = 5       -- garde-fou : chaque copie coute ~160 particules
 ISQ_P2 = 12.0              -- portee 2 = 12 pouces = 12 unites TTS (1 pouce = 1 unite ici)
 
--- Vitesse d'approche de la hauteur cible, par image physique. 0.12 amene le
--- volume a destination en environ une demi-seconde.
-ISQ_APPROCHE = 0.12
+-- ⚠ Tolerance de comparaison des hauteurs, en unites TTS. Sert a decider si deux
+-- volumes se touchent ou s'il reste un trou entre eux. Assez large pour absorber
+-- le bruit de getPosition, assez fine devant le pas de 2.707.
+ISQ_EPS_Y = 0.02
+
+-- ⚠ Vide tolere entre deux volumes, en unites TTS. Comme les volumes conservés
+-- ne bougent plus, le raccord avec la tete ne tombe jamais pile et un petit
+-- interstice peut s'ouvrir. Le combler couterait une copie entiere (~160
+-- particules) posee presque au meme endroit qu'une existante : sous ce seuil on
+-- laisse le vide, invisible dans de la fumee diffuse. 0.4 = 15 % du pas.
+ISQ_TROU_TOLERE = 0.4
 
 isqSmokeGUIDs = {}
 isqSmokeVeut = false       -- etat VOULU, distinct de l'etat affiche
@@ -138,7 +149,50 @@ ISQ_COULEURS = {
   "White", "Brown", "Red", "Orange", "Yellow", "Green",
   "Teal", "Blue", "Purple", "Pink", "Grey", "Black",
 }
-ISQ_DELAI_REVEL = 0.4
+-- Delai avant de devoiler un volume neuf, le temps que TTS charge l'assetbundle
+-- et cesse d'afficher son cube de remplacement.
+--
+-- ⚠ DEUX VALEURS, et c'est volontaire. Le volume nait invisible et continue
+-- d'emettre pendant qu'il est masque : plus on le devoile tard, plus il apparait
+-- DEJA DENSE, donc plus son apparition est brutale. Les 0,4 s ne se justifient
+-- qu'a froid, quand aucun volume n'existe encore et que l'asset peut ne pas etre
+-- charge. Des qu'il y a deja de la fumee en scene, l'asset est en cache, le cube
+-- ne peut plus apparaitre, et on devoile presque tout de suite pour que la copie
+-- neuve monte en charge SOUS LES YEUX du joueur au lieu de surgir a moitie faite.
+ISQ_DELAI_REVEL = 0.4        -- a froid : aucun volume en scene
+ISQ_DELAI_REVEL_CHAUD = 0.05 -- a chaud : l'asset est deja charge
+
+-- ⚠⚠ ADOUCIR LA DISPARITION : TROIS PISTES ESSAYEES, TOUTES ECARTEES.
+-- Un volume retire — typiquement la tete, quand le jeton redescend — s'efface
+-- aujourd'hui d'un coup. C'est le seul defaut connu qui reste. Tout ce qui suit
+-- a ete teste EN JEU le 16/08 ; ne pas le refaire.
+--
+-- 1. FONDU PAR setColorTint. Le shader de particules du prefab IGNORE la teinte.
+--    Baisser l'alpha ne change rien a l'image.
+--
+-- 2. ENFOUISSEMENT sous le plateau, pour que la table masque le volume a mesure
+--    qu'il descend. Techniquement operationnel, mais le rendu ne va pas.
+--
+-- 3. COUPER L'EMISSION depuis Lua, avec le bundle tel qu'il etait. Impossible :
+--      setLoopingEffectIndex  n'existe pas  (« cannot access field »)
+--      getLoopingEffects      renvoie null  -> AUCUN effet declare dans le bundle
+--      playLoopingEffect(1)   renvoie ok    -> et ne fait rien, faute d'effet
+--
+-- 4. AJOUTER L'EFFET MANQUANT AU BUNDLE, puis basculer dessus. C'etait la suite
+--    logique de la 3, et la seule qui restait. Un bundle r14 a ete construit avec
+--    un composant TTSAssetBundleEffects declarant deux boucles — « Fumee », qui
+--    reference le systeme de particules, et « Eteint », vide — puis teste en
+--    local via le cache TTS. VERDICT : le nuage coupe toujours d'un coup. TTS ne
+--    se contente pas d'arreter l'effet sortant, il le PURGE : les bouffees deja
+--    nees sont effacees au lieu de finir leur vie. Le bundle r14 n'a donc jamais
+--    ete publie et r13 reste la reference.
+--
+-- ⚠⚠ SUJET CLOS. Les quatre prises possibles — opacite, geometrie, pilotage de
+-- l'emission, contenu du bundle — sont epuisees. La disparition seche n'est pas
+-- un manque de soin, c'est une limite de TTS : le moteur ne laisse jamais un
+-- systeme de particules s'eteindre progressivement sur commande. Ne pas rouvrir
+-- sans element nouveau du cote de TTS lui-meme.
+ISQ_FONDU = 0          -- garde pour memoire ; plus aucun mecanisme derriere
 
 -- ⚠ PAS DE onPickUp : la fumee SUIT le jeton pendant qu'on le deplace.
 -- Il y en avait un, qui garait les volumes le temps du deplacement, contre la
@@ -195,11 +249,12 @@ function isqGroundY()
   return bas or (p.y - 0.4)   -- rien touche : on suppose le jeton pose sur la table
 end
 
--- Les hauteurs de base des copies a empiler, du haut vers le bas.
--- Sortie en fonction a part pour que la CREATION et le REPOSITIONNEMENT
--- partagent le meme calcul : c'est en le comparant au nombre d'objets existants
--- qu'on decide si un simple deplacement suffit.
-function isqSmokePlan()
+-- Geometrie de la colonne au moment du lacher. Deux valeurs seulement, car on ne
+-- calcule plus de grille complete : les volumes deja poses gardent leur hauteur
+-- et ne sont donc alignes sur rien (cf isqSmokeShow).
+--   yTete = hauteur de base du volume du HAUT. Seule hauteur imposee.
+--   sol   = plancher sous lequel il est inutile d'empiler.
+function isqSmokeGeometrie()
   local b = self.getBounds()
   local sommetJeton = b.center.y + b.size.y * 0.5
   local basJeton = b.center.y - b.size.y * 0.5
@@ -215,25 +270,12 @@ function isqSmokePlan()
   -- a plat perdait deja les 6 cm d'epaisseur du jeton. En ancrant par le haut,
   -- c'est le BAS qui deborde, et il deborde sous la table, ou le plateau le
   -- masque : le seul cote ou un debordement ne coute rien.
-  local sommetVolume = sommetJeton + ISQ_SILH_NOTCHED
-  local pas = ISQ_SMOKE_HAUT   -- aucune mise a l'echelle : le prefab est aux cotes
-
-  local plan = {}
-  for i = 0, ISQ_SMOKE_MAXCOP - 1 do
-    local sommetCopie = sommetVolume - i * pas
-    -- On s'arrete des qu'une copie supplementaire ne depasserait presque plus du
-    -- sol : elle serait masquee par le plateau et couterait ses ~160 particules
-    -- pour rien. Le seuil de 8 % evite le cas frequent du jeton POSE A PLAT, ou
-    -- les 6 cm d'epaisseur du jeton declenchaient a eux seuls une copie entiere.
-    if i > 0 and sommetCopie <= sol + 0.08 * pas then break end
-    table.insert(plan, sommetCopie - pas)
-  end
-  return plan
+  return sommetJeton + ISQ_SILH_NOTCHED - ISQ_SMOKE_HAUT, sol
 end
 
 -- Cree UN volume a la hauteur donnee. Renvoie son GUID, ou nil si la hauteur
 -- n'est pas exploitable.
-function isqSmokeCreerUn(baseY)
+function isqSmokeCreerUn(baseY, delai)
   -- ⚠ baseY est INTERPOLE DANS DU CODE LUA. Un inf ou un nan (bornes d'objet
   -- degenerees) produirait « baseY = nan », qui n'est pas du Lua valide : le
   -- script de l'enfant ne compilerait pas, en silence. On verifie donc que le
@@ -245,31 +287,35 @@ function isqSmokeCreerUn(baseY)
 
   -- Suivi confie a l'objet lui-meme, comme le fait deja spawnRangeRuler : evite
   -- une minuterie Lua par jeton, qui tournerait en permanence.
-  -- ⚠⚠ LE GLISSEMENT SE FAIT ICI, PAS AVEC setPositionSmooth.
-  -- setPositionSmooth reveille la physique de l'objet : meme avec collide=false,
-  -- TTS le deplace comme un objet mobile le temps de l'animation, et ca part en
-  -- collisions. On interpole donc la hauteur nous-memes et on pose l'objet avec
+  -- ⚠⚠ SURTOUT PAS setPositionSmooth. Il reveille la physique de l'objet : meme
+  -- avec collide=false, TTS le deplace comme un objet mobile le temps de
+  -- l'animation, et ca part en collisions. On pose donc l'objet avec
   -- setPosition, qui est un placement direct, sans physique.
-  --   baseY  = hauteur courante, qui approche cibleY image par image
-  --   cibleY = hauteur voulue, que le parent met a jour au changement de niveau
-  -- Le suivi en x/z reste instantane : c'est seulement la hauteur qui glisse.
+  --
+  -- ⚠ ET AUCUNE INTERPOLATION DE HAUTEUR NON PLUS. Une version precedente
+  -- faisait glisser le volume vers sa nouvelle hauteur sur une demi-seconde,
+  -- pour adoucir le repositionnement. C'etait une erreur : le decalage a adoucir
+  -- ne valait que 0,2 a 0,8, il etait imperceptible tant qu'il etait instantane,
+  -- et l'etaler dans le temps l'a rendu parfaitement visible — on voyait le
+  -- disque de fumee du bas traverser la table. Depuis, les volumes conservés ne
+  -- bougent tout simplement plus en hauteur (cf isqSmokeShow), donc il n'y a
+  -- plus rien a adoucir.
+  --
+  --   cibleY = hauteur de ce volume. FIGEE apres la creation, sauf pour le
+  --            volume de TETE, seul a suivre le jeton en hauteur.
+  -- Le suivi en x/z, lui, reste permanent pour tous : la colonne accompagne le
+  -- jeton quand on le fait glisser sur la table.
   local suivi =
     "cible = '" .. self.getGUID() .. "'\n" ..
-    "baseY = " .. tostring(baseY) .. "\n" ..
     "cibleY = " .. tostring(baseY) .. "\n" ..
-    "approche = " .. tostring(ISQ_APPROCHE) .. "\n" ..
     "function onFixedUpdate()\n" ..
     "  local t = getObjectFromGUID(cible)\n" ..
     "  if t == nil then return end\n" ..
-    "  if math.abs(cibleY - baseY) > 0.001 then\n" ..
-    "    baseY = baseY + (cibleY - baseY) * approche\n" ..
-    "    if math.abs(cibleY - baseY) < 0.005 then baseY = cibleY end\n" ..
-    "  end\n" ..
     "  local q = t.getPosition()\n" ..
     "  local m = self.getPosition()\n" ..
     "  if math.abs(q.x - m.x) > 0.001 or math.abs(q.z - m.z) > 0.001\n" ..
-    "     or math.abs(baseY - m.y) > 0.001 then\n" ..
-    "    self.setPosition({q.x, baseY, q.z})\n" ..
+    "     or math.abs(cibleY - m.y) > 0.001 then\n" ..
+    "    self.setPosition({q.x, cibleY, q.z})\n" ..
     "  end\n" ..
     "end"
 
@@ -305,34 +351,46 @@ function isqSmokeCreerUn(baseY)
   Wait.time(function()
     local o = getObjectFromGUID(g)
     if o then o.setInvisibleTo({}) end
-  end, ISQ_DELAI_REVEL)
+  end, delai or ISQ_DELAI_REVEL)
   return g
 end
 
--- ⚠⚠ AJUSTEMENT INCREMENTAL, PAR PROXIMITE.
--- Deux choses a comprendre ensemble.
+-- ⚠⚠ LES VOLUMES CONSERVES NE BOUGENT PAS. C'est la regle qui organise toute
+-- cette fonction, et il faut la garder en tete avant d'y toucher.
 --
--- 1. La pile est ancree PAR LE HAUT : le sommet doit tomber sur
---    (sommet du jeton + 2.707). Quand le jeton monte, TOUTES les hauteurs
---    planifiees montent, et plan[1] est la copie du HAUT.
--- 2. On conserve les volumes deja en place et on ne cree que ce qui manque —
---    seules les copies neuves rejouent donc la montee en charge de la fumee.
+-- Ce qu'il y avait avant : une grille de hauteurs recalculee a chaque lacher, sur
+-- laquelle on redistribuait les volumes existants par proximite. Comme la grille
+-- est indexee sur le sommet du jeton, elle se translate EN ENTIER des que le
+-- jeton change d'altitude — donc chaque volume conserve devait se decaler de 0,2
+-- a 0,8 pour la rejoindre. Instantane, ce decalage passait inapercu ; adouci par
+-- une interpolation, il devenait un disque de fumee qui traverse la table sous
+-- les yeux du joueur. Les deux versions montraient un mouvement que rien ne
+-- justifie : la fumee posee au sol n'a aucune raison de bouger parce que le jeton
+-- est monte sur une caisse.
 --
--- ⚠ Combiner les deux avec un appariement POSITIONNEL (volume[i] -> plan[i])
--- donne l'inverse de ce qu'on veut : en montant sur un decor, le volume qui
--- existait AU SOL est reaffecte au sommet — il saute d'un etage — pendant qu'une
--- copie neuve eclot en bas, la ou il y avait deja de la fumee. On apparie donc
--- par PROXIMITE : chaque volume garde la hauteur planifiee la plus proche de la
--- sienne. Mesure sur le cas type (jeton monte sur un batiment de 2,5) :
---   plan   [1.06]  ->  [3.56 ; 0.85]
---   rang        l'ancien part a 3.56, le neuf nait a 0.85   (faux)
---   proximite   l'ancien reste a 0.85, le neuf nait a 3.56  (juste)
+-- Ce qu'on fait a la place, du haut vers le bas :
+--   1. le volume de TETE suit le jeton. Lui seul change de hauteur — c'est lui
+--      qui porte la regle du sommet — et son mouvement est solidaire du jeton,
+--      donc naturel a l'oeil. On ne le reutilise que s'il est encore PROCHE de
+--      la nouvelle tete : sinon on le laisse en place et on en cree une neuve,
+--      sans quoi un volume pose au sol remonterait d'un etage entier.
+--   2. tous les autres restent EXACTEMENT ou ils sont. On se contente de
+--      detruire ceux devenus inutiles : passes au-dessus de la tete, ou enfouis
+--      sous le sol.
+--   3. on comble les manques avec des volumes NEUFS.
 --
--- ⚠ Ca ne peut pas etre parfait, et ce n'est pas un defaut d'implementation :
--- le pas de la pile vaut 2.707, donc une montee qui ne change pas le NOMBRE de
--- copies deplace simplement le volume unique, sans rien a preserver. Et le
--- volume conserve se decale un peu (1.06 -> 0.85 ci-dessus) puisque sa hauteur
--- decoule du sommet.
+-- ⚠ Consequence assumee : les volumes figes ne sont plus alignes sur la tete. Le
+-- raccord se fait par CHEVAUCHEMENT, jamais bord a bord. Un recouvrement passe
+-- inapercu dans de la fumee diffuse, un trou se verrait tout de suite — donc en
+-- cas de doute on chevauche. Les ecarts sous ISQ_TROU_TOLERE sont laisses tels
+-- quels : combler 20 cm de vide couterait une copie entiere (~160 particules)
+-- posee presque au meme endroit qu'une existante.
+
+-- Retire un volume. Sec, faute de mieux — cf le bloc « ADOUCIR LA DISPARITION ».
+function isqSmokeRetirer(o)
+  if o ~= nil then destroyObject(o) end
+end
+
 function isqSmokeShow()
   -- on purge d'abord les GUID morts (objet supprime a la main, par exemple)
   local vivants = {}
@@ -341,81 +399,105 @@ function isqSmokeShow()
   end
   isqSmokeGUIDs = vivants
 
-  local plan = isqSmokePlan()
+  local yTete, sol = isqSmokeGeometrie()
+  local pas = ISQ_SMOKE_HAUT   -- aucune mise a l'echelle : le prefab est aux cotes
 
-  -- ⚠ On releve les hauteurs UNE FOIS avant d'apparier. L'appariement est
-  -- glouton, donc en O(n3) : le faire en interrogeant l'objet a chaque
-  -- comparaison donnait jusqu'a 125 getObjectFromGUID + getPosition par lacher,
-  -- pour 5 valeurs qui ne bougent pas. Le cout tombe a 5 relevés.
-  local hauteurs, libre, pris = {}, {}, {}
-  for i, g in ipairs(isqSmokeGUIDs) do
+  -- ⚠ On releve les hauteurs UNE FOIS. Les interroger au fil des comparaisons
+  -- donnait des dizaines de getObjectFromGUID + getPosition par lacher, pour 5
+  -- valeurs qui ne bougent pas pendant le calcul.
+  local vols = {}
+  for _, g in ipairs(isqSmokeGUIDs) do
     local o = getObjectFromGUID(g)
-    hauteurs[i] = o and o.getPosition().y or nil
-    libre[i] = (hauteurs[i] ~= nil)
+    if o then table.insert(vols, { g = g, o = o, y = o.getPosition().y }) end
+  end
+  table.sort(vols, function(a, c) return a.y > c.y end)
+
+  -- ⚠ A froid (aucun volume en scene) l'asset peut ne pas etre charge : il faut
+  -- le delai long, sinon le cube de remplacement se voit. A chaud il est en
+  -- cache, et un delai long ne ferait que rendre l'apparition plus brutale.
+  local revel = (#vols == 0) and ISQ_DELAI_REVEL or ISQ_DELAI_REVEL_CHAUD
+
+  -- 1. LA TETE, seul volume autorise a changer de hauteur.
+  -- ⚠ On prend le plus PROCHE de la nouvelle tete, pas le plus haut. Avec le plus
+  -- haut, un jeton qui monte de deux etages ferait remonter le volume du sol
+  -- jusqu'au sommet. Et on ne le reutilise que si l'ecart reste petit devant le
+  -- pas : au-dela, ce volume-la est de la fumee qui a coule jusqu'en bas, il doit
+  -- rester ou il est et c'est une tete NEUVE qu'il faut creer plus haut.
+  local tete, ecartTete
+  for _, v in ipairs(vols) do
+    local d = math.abs(v.y - yTete)
+    if ecartTete == nil or d < ecartTete then tete, ecartTete = v, d end
+  end
+  if tete and ecartTete >= 0.35 * pas then tete = nil end
+  if tete then
+    tete.o.setVar("cibleY", yTete)
+    tete.y = yTete
   end
 
-  -- Appariement glouton : a chaque tour on prend la paire (volume, hauteur) la
-  -- plus proche encore libre.
-  while true do
-    local mP, mV, mD
-    for pi, y in ipairs(plan) do
-      if pris[pi] == nil then
-        for vi = 1, #isqSmokeGUIDs do
-          if libre[vi] then
-            local d = math.abs(hauteurs[vi] - y)
-            if mD == nil or d < mD then mD, mP, mV = d, pi, vi end
-          end
-        end
-      end
-    end
-    if mP == nil then break end
-    pris[mP] = isqSmokeGUIDs[mV]
-    libre[mV] = false
-  end
-
-  -- les volumes non apparies sont en trop.
-  -- ⚠ destroyObject annule les minuteries du script appelant : on detruit AVANT
-  -- de creer, jamais l'inverse, sinon on effacerait les minuteries de revelation
-  -- que la creation vient de poser.
-  for vi, g in ipairs(isqSmokeGUIDs) do
-    if libre[vi] then
-      local o = getObjectFromGUID(g)
-      if o then destroyObject(o) end
-    end
-  end
-
-  -- on reconstruit la liste dans l'ordre du plan, en creant ce qui manque
-  local neufs, liste = {}, {}
-  for pi, y in ipairs(plan) do
-    local g = pris[pi]
-    if g == nil then
-      g = isqSmokeCreerUn(y)
-      if g then neufs[g] = true end
-    end
-    if g then table.insert(liste, g) end
-  end
-  isqSmokeGUIDs = liste
-
-  local p = self.getPosition()
-  for i, g in ipairs(isqSmokeGUIDs) do
-    local o = getObjectFromGUID(g)
-    if o and plan[i] then
-      -- ⚠ On deplace la CIBLE, pas l'objet : c'est son propre onFixedUpdate qui
-      -- l'y amene en glissant. Un volume conserve change de hauteur de 0,2 a 0,8
-      -- selon les cas, et pose d'un coup ca fait un saut — tres visible a la
-      -- descente, ou rien ne vient le masquer.
-      o.setVar("cibleY", plan[i])
-      if neufs[g] then
-        -- il vient de naitre a la bonne place, et il a sa propre minuterie de
-        -- revelation : le devoiler ici annulerait son masquage et le cube de
-        -- remplacement redeviendrait visible.
-        o.setVar("baseY", plan[i])
-        o.setPosition({ p.x, plan[i], p.z })
+  -- 2. LES FIGES. On garde leur hauteur ; on ne detruit que l'inutile.
+  -- ⚠ destroyObject annule les minuteries du script appelant : on detruit ICI,
+  -- avant toute creation, sinon on effacerait les minuteries de revelation que la
+  -- creation vient de poser.
+  local figes = {}
+  for _, v in ipairs(vols) do
+    if v ~= tete then
+      -- sous la tete, et debordant encore assez du sol pour valoir ses ~160
+      -- particules. Le seuil de 8 % evite le cas frequent du jeton POSE A PLAT,
+      -- ou les 6 cm d'epaisseur du jeton declenchaient a eux seuls une copie.
+      if v.y < yTete - ISQ_EPS_Y and v.y + pas > sol + 0.08 * pas then
+        table.insert(figes, v)
       else
-        o.setInvisibleTo({})
+        isqSmokeRetirer(v.o)
       end
     end
   end
+
+  -- 3. ON REMPLIT, du haut vers le bas. « curseur » est la hauteur de base du
+  -- dernier volume retenu : tout ce qui est sous lui reste a couvrir.
+  local liste, curseur = {}, nil
+
+  if tete then
+    tete.o.setInvisibleTo({})
+    table.insert(liste, tete.g)
+    curseur = yTete
+  else
+    local g = isqSmokeCreerUn(yTete, revel)
+    if g then
+      table.insert(liste, g)
+      curseur = yTete
+    end
+  end
+
+  -- 3b. les figes, en comblant d'abord le vide au-dessus de chacun
+  for _, v in ipairs(figes) do
+    while curseur ~= nil
+      and #liste < ISQ_SMOKE_MAXCOP
+      and v.y + pas < curseur - ISQ_TROU_TOLERE do
+      local g = isqSmokeCreerUn(curseur - pas, revel)
+      if g == nil then break end
+      table.insert(liste, g)
+      curseur = curseur - pas
+    end
+    if #liste < ISQ_SMOKE_MAXCOP then
+      v.o.setInvisibleTo({})
+      table.insert(liste, v.g)
+      curseur = v.y
+    else
+      isqSmokeRetirer(v.o)
+    end
+  end
+
+  -- 3c. sous le dernier volume, on descend jusqu'au sol
+  while curseur ~= nil
+    and #liste < ISQ_SMOKE_MAXCOP
+    and curseur > sol + 0.08 * pas do
+    local g = isqSmokeCreerUn(curseur - pas, revel)
+    if g == nil then break end
+    table.insert(liste, g)
+    curseur = curseur - pas
+  end
+
+  isqSmokeGUIDs = liste
 end
 
 -- Eteindre detruit les volumes : c'est ce qui fait que les rallumer REJOUE la
