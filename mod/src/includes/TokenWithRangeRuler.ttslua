@@ -7,19 +7,16 @@ require('!/RangeRulers')
 -- token = 25.1mm diameter (range 1)
 -- poi = 50.8mm diameter (range 0.5 aka 3in)
 
--- Les fonctions d'orientation vivent dans !/RangeRulers, partagees avec le jeton
--- POI qui ne passe pas par cet include.
-
--- onRotate recoit l'angle VISE, avant que l'objet l'ait atteint : on se sert de
--- l'argument, la rotation courante serait encore l'ancienne.
+-- The button orientation helpers live in !/RangeRulers, shared with the POI
+-- token, which does not use this include. onRotate receives the TARGET angle
+-- before the object reaches it, so the argument is used: the current rotation
+-- would still be the old one.
 function onRotate(spin, flip, player_color, old_spin, old_flip)
-  isqMajBoutons(flip)
+  isqRefreshButtons(flip)
 end
--- =============================================================================
 
 function onLoad()
   rangeOn = false
-  isqBoutonsOrientes = {}
   createButton(0)
 end
 
@@ -29,8 +26,8 @@ function createButton(theta)
     function_owner = self,
     label = "R",
     tooltip = "Spawn Range Ruler",
-    position = isqPositionBouton(theta),
-    rotation = isqOrientationBouton(theta),
+    position = isqButtonPosition(theta),
+    rotation = isqButtonRotation(theta),
     scale = {0.5, 0.5, 0.5},
     width = 400,
     height = 300,
@@ -38,7 +35,7 @@ function createButton(theta)
     color = {0, 0, 0, 1},
     font_color = {0.1212, 0.8127, 0, 1}
   })
-  isqEnregistrerBouton("R", theta)
+  isqRegisterButton("R", theta)
 end
 
 function onDestroy()

@@ -22,7 +22,7 @@ function onLoad()
 end
 
 function onRotate(spin, flip, player_color, old_spin, old_flip)
-  isqMajBoutons(flip)
+  isqRefreshButtons(flip)
 end
 
 -- onLoad still asks for its two buttons, one per face, exactly as it always
@@ -40,14 +40,14 @@ function createButton(rotation)
     label = "R",
     tooltip = "Spawn Range Ruler",
     position = {-0.2, 0.1, 1.15},
-    rotation = isqOrientationBouton(0),
+    rotation = isqButtonRotation(0),
     width = 230,
     height = 180,
     font_size = 100,
     color= {btnTint["r"], btnTint["g"], btnTint["b"], 0.7},
     font_color= {1, 1, 1, 100}
   })
-  isqEnregistrerBouton("R", 0)
+  isqRegisterButton("R", 0)
 end
 
 function onDestroy()
@@ -97,7 +97,7 @@ function addSilhouetteButton()
       label = "SIL",
       tooltip = "Toggle silhouettes on this unit",
       position = {0.2, 0.1, 1.15},
-      rotation = isqOrientationBouton(0),
+      rotation = isqButtonRotation(0),
       width = 230,
       height = 180,
       font_size = 100,
@@ -106,7 +106,7 @@ function addSilhouetteButton()
     }
     self.createButton(btnData)
     -- It had no rotation at all, so it read mirrored on the back face too.
-    isqEnregistrerBouton("SIL", 0)
+    isqRegisterButton("SIL", 0)
   end    
 
   function toggleSilhouettes()
