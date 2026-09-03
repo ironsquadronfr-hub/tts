@@ -1051,9 +1051,10 @@ DEAD_UGC_SWAPS = {
   ["rock_formation_collider.txthttps://gist.githubusercontent.com/nashjaee/3375e9ebe255d751196483c59c545591/raw/fe2fa562af6874076a3dc4e0f74dc7c68eeafa63/rock_formation_collider.txt"] =
     "rock_formation_collider.txt",
   -- Imperial Checkpoint: wildtextures.com no longer serves this jpg (404
-  -- page); the Wayback Machine still has the original (im_ = raw file).
+  -- page). The copy the Wayback Machine kept is served from our own host,
+  -- with the other repaired assets, rather than from the archive.
   ["http://www.wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg"] =
-    "http://web.archive.org/web/20230807160829im_/https://wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg",
+    "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-map-assets/imperial_checkpoint_marble.jpg",
   -- Geonosis: infinitebucket.com is gone, dead DNS, and no copy survives in
   -- any cache or archive. Nothing can bring this decorative dust effect
   -- back, so drop it rather than keep pointing at a host that will never
