@@ -703,6 +703,20 @@ function destroyIfAlive(obj)
   end
 end
 
+-- The progress rule along the top of the screen (isqProgressRule in the
+-- Global XML, the band every loading indicator of the mod shares). pcall:
+-- a save whose XML predates the element must not break a map load.
+function mapRuleSet(pct)
+  pcall(function()
+    UI.setAttribute("isqProgressRuleFill", "width", math.floor(pct) .. "%")
+    UI.setAttribute("isqProgressRule", "active", "true")
+  end)
+end
+
+function mapRuleHide()
+  pcall(function() UI.setAttribute("isqProgressRule", "active", "false") end)
+end
+
 function spawnMapFromCartridge(selectedCartridge, onDone)
     ga_event("Game", "spawnMapFromCartridge", selectedCartridge.getName())
     clearZones()
@@ -717,6 +731,7 @@ function spawnMapFromCartridge(selectedCartridge, onDone)
     -- it up in place of the player's own. `abandoned` tells the caller not to
     -- touch the screen, which by then belongs to whoever took over.
     local function finish(abandoned)
+      mapRuleHide()
       if onDone ~= nil then onDone(abandoned) end
     end
     local function pumpStep()
@@ -746,6 +761,7 @@ function spawnMapFromCartridge(selectedCartridge, onDone)
       if not ok then return finish(false) end
       if i % 10 == 0 or i == total then
         printToScreen("LOADING MAP...\n\n" .. i .. " / " .. total, 80, 3)
+        mapRuleSet(i * 100 / total)
       end
       Wait.frames(pumpStep, 1)
     end
@@ -1123,12 +1139,14 @@ end
 -- rides along in the same frame.
 function unpackMap(text)
   printToScreen("UNPACKING MAP...", 80, 3)
+  mapRuleSet(0)
   Wait.frames(function()
     text = repairDeadSteamHost(text)
     -- Every way out of here either loads the map or hands the menu back:
     -- the screen is showing UNPACKING MAP and nothing else would clear it.
     if not text:find('"ObjectStates"', 1, true) then
       printToAll("Failed to download map.")
+      mapRuleHide()
       return mainMenu()
     end
     local json = extractCartridgeJson(text)
@@ -1137,6 +1155,7 @@ function unpackMap(text)
       local map = JSON.decode(text)
       if not map or not map.ObjectStates or not map.ObjectStates[1] then
         printToAll("Failed to decode map.")
+        mapRuleHide()
         return mainMenu()
       end
       json = JSON.encode(map.ObjectStates[1])
@@ -1164,6 +1183,7 @@ function unpackMap(text)
     Wait.time(function()
       if not spawned then
         printToAll("Failed to unpack map.")
+        mapRuleHide()
         mainMenu()
       end
     end, 10)
