@@ -37,6 +37,8 @@ function onload(saveData)
     -- with them, since no pump survives the reload that would clear it.
     UI.setAttribute("importProgressRed", "active", false)
     UI.setAttribute("importProgressBlue", "active", false)
+    UI.setAttribute("importRuleRed", "active", false)
+    UI.setAttribute("importRuleBlue", "active", false)
     isqImportsInFlight = 0
 
     local loadData = {

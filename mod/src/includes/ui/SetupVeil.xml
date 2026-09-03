@@ -55,16 +55,6 @@
 />
 
 <Image
-  id="setupVeilCardArt"
-  active="false"
-  rectAlignment="UpperLeft"
-  offsetXY="177 -94"
-  width="443"
-  height="800"
-  preserveAspect="true"
-/>
-
-<Image
   id="setupVeilLogo"
   active="true"
   rectAlignment="UpperLeft"

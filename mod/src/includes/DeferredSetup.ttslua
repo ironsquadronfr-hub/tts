@@ -46,8 +46,6 @@ local SETUP_ILLUSTRATIONS = {
   {name = 'swlBackdrop1', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-1-v1.jpg'},
   {name = 'swlBackdrop2', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-2-v1.jpg'},
 }
--- Optionally replaces the sheet's text with an authored plate.
-local SETUP_SHORTCUTS = nil
 
 local deployGeneration = 0
 local cascadeStarted = false
@@ -63,7 +61,6 @@ local function veilHide()
   for _, id in ipairs(VEIL_PARTS) do
     UI.setAttribute(id, 'active', false)
   end
-  UI.setAttribute('setupVeilCardArt', 'active', false)
 end
 
 -- An Image whose texture has not downloaded yet renders as a white
@@ -93,19 +90,11 @@ local function veilDress(gen, total)
     local pick = (math.floor(os.time()) % #SETUP_ILLUSTRATIONS) + 1
     veilRevealArt(gen, SETUP_ILLUSTRATIONS[pick])
   end
-  if SETUP_SHORTCUTS ~= nil then
-    UI.setAttribute('setupVeilCardArt', 'image', SETUP_SHORTCUTS)
-    UI.setAttribute('setupVeilCardArt', 'active', true)
-    UI.setAttribute('setupVeilText', 'active', false)
-  end
   UI.setAttribute('setupVeilBarFill', 'width', '0%')
   UI.setValue('setupVeilCount', '0 / ' .. total)
   lastProgressAt = os.clock()
   for _, id in ipairs(VEIL_PARTS) do
     UI.setAttribute(id, 'active', true)
-  end
-  if SETUP_SHORTCUTS ~= nil then
-    UI.setAttribute('setupVeilText', 'active', false)
   end
 end
 

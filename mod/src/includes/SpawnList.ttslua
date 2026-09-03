@@ -626,7 +626,8 @@ local function initListSpawner(params)
     local suffix = color:lower() == "red" and "Red" or "Blue"
     local panelId = "importProgress" .. suffix
     local textId = "importProgressText" .. suffix
-    local barId = "importProgressBar" .. suffix
+    local ruleId = "importRule" .. suffix
+    local fillId = "importRuleFill" .. suffix
 
     -- An import already in flight on this object is the one being obsoleted
     -- above: its pump stops on its next frame and never reaches the closing
@@ -638,6 +639,7 @@ local function initListSpawner(params)
 
     local function closeImport()
       Global.UI.setAttribute(panelId, "active", false)
+      Global.UI.setAttribute(ruleId, "active", false)
       deck:unpinSchema()
       shelf:unpinSchema()
       if __isqImportInFlight then
@@ -649,11 +651,12 @@ local function initListSpawner(params)
     -- The importing banner (top of screen, in the Global UI): the
     -- spread-out spawn takes a few seconds, so say so - paced work reads
     -- as loading when it is labeled, and as lag when it is not. The
-    -- progress bar fills unit by unit, tinted the importing player's color.
+    -- progress rule fills unit by unit, tinted the importing player's color.
     local banner = "IMPORTING " .. color:upper() .. " LIST"
-    Global.UI.setAttribute(barId, "percentage", 0)
+    Global.UI.setAttribute(fillId, "width", "0%")
     Global.UI.setValue(textId, banner)
     Global.UI.setAttribute(panelId, "active", true)
+    Global.UI.setAttribute(ruleId, "active", true)
 
     -- `jobs` is the fine-grained queue the current unit expands into;
     -- `tasks` holds the coarse steps (each card deal, each unit, the final
@@ -694,9 +697,9 @@ local function initListSpawner(params)
           banner .. "  -  UNIT " .. i .. "/" .. totalUnits
         )
         Global.UI.setAttribute(
-          barId,
-          "percentage",
-          math.floor((i - 1) * 100 / totalUnits)
+          fillId,
+          "width",
+          math.floor((i - 1) * 100 / totalUnits) .. "%"
         )
         spawnUnit(unit, i, listData.armyFaction, push)
         return false
