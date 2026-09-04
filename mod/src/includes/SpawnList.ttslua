@@ -624,17 +624,31 @@ local function initListSpawner(params)
     -- visible from the other one: the toast is told apart by id, and the
     -- count of imports in flight lives on the Global, where both can see it.
     local suffix = color:lower() == "red" and "Red" or "Blue"
+    local other = suffix == "Red" and "Blue" or "Red"
     local panelId = "importProgress" .. suffix
     local textId = "importProgressText" .. suffix
     local ruleId = "importRule" .. suffix
     local fillId = "importRuleFill" .. suffix
+    local otherPanelId = "importProgress" .. other
+    local otherRuleId = "importRule" .. other
+
+    -- The toast and its rule take the top slot when they are the only ones
+    -- up, and the one underneath when the other player is already
+    -- importing. Slots go by arrival rather than by colour: pinned to a
+    -- colour, a lone blue import hung its rule six pixels below the top
+    -- edge and its toast eighty below its own, under empty screen.
+    local function takeSlot(top)
+      Global.UI.setAttribute(panelId, "offsetXY", top and "0 -28" or "0 -108")
+      Global.UI.setAttribute(ruleId, "offsetXY", top and "0 0" or "0 -6")
+    end
 
     -- An import already in flight on this object is the one being obsoleted
     -- above: its pump stops on its next frame and never reaches the closing
-    -- task, so its seat in the count simply carries over to this import.
+    -- task, so its seat in the count - and its slot - simply carries over
+    -- to this import.
     if not __isqImportInFlight then
       __isqImportInFlight = true
-      countImports(1)
+      takeSlot(countImports(1) < 2)
     end
 
     local function closeImport()
@@ -644,7 +658,11 @@ local function initListSpawner(params)
       shelf:unpinSchema()
       if __isqImportInFlight then
         __isqImportInFlight = false
-        countImports(-1)
+        -- An import left running alone slides up into the top slot.
+        if countImports(-1) > 0 then
+          Global.UI.setAttribute(otherPanelId, "offsetXY", "0 -28")
+          Global.UI.setAttribute(otherRuleId, "offsetXY", "0 0")
+        end
       end
     end
 

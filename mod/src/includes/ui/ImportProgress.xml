@@ -6,9 +6,11 @@
 
      One panel per player, because both can import at the same time: a single
      shared toast let whichever list started last relabel the other's, and
-     whichever finished first hide it. Each player owns a slot, so two imports
-     stack instead of fighting (the blue rule sits under the red one), and
-     the colours are baked in rather than set from the script. -->
+     whichever finished first hide it. Each player owns a panel, so two
+     imports stack instead of fighting, and the colours are baked in rather
+     than set from the script. The offsets below are only the resting place:
+     SpawnList hands out the two slots BY ARRIVAL, so whoever imports alone
+     sits at the top of the screen whatever their colour. -->
 <Panel
   id="importProgressRed"
   active="false"
