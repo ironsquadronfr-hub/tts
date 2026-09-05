@@ -43,8 +43,8 @@ local VEIL_ASSET_WAIT_SECONDS = 90
 -- loaded callback, so the file is asked for over the network first and the
 -- picture is only revealed once it answers (see veilRevealArt).
 local SETUP_ILLUSTRATIONS = {
-  {name = 'swlBackdrop1', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-1-v1.jpg'},
-  {name = 'swlBackdrop2', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/swl-backdrop-2-v1.jpg'},
+  {name = 'swlBackdrop1', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/swl-backdrop-1-v1.jpg'},
+  {name = 'swlBackdrop2', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/swl-backdrop-2-v1.jpg'},
 }
 
 local deployGeneration = 0
