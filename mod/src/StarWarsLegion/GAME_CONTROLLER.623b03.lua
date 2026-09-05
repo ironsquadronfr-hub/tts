@@ -1054,7 +1054,7 @@ DEAD_UGC_SWAPS = {
   -- page). The copy the Wayback Machine kept is served from our own host,
   -- with the other repaired assets, rather than from the archive.
   ["http://www.wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg"] =
-    "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-map-assets/imperial_checkpoint_marble.jpg",
+    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/imperial_checkpoint_marble.jpg",
   -- Geonosis: infinitebucket.com is gone, dead DNS, and no copy survives in
   -- any cache or archive. Nothing can bring this decorative dust effect
   -- back, so drop it rather than keep pointing at a host that will never
@@ -1062,17 +1062,170 @@ DEAD_UGC_SWAPS = {
   ["http://infinitebucket.com/tts/scenesystem/dust.unity3d"] = "",
 }
 
-function repairDeadSteamHost(text)
-  local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
-  for dead, alive in pairs(DEAD_UGC_SWAPS) do
+-- Featured Map assets whose hosts nobody controls any more: personal imgur
+-- accounts, one map author's Dropbox, anonymous gists, a pastebin, a texture
+-- site. Every one of them still answered when the mirror was taken, which is
+-- exactly the moment to copy a file rather than the moment after. Keyed by
+-- the URL the map data carries, verbatim; the value is the file name in our
+-- store. The 196 assets these same maps pull from Steam's CDN are left
+-- alone: that is the host the whole mod already rests on, so mirroring them
+-- would buy no safety and cost 58 MB.
+MIRRORED_ASSETS = {
+  -- gist.githubusercontent.com, 32 assets
+  ["https://gist.githubusercontent.com/anonymous/21580f275647bee8b795e4f3bfc67bef/raw/ed056d56c03562c9779f838598cf2db9fa5abcee/gistfile1.txt"] =
+    "1f4c229eed10d4d5411e.obj",
+  ["https://gist.githubusercontent.com/anonymous/25165671cdebaa76438811abedfd9a6b/raw/17b0dd36856080bb407f53c7e4cf05ff196434a1/gistfile1.txt"] =
+    "50d82c6c0a22114b2054.obj",
+  ["https://gist.githubusercontent.com/anonymous/2c89c53f43dca7ad8d67f3ee45049f0a/raw/2814f977fbd2fc74eae8c75298ee88addd5adc7f/gistfile1.txt"] =
+    "1f550534a37b445056a6.obj",
+  ["https://gist.githubusercontent.com/anonymous/90c71337b0c80ad2db5fa29bb4818a01/raw/76fbc223e3663c9c572d971bfc899ddfc4c704b7/gistfile1.txt"] =
+    "32e2556293ac3d850008.obj",
+  ["https://gist.githubusercontent.com/nashjaee/0ae48450370150c2c00027895b8e82ba/raw/a1a792c26c857ffd87aba6787c33a932fed0946c/rock_formation_2_model.txt"] =
+    "3b4256e87e064eca2c3f.obj",
+  ["https://gist.githubusercontent.com/nashjaee/1724038bcd1af36165d9c2b831aa1986/raw/a75963b487ef88b438f688b68bef314545da2fe8/tat_small_lodge.txt"] =
+    "aa6a85f5695cbeee469f.obj",
+  ["https://gist.githubusercontent.com/nashjaee/1dd4657643079c5fe4410c169c452c45/raw/133d719e27011b958e5873f466cdae4ce62e44b2/short_long_curve.txt"] =
+    "6e0d8984ce8d11145821.obj",
+  ["https://gist.githubusercontent.com/nashjaee/1e074019b743cc3c4e56dc0dca696629/raw/156f662d4ae92509be2950d36d2ed9babd626dd8/wide_arch.txt"] =
+    "86dab0221e7c4b6b4de9.obj",
+  ["https://gist.githubusercontent.com/nashjaee/31a2f65534f55c298b97768d85c6d7ed/raw/039d1f64c1764ecf6ce52b7dbb967e299884e597/short_tight_90.txt"] =
+    "6c35562d0e038872a6c4.obj",
+  ["https://gist.githubusercontent.com/nashjaee/3375e9ebe255d751196483c59c545591/raw/fe2fa562af6874076a3dc4e0f74dc7c68eeafa63/rock_formation_collider.txt"] =
+    "268c4fa83f51fd727b8f.obj",
+  ["https://gist.githubusercontent.com/nashjaee/39efab0cd1f7f06bebe96234166a7e5f/raw/bf1cb1943f287af6cc925fe89f676022393b1ca6/trench_holdout_model.txt"] =
+    "700c83442cf4dcb2163e.obj",
+  ["https://gist.githubusercontent.com/nashjaee/3bf24876e6e170127cce6049880595bd/raw/7aa374631f2d94ecee9421d919a43391de68a0b4/tat_shop_full.txt"] =
+    "1501e8c83827a64eb096.obj",
+  ["https://gist.githubusercontent.com/nashjaee/4244c1f23225cd174f87dc6c43c9e60f/raw/50a19f25736e7be3838bec97fe82cdb6561196da/single_arch.txt"] =
+    "cb0a3effd92131013920.obj",
+  ["https://gist.githubusercontent.com/nashjaee/4c26247df7714072af9707c52c32a095/raw/3cf1204ec97d97f21b27de644f73e2ae6af29f9a/tat_medium_3.txt"] =
+    "2c247daa66d2c5315b89.obj",
+  ["https://gist.githubusercontent.com/nashjaee/4cd8db9491c9f804b679a0c07d995a47/raw/d6e211548521cd3c386e2d29e11a8e13945c4115/sand_mound_model.txt"] =
+    "762ca9a92c0f28849df1.obj",
+  ["https://gist.githubusercontent.com/nashjaee/4ffd951d975d58e376008d40acf0e6be/raw/f50c06ac2c28caa07251b0f96a6a56fc5dfbf727/laat_model.txt"] =
+    "7d5659552c084348cd1b.obj",
+  ["https://gist.githubusercontent.com/nashjaee/5bc7ec9cde6042692360b7eccaccaddb/raw/06085b5165429a6fc20baa3044ac8d58e29a8f74/laat_collider.txt"] =
+    "a01bf806466dbd0d982e.obj",
+  ["https://gist.githubusercontent.com/nashjaee/669805574c4b9f7b04e785509a928033/raw/0c48b07b3101513396567a27960f733c20ab61ac/double_arch.txt"] =
+    "868cc2a27f8b8d15eeb0.obj",
+  ["https://gist.githubusercontent.com/nashjaee/7d1f66af25c773fb9f40571a3dcbc329/raw/bccbcb2a8596129534c1f7db3d01482e34f0a4a8/short_45.txt"] =
+    "e551c98351b071275e0e.obj",
+  ["https://gist.githubusercontent.com/nashjaee/7e385a5d880f7ec4ffe54c01aec70077/raw/78ddb6a1681b62fa80966a5e9f9b2cca863829c0/tat_medium_lodge.txt"] =
+    "de819f7854b5bc1cd2b0.obj",
+  ["https://gist.githubusercontent.com/nashjaee/8353f629e1d7e1d213fbe564be21de8e/raw/b20462e946ced3eee4f8260d3b28565e397d800b/gistfile1.txt"] =
+    "0034a902133f5f57d594.obj",
+  ["https://gist.githubusercontent.com/nashjaee/849ec6905a7613c0e656db6e364f8148/raw/48a785f51bbc29ee603725bff2c9ca240f64728e/barricade_model.txt"] =
+    "8efba609d07d40d69db1.obj",
+  ["https://gist.githubusercontent.com/nashjaee/8a3c5c11d816ad853a5485e63dffff48/raw/09c0ea0fdb74453156070ab594aa2f9b26af3cef/sand_mound_collider.txt"] =
+    "9b5d02602c38a5ec45a9.obj",
+  ["https://gist.githubusercontent.com/nashjaee/8c5ce4aca7e9cba562148ec0a2c438e5/raw/4ca2b165bab93fd9bc9537042941d85d1e6fe1b6/rock_formation_model.txt"] =
+    "7eb212dfa3d9a5ad0d73.obj",
+  ["https://gist.githubusercontent.com/nashjaee/a3fea17003835d745cefe356b141250b/raw/54bb87ed3ae3ee7ec3e8080150efd077b75d998b/tat_tower_v2.txt"] =
+    "b795942d99cb522ee6dd.obj",
+  ["https://gist.githubusercontent.com/nashjaee/b5f868e1a32dd277e804ba5243140395/raw/094ee931f3514d97f4ca7f1ff4c812333fbc297a/short_straight.txt"] =
+    "fd8e88dfa63fabc182ae.obj",
+  ["https://gist.githubusercontent.com/nashjaee/b9048effba06e7d8baaaacb0594c885b/raw/b71c618b6498c858ae3c55da102c1eaee6c3709e/rock_formation_2_collider.txt"] =
+    "b028d3e6aa20b1507ab5.obj",
+  ["https://gist.githubusercontent.com/nashjaee/b93cdf53600ef76b4b425fc4f4b92103/raw/528b054fc44fd3573b055b74600e71c338cb0d25/short_90_corner.txt"] =
+    "24eaad127a589e4436d8.obj",
+  ["https://gist.githubusercontent.com/nashjaee/c16261972363a0bcb9f59a763fc0f771/raw/0cf50b5b1c66b4d4969bc7b37f4f92bfc6074059/tat_medium_house_2.txt"] =
+    "b614cbc1f38917aafc92.obj",
+  ["https://gist.githubusercontent.com/nashjaee/ca9fd90e500b9407bd90c69484b2573b/raw/2d401c49841c1b3f32e776fb32f594a09d0f5b91/tat_small_house_2.txt"] =
+    "2c3ae8aee7ab0d06142f.obj",
+  ["https://gist.githubusercontent.com/nashjaee/e42f6c8204c6f15a4287cc37667f580b/raw/4ad498090fa0d76e124b102fed2a3e77bca38653/tall_long_curve.txt"] =
+    "7c0920e705698a03804e.obj",
+  ["https://gist.githubusercontent.com/nashjaee/ed99cb7b59e12459e160131fee87940b/raw/328aae577da949dfd45dd7a13fcbabd88e663954/tat_outpost_full.txt"] =
+    "5f3486e8c1fa6cc99351.obj",
+  -- i.imgur.com, 13 assets
+  ["http://i.imgur.com/WdMBT2e.jpg"] =
+    "b4060a6535d59b65f4a0.jpg",
+  ["https://i.imgur.com/0awZWbG.jpg"] =
+    "e2be2ac91c939dc065fa.jpg",
+  ["https://i.imgur.com/0gTJWaK.jpg"] =
+    "1d8ba5e38e30b50b43cc.jpg",
+  ["https://i.imgur.com/GViH5JN.jpg"] =
+    "751f8037054118ab2af5.jpg",
+  ["https://i.imgur.com/M7wiIIi.jpg"] =
+    "1dbb93d8056257279852.jpg",
+  ["https://i.imgur.com/NqvTeah.jpghttps://i.imgur.com/NqvTeah.jpg"] =
+    "ddc83f990cf23d695da3.jpg",
+  ["https://i.imgur.com/PF3rjzI.jpg"] =
+    "c2584766e7ec93897965.jpg",
+  ["https://i.imgur.com/PF3rjzI.jpghttps://i.imgur.com/PF3rjzI.jpg"] =
+    "a9029d507c965fdea1d1.jpg",
+  ["https://i.imgur.com/XtMvQGI.png"] =
+    "73f05486a1b772ab6b99.png",
+  ["https://i.imgur.com/XuuDLys.jpg"] =
+    "b5267a49ccd8774a21d1.jpg",
+  ["https://i.imgur.com/szfypFE.jpghttps://i.imgur.com/szfypFE.jpg"] =
+    "80e6ab9b6871aabbea63.jpg",
+  ["https://i.imgur.com/xJTsMo6.jpghttps://i.imgur.com/xJTsMo6.jpg"] =
+    "0838aa4b46f18f53052c.jpg",
+  ["https://i.imgur.com/yKymdqE.jpghttps://i.imgur.com/yKymdqE.jpg"] =
+    "5a40760081d3e3bfc205.jpg",
+  -- paste.ee, 1 asset
+  ["https://paste.ee/r/JavTd"] =
+    "0e87f1e304d4059f862e.obj",
+  -- texturelib.com, 1 asset
+  ["http://texturelib.com/Textures/brick/pavement/brick_pavement_0100_02_preview.jpg"] =
+    "576783db1c59922d8b22.jpg",
+  -- web.archive.org, 1 asset
+  ["http://web.archive.org/web/20230807160829im_/https://wildtextures.com/wp-content/uploads/wildtextures-tiles-stone-marble-480x279.jpg"] =
+    "397917691ba45bb7f1a8.jpg",
+  -- www.dropbox.com, 14 assets
+  ["https://www.dropbox.com/s/3knbhrp9h49h5df/speeder%20roadster.obj?dl=1"] =
+    "5bd9ceba2cd576cd70c9.bin",
+  ["https://www.dropbox.com/s/4lkjcjnxa21z407/gun.obj?dl=1"] =
+    "55cc846737b52de8404c.bin",
+  ["https://www.dropbox.com/s/6dv3zim10qstual/medium_3.jpg?raw=1"] =
+    "4798c2a373b74ef9658f.jpg",
+  ["https://www.dropbox.com/s/d61jptcthjui75q/B69_Rubble3_JVG.png?dl=1"] =
+    "8f50d047ee9fd92195f3.bin",
+  ["https://www.dropbox.com/s/g5xw10wwhisrz29/decimator%20imperial%20star%20ship.obj?dl=1"] =
+    "ec02e571d877ac090336.bin",
+  ["https://www.dropbox.com/s/id436qh9za4v75h/Landspeeder%20texture.jpg?dl=1"] =
+    "798a5a7d14437698fd3d.bin",
+  ["https://www.dropbox.com/s/mkgnnbg2ws09exc/shop_full.jpg?raw=1"] =
+    "4a042086373b17156b63.jpg",
+  ["https://www.dropbox.com/s/pxxf15m633krun2/tower_v2.jpg?raw=1"] =
+    "8f1d88395678296bce91.jpg",
+  ["https://www.dropbox.com/s/qsq43ti5qlhq7dx/medium_house_2.jpg?raw=1"] =
+    "5fa9f342f8c0e7a9863d.jpg",
+  ["https://www.dropbox.com/s/rlxu8ft2dq16dnl/medium_lodge.jpg?raw=1"] =
+    "a7c0577699378fcfa1f5.jpg",
+  ["https://www.dropbox.com/s/rtdlpenu65l37b9/tatooine_generic.jpg?raw=1"] =
+    "f41fbb395aac8ece2624.jpg",
+  ["https://www.dropbox.com/s/t05k9nedv8uim24/small_house_2.jpg?raw=1"] =
+    "b8e92c04d455714c0ec1.jpg",
+  ["https://www.dropbox.com/s/vkw5xgi965vook5/small_lodge.jpg?raw=1"] =
+    "e709845ea005042693db.jpg",
+  ["https://www.dropbox.com/s/zsumfl6t4z51i2o/outpost_full.jpg?raw=1"] =
+    "eb6ae4de00d00f4bd03f.jpg",
+}
+
+-- Where our copies are served from. One flat directory, under a contract that
+-- nothing in it is ever renamed, overwritten or deleted - see the swl-assets
+-- store - so these addresses never have to move again.
+ISQ_STORE = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/"
+
+local function applySwaps(text, swaps, prefix)
+  for from, to in pairs(swaps) do
     -- A gsub rebuilds the whole string, and a map file is 70-160 KB, so never
     -- run one blind: a map carries at most a couple of these. Escape only the
     -- ones that hit - gsub wants the magic characters quoted, find wants the
     -- raw text.
-    if repaired:find(dead, 1, true) then
-      repaired = repaired:gsub(dead:gsub("%W", "%%%0"), (alive:gsub("%%", "%%%%")))
+    if text:find(from, 1, true) then
+      local into = (prefix or "") .. to
+      text = text:gsub(from:gsub("%W", "%%%0"), (into:gsub("%%", "%%%%")))
     end
   end
+  return text
+end
+
+function repairDeadSteamHost(text)
+  local repaired = text:gsub("https?://cloud%-3%.steamusercontent%.com/", "https://steamusercontent-a.akamaihd.net/")
+  repaired = applySwaps(repaired, DEAD_UGC_SWAPS)
+  repaired = applySwaps(repaired, MIRRORED_ASSETS, ISQ_STORE)
   return repaired
 end
 
