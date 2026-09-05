@@ -16,7 +16,7 @@ require('!/TokenWithRangeRuler')
 -- factor of 3.4). Height is not scaled either: to reach the table, copies are
 -- STACKED.
 
-ISQ_SMOKE_BUNDLE = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-token-assets/smoke_volume.unity3d"
+ISQ_SMOKE_BUNDLE = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/smoke_volume.unity3d"
 ISQ_SILHOUETTE_NOTCHED = 2.707   -- templateInfo.silhouetteHeight.notched
 ISQ_SMOKE_HEIGHT = 2.707         -- the prefab's height; its radius is the ring the mod already draws
 ISQ_SMOKE_MAX_COPIES = 5         -- each copy costs ~160 particles
