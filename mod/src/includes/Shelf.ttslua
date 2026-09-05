@@ -294,7 +294,7 @@ end
 
 function Shelf:_spawnDudModel(name, description)
   local model = self:_spawnModel("small", {
-    bundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/stunt_double_bot_1_metal_v1.unity3d",
+    bundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/stunt_double_bot_1_metal_v1.unity3d",
   })
   model.setName(name)
   model.setDescription(description)

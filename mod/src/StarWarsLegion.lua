@@ -171,20 +171,20 @@ function onload(saveData)
     templateInfo.moveTemplate[1] = {}
     templateInfo.moveTemplate[1].colorTint = {1,1,1}
     templateInfo.moveTemplate[1].shortBundle = "https://steamusercontent-a.akamaihd.net/ugc/1761462778007615968/4EE8D2332DCB6F4837551255CE5B1F240937BBE5/"
-    templateInfo.moveTemplate[1].longBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/movetool_long_speed1_isq_v1.unity3d"
-    templateInfo.moveTemplate[1].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/movetool_shared_speed1_isq_v1.unity3d"
+    templateInfo.moveTemplate[1].longBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movetool_long_speed1_isq_v1.unity3d"
+    templateInfo.moveTemplate[1].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movetool_shared_speed1_isq_v1.unity3d"
 
 
     templateInfo.moveTemplate[2] = {}
     templateInfo.moveTemplate[2].colorTint = {0.38,0.38,0.38}
     templateInfo.moveTemplate[2].shortBundle = "https://steamusercontent-a.akamaihd.net/ugc/1761462778009510155/77119B471FE3C51B06443F8ABE1C1B522431DF9B/"
     templateInfo.moveTemplate[2].longBundle = "https://steamusercontent-a.akamaihd.net/ugc/1761462778009510102/15B368A8D753AB35E1D60F7A377AE273EBEC0145/"
-    templateInfo.moveTemplate[2].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/movetool_shared_speed2_isq_v1.unity3d"
+    templateInfo.moveTemplate[2].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movetool_shared_speed2_isq_v1.unity3d"
     templateInfo.moveTemplate[3] = {}
     templateInfo.moveTemplate[3].colorTint = {1,0.36,0.32}
     templateInfo.moveTemplate[3].shortBundle = "https://steamusercontent-a.akamaihd.net/ugc/1761462778009510243/26BA9DD7881AF63E1A19EB6BF9802630D792F836/"
     templateInfo.moveTemplate[3].longBundle = "https://steamusercontent-a.akamaihd.net/ugc/1761462778009510200/6723334F35444B547AA1382AE80F12E3FE9B72B1/"
-    templateInfo.moveTemplate[3].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/tts/isq-qol/mod/data/isq-overlay-assets/movetool_shared_speed3_isq_v1.unity3d"
+    templateInfo.moveTemplate[3].sharedBundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movetool_shared_speed3_isq_v1.unity3d"
 
     --This is actually diameter... just saying
     templateInfo.baseRadius = {
