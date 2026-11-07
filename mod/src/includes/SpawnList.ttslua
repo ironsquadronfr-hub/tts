@@ -247,10 +247,12 @@ local function initListSpawner(params)
       -- SET NAME
       local displayName = pMiniTable.displayName or objEntry.name
       objEntry.obj.setName(strColor.. " "..displayName)
-            selectedMiniScript = selectedMiniScript .. "colorSide = " .. luaString(pMiniTable.colorSide) .. "\nminiName = " .. luaString(objEntry.name) .. "\n"
+      selectedMiniScript = selectedMiniScript .. "colorSide = " .. luaString(pMiniTable.colorSide) .. "\nminiName = " .. luaString(objEntry.name) .. "\n"
 
       -- SET LEADER GUID
       selectedMiniScript = selectedMiniScript .. "leaderGUID = \"" .. leaderGUID .. "\"\n"
+      -- Read by the line of sight (vehicles block it).
+      selectedMiniScript = selectedMiniScript .. "unitType = " .. string.format("%q", pMiniTable.type or "") .. "\n"
 
       if i == leaderInt then
         -- DESCRIPTION
@@ -303,7 +305,6 @@ local function initListSpawner(params)
           "\n silhOffset = " .. luaString(silhOffset) ..
           "\n commandName = " .. luaString(pMiniTable.commandName) ..
           "\n commandType = " .. luaString(pMiniTable.commandType) ..
-          "\n unitType = " .. luaString(pMiniTable.type or "") ..
           "\n selectedSpeed = " .. luaNumber(pMiniTable.selectedSpeed) ..
           "\n baseSize = " .. luaString(pMiniTable.baseSize) ..
           "\n unitID = " .. luaNumber(pMiniTable.unitID) ..
