@@ -555,6 +555,15 @@ function _isValidList(data)
   if type(data.battlefieldDeck) ~= "table" or type(data.units) ~= "table" then
     return false
   end
+  if data.armyFaction ~= nil and type(data.armyFaction) ~= "string" then
+    return false
+  end
+  for _, key in ipairs({"scenario", "objective", "deployment", "condition"}) do
+    local value = data.battlefieldDeck[key]
+    if value ~= nil and type(value) ~= "string" then
+      return false
+    end
+  end
   data.commandCards = data.commandCards or {}
   data.contingencies = data.contingencies or {}
   if type(data.commandCards) ~= "table" or type(data.contingencies) ~= "table" then

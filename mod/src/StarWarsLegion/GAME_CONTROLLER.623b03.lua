@@ -1813,7 +1813,7 @@ local MISSION_REDRAW_GUARD = 0.5
 
 function missionClickAllowed(playerColor)
   if not missionMenuOpen then return true end
-  if playerColor == "Grey" then return false end
+  if playerColor == nil or playerColor == "Grey" then return false end
   if os.clock() - (menuDrawnAt or 0) < MISSION_REDRAW_GUARD then return false end
   local seat = missionActingSeat
   if seat ~= nil and Player[seat].seated and playerColor ~= seat then
