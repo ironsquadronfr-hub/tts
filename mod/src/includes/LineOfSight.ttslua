@@ -973,27 +973,27 @@ end
 -- after the last change: a map unpacks its terrain over many frames and moves
 -- pieces into place after they appear. Once quiet it stops, and anything placed
 -- on the table wakes it up again.
-local LOS_SCAN_QUIET_LIMIT = 10
-local losScanQuiet = 0
-local losScanRunning = false
+-- One table rather than separate locals: Global sits at Lua's limit of 200
+-- top-level locals.
+local losScan = {quietLimit = 10, quiet = 0, running = false}
 
-local function losScanLoop()
+function losScanLoop()
   if losPrefetchScan() then
-    losScanQuiet = 0
+    losScan.quiet = 0
   else
-    losScanQuiet = losScanQuiet + 1
+    losScan.quiet = losScan.quiet + 1
   end
-  if losScanQuiet < LOS_SCAN_QUIET_LIMIT then
+  if losScan.quiet < losScan.quietLimit then
     Wait.time(losScanLoop, LOS_PREFETCH_INTERVAL)
   else
-    losScanRunning = false
+    losScan.running = false
   end
 end
 
-local function losWakeScan()
-  losScanQuiet = 0
-  if not losScanRunning then
-    losScanRunning = true
+function losWakeScan()
+  losScan.quiet = 0
+  if not losScan.running then
+    losScan.running = true
     Wait.time(losScanLoop, LOS_PREFETCH_INTERVAL)
   end
 end
@@ -1013,13 +1013,13 @@ local function losSummaryHide()
   pcall(function() UI.setAttribute("losSummary", "active", "false") end)
 end
 
-local function losCancelButton(shown)
+function losCancelButton(shown)
   pcall(function() UI.setAttribute("losCancelButton", "active", shown and "true" or "false") end)
 end
 
 -- The panel comes up as soon as an attack starts, saying it is working, with a
 -- button to stop it: on big lists a verdict takes a while.
-local function losSummaryCalculating()
+function losSummaryCalculating()
   pcall(function()
     UI.setValue("losGreenCount", "")
     UI.setValue("losRedCount", "")
