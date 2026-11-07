@@ -223,10 +223,15 @@ function setPlaceMissionPois(params)
   _G.missionPoisOnMap = params.place == true
 end
 
--- Dropped from above the tallest terrain so each POI lands on what is under
--- it, and slowed down so it does not bounce off. Players can unlock one with
--- the usual L key if it lands badly.
+-- A POI goes straight on the ground when nothing stands there, even under an
+-- arch: a fall could clip the arch and knock it off its spot. On a hill or in
+-- a building it is dropped from above the tallest terrain to land on top,
+-- slowed down so it does not bounce off. Players can unlock one with the usual
+-- L key if it lands badly.
 local POI_DROP_HEIGHT = 12
+local POI_GROUND_HEIGHT = 0.08 -- the token's origin is on its top face
+local POI_CLEARANCE_CENTER = 0.6
+local POI_CLEARANCE_SIZE = {1.6, 0.9, 1.6} -- under the POI's 2": grazing a wall is fine
 local POI_FALL_DRAG = 5
 local POI_SETTLE_TIMEOUT = 8
 
@@ -245,6 +250,23 @@ local function settleMissionPoi(poi)
       return poi == nil or poi.resting
     end, POI_SETTLE_TIMEOUT, lock)
   end, 0.5)
+end
+
+local function isGroundFree(p)
+  local hits = Physics.cast({
+    origin       = {p.x, p.y + POI_CLEARANCE_CENTER, p.z},
+    direction    = {0, 1, 0},
+    type         = 3,
+    size         = POI_CLEARANCE_SIZE,
+    max_distance = 0,
+  })
+  for _, hit in ipairs(hits or {}) do
+    local name = hit.hit_object and hit.hit_object.getName()
+    if name ~= nil and name ~= "POI Token" and name ~= "BATTLEFIELD" then
+      return false
+    end
+  end
+  return true
 end
 
 local function poisInBag(bag)
@@ -270,12 +292,19 @@ local function placeMissionPois(bag, cardName)
     for i, entry in ipairs(poisInBag(bag)) do
       local p = positions[i]
       if p ~= nil then
+        local free = isGroundFree(p)
         bag.takeObject({
           guid              = entry.guid,
-          position          = {p.x, p.y + POI_DROP_HEIGHT, p.z},
+          position          = {p.x, p.y + (free and POI_GROUND_HEIGHT or POI_DROP_HEIGHT), p.z},
           rotation          = {0, 0, 0},
           smooth            = false,
-          callback_function = settleMissionPoi,
+          callback_function = function(poi)
+            if free then
+              poi.setLock(true)
+            else
+              settleMissionPoi(poi)
+            end
+          end,
         })
       end
     end
