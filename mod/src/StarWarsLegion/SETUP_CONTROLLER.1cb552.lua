@@ -223,36 +223,17 @@ function setPlaceMissionPois(params)
   _G.missionPoisOnMap = params.place == true
 end
 
--- A POI goes straight on the ground when nothing stands there, even under an
--- arch: a fall could clip the arch and knock it off its spot. On a hill or in
--- a building it is dropped from above the tallest terrain to land on top,
--- slowed down so it does not bounce off. Players can unlock one with the usual
--- L key if it lands badly.
-local POI_DROP_HEIGHT = 12
-local POI_GROUND_HEIGHT = 0.08 -- the token's origin is on its top face
+-- A POI is put exactly on its spot, flat, and locked at once: letting it fall
+-- could clip an arch beside it and knock it away. It goes on the ground when
+-- nothing stands there, even under an arch, and on top of a hill or a building
+-- when one does. Players can unlock one with the usual L key to adjust it.
+local POI_ORIGIN_HEIGHT = 0.08 -- the token's origin is on its top face
 local POI_CLEARANCE_CENTER = 0.6
 local POI_CLEARANCE_SIZE = {1.6, 0.9, 1.6} -- under the POI's 2": grazing a wall is fine
-local POI_FALL_DRAG = 5
-local POI_SETTLE_TIMEOUT = 8
+local POI_FOOTPRINT = {1.6, 0.1, 1.6}
+local POI_CAST_HEIGHT = 30
 
-local function settleMissionPoi(poi)
-  local drag = poi.drag
-  poi.drag = POI_FALL_DRAG
-  local function lock()
-    if poi ~= nil then
-      poi.drag = drag
-      poi.setLock(true)
-    end
-  end
-  -- A POI that just left the bag still counts as resting.
-  Wait.time(function()
-    Wait.condition(lock, function()
-      return poi == nil or poi.resting
-    end, POI_SETTLE_TIMEOUT, lock)
-  end, 0.5)
-end
-
-local function isGroundFree(p)
+local function terrainOnSpot(p)
   local hits = Physics.cast({
     origin       = {p.x, p.y + POI_CLEARANCE_CENTER, p.z},
     direction    = {0, 1, 0},
@@ -260,13 +241,33 @@ local function isGroundFree(p)
     size         = POI_CLEARANCE_SIZE,
     max_distance = 0,
   })
+  local terrain = {}
   for _, hit in ipairs(hits or {}) do
-    local name = hit.hit_object and hit.hit_object.getName()
-    if name ~= nil and name ~= "POI Token" and name ~= "BATTLEFIELD" then
-      return false
+    local obj = hit.hit_object
+    if obj ~= nil and obj.getName() ~= "POI Token" and obj.getName() ~= "BATTLEFIELD" then
+      terrain[obj.getGUID()] = true
     end
   end
-  return true
+  return terrain
+end
+
+-- The height of the surface a POI rests on: the top of what stands on its spot.
+local function poiRestHeight(p)
+  local terrain = terrainOnSpot(p)
+  local height = p.y
+  local hits = Physics.cast({
+    origin       = {p.x, p.y + POI_CAST_HEIGHT, p.z},
+    direction    = {0, -1, 0},
+    type         = 3,
+    size         = POI_FOOTPRINT,
+    max_distance = POI_CAST_HEIGHT + 1,
+  })
+  for _, hit in ipairs(hits or {}) do
+    if hit.hit_object ~= nil and terrain[hit.hit_object.getGUID()] and hit.point.y > height then
+      height = hit.point.y
+    end
+  end
+  return height
 end
 
 local function poisInBag(bag)
@@ -292,18 +293,16 @@ local function placeMissionPois(bag, cardName)
     for i, entry in ipairs(poisInBag(bag)) do
       local p = positions[i]
       if p ~= nil then
-        local free = isGroundFree(p)
+        local target = {p.x, poiRestHeight(p) + POI_ORIGIN_HEIGHT, p.z}
         bag.takeObject({
           guid              = entry.guid,
-          position          = {p.x, p.y + (free and POI_GROUND_HEIGHT or POI_DROP_HEIGHT), p.z},
+          position          = target,
           rotation          = {0, 0, 0},
           smooth            = false,
           callback_function = function(poi)
-            if free then
-              poi.setLock(true)
-            else
-              settleMissionPoi(poi)
-            end
+            poi.setLock(true)
+            poi.setPosition(target)
+            poi.setRotation({0, 0, 0})
           end,
         })
       end
