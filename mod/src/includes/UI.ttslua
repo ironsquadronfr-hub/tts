@@ -2,7 +2,6 @@
 -- undo reloads the whole mod, so a dialog the XML declares open pops straight
 -- back into the middle of a game every single time a player rewinds.
 function initUI(showWelcome)
-  UI.setValue("welcomeDialogTitle", "Star Wars Legion for TTS " .. VERSION)
   if showWelcome then
     Wait.frames(function()
       UI.show("welcomeDialog")
@@ -148,19 +147,11 @@ end
 function showWelcomeTab1()
   markWelcomeTab(1)
   UI.show("welcomeTab1")
-  UI.hide("welcomeTab2")
-  UI.hide("welcomeTab3")
-end
-
-function showWelcomeTab2()
-  UI.hide("welcomeTab1")
-  UI.show("welcomeTab2")
   UI.hide("welcomeTab3")
 end
 
 function showWelcomeTab3()
   markWelcomeTab(3)
   UI.hide("welcomeTab1")
-  UI.hide("welcomeTab2")
   UI.show("welcomeTab3")
 end
