@@ -553,7 +553,7 @@ function _loadArmyFromJson(data)
   -- Blurring the import field while it is empty or holds invalid text fires
   -- onEndEdit -> importFromText -> JSON.decode("") -> nil, and everything below
   -- reads data directly, so the script errored out on a stray click.
-  if not data then return end
+  if not data or isListImportBusy() then return end
   _clearZone()
   if data.armyFaction == "" then
     data.armyFaction = "mercenary"

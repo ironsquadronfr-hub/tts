@@ -7,6 +7,18 @@ require('!/common/Tablex')
 -- stale value.
 local IMPORT_BLOCK_SECONDS = 60
 
+-- Enter can be pressed again before anything shows, and every press would clear
+-- the table and spawn the list again: check this before touching anything. An
+-- import that never closed stops blocking after a while, so a failed one cannot
+-- lock the player out.
+function isListImportBusy()
+  if __importInFlight and os.time() - (__importStartedAt or 0) < IMPORT_BLOCK_SECONDS then
+    broadcastToAll("List already importing, please wait.", {1, 0.8, 0.4})
+    return true
+  end
+  return false
+end
+
 local function countImports(delta)
   local count = (Global.getVar("importsInFlight") or 0) + delta
   if count < 0 then
@@ -607,13 +619,6 @@ local function initListSpawner(params)
   end
 
   return function(listData)
-    -- Enter can be pressed again before anything shows, and every press would
-    -- spawn the list again. An import that never closed stops blocking after a
-    -- while, so a failed one cannot lock the player out.
-    if __importInFlight and os.time() - (__importStartedAt or 0) < IMPORT_BLOCK_SECONDS then
-      broadcastToAll("List already importing, please wait.", {1, 0.8, 0.4})
-      return
-    end
     __importStartedAt = os.time()
 
     -- The synchronous version spawned the whole list in the frame of the
