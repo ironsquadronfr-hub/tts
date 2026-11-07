@@ -11,6 +11,7 @@ function getMiniSharedScript()
 local _shared = {
   tiltLimit     = 0.34, -- roughly cos(70deg); below this the mini is tipped (vehicles may stand at 45deg)
   pendingSettle = false,
+  flippedTag    = "Flipped", -- a tag, so a mini turned over on purpose stays so through a save or an undo
 }
 
 local function _options()
@@ -20,7 +21,7 @@ end
 -- Make sure the model stands uprht
 
 function sharedFixUpright()
-  if self.held_by_color ~= nil then
+  if self.held_by_color ~= nil or self.hasTag(_shared.flippedTag) then
     return
   end
   local up = self.getTransformUp()
@@ -77,6 +78,7 @@ end
 local _prevOnLoad = onload or onLoad
 local _prevOnDropped = onDropped
 local _prevOnCollisionEnter = onCollisionEnter
+local _prevOnRotate = onRotate
 onload = nil
 
 function onLoad(saveState)
@@ -97,6 +99,18 @@ function onCollisionEnter(info)
     _prevOnCollisionEnter(info)
   end
   sharedOnCollisionEnter(info)
+end
+function onRotate(spin, flip, player_color, old_spin, old_flip)
+  if _prevOnRotate then
+    _prevOnRotate(spin, flip, player_color, old_spin, old_flip)
+  end
+  if flip ~= old_flip then
+    if flip > 90 and flip < 270 then
+      self.addTag(_shared.flippedTag)
+    else
+      self.removeTag(_shared.flippedTag)
+    end
+  end
 end
 -- END MINI SHARED -----------------------------------------------------------
 ]==]
