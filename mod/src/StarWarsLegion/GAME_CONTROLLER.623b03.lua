@@ -1918,11 +1918,11 @@ end
 -- subtracted from the screen's position (as gameController.setUpCardsPos):
 -- x and y place the row on the tilted screen, z spaces the cards.
 MISSION_CARD_SCALE = 0.95
-MISSION_CARD_ROW = {1.68, -1.21}
+MISSION_CARD_ROW = {1.54, -1.417}
 MISSION_CARD_COLUMNS = {-3.75, -1.25, 1.25, 3.75}
 MISSION_CARD_STACK_STEP = 0.25
 MISSION_CARD_STACK_LIFT = 0.02
-MISSION_CARD_STACK_MAX = 3
+MISSION_CARD_STACK_MAX = 4
 -- Along the tilted screen (55.91 degrees): down it, and out towards the players.
 MISSION_CARD_DOWN = {x = -0.561, y = -0.828}
 MISSION_CARD_OUT = {x = -0.828, y = 0.561}
@@ -1999,9 +1999,9 @@ local function missionSummary()
 end
 
 -- Layout in screen-local units (see printScreenLines).
-MISSION_HEADER_Y = {0.84, 0.72, 0.62}
-MISSION_BLUE_PLAYER_Y = 0.52
-MISSION_LABEL_Y = 0.40
+MISSION_HEADER_Y = {0.85, 0.74, 0.65}
+MISSION_BLUE_PLAYER_Y = 0.56
+MISSION_LABEL_Y = 0.46
 
 -- Shows the header lines (list of {text, color, size}) at the top of the TV,
 -- which seat is the blue player, and a label over each mission card.
