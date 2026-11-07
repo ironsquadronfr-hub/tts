@@ -88,12 +88,12 @@ function Mission:createRecon(params)
   local blue = params.blueSeat
   local red = otherSeat(blue)
   local mission = Mission:create({blueSeat = blue, random = random})
+  local pool = {}
   local function draw(kind, seat)
-    return {name = table.remove(mission._reconPool[kind]), owner = seat}
+    return {name = table.remove(pool[kind]), owner = seat}
   end
-  mission._reconPool = {}
   for _, kind in ipairs(MISSION_KINDS) do
-    mission._reconPool[kind] = shuffle(copyList(params.pool[kind]), random)
+    pool[kind] = shuffle(copyList(params.pool[kind]), random)
   end
   mission.cards.objective = draw("objective", blue)
   mission.cards.secondary = draw("secondary", blue)

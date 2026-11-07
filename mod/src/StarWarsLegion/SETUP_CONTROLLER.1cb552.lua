@@ -217,6 +217,10 @@ local MISSION_POI_TAG = "MissionPOI"
 -- the visible top of a wood is its treetops, its collider the ground to stand on.
 local POI_LOW_TERRAIN = 1
 
+function isReconSelected()
+  return Deck:_scenarioKey(_G.selectedScenario) == "skirmish"
+end
+
 local function terrainOnSpot(p)
   local hits = Physics.cast({
     origin       = {p.x, p.y + POI_CLEARANCE_CENTER, p.z},
@@ -273,7 +277,7 @@ end
 local function placeMissionPois(bag, cardName)
   local positions = Global.call("getMissionPoiPositions", {
     cardName = cardName,
-    isRecon  = Deck:_scenarioKey(_G.selectedScenario) == "skirmish",
+    isRecon  = isReconSelected(),
   })
   if positions == nil then
     broadcastToAll("The map doesn't match this mission: the POIs stay in the Objective's bag.", {1, 0.8, 0.4})
@@ -568,7 +572,7 @@ function activatedeployment(name)
     end
     Global.call("setPoiPlacementAids", {
       show    = true,
-      isRecon = Deck:_scenarioKey(_G.selectedScenario) == "skirmish",
+      isRecon = isReconSelected(),
     })
     deactivateDeploymentMenu()
     local callback = nil

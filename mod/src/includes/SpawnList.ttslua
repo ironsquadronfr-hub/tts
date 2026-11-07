@@ -1,10 +1,5 @@
 require('!/common/Tablex')
 
--- How many lists are spawning right now, red's and blue's together. The two
--- list builders are separate objects with separate scripts, so neither can see
--- the other's state: the count lives on the Global, which both reach. Pass 0 to
--- read it. A reload starts the Global fresh, so the count cannot survive as a
--- stale value.
 -- Values written into a mini's or a token's script come from the list, and a
 -- list is a file from someone else: quoted, they stay data and cannot run.
 local function luaString(value)
@@ -29,6 +24,11 @@ function isListImportBusy()
   return false
 end
 
+-- How many lists are spawning right now, red's and blue's together. The two
+-- list builders are separate objects with separate scripts, so neither can see
+-- the other's state: the count lives on the Global, which both reach. Pass 0 to
+-- read it. A reload starts the Global fresh, so the count cannot survive as a
+-- stale value.
 local function countImports(delta)
   local count = (Global.getVar("importsInFlight") or 0) + delta
   if count < 0 then
@@ -313,10 +313,8 @@ local function initListSpawner(params)
         objEntry.obj.use_snap_points = false
       end
 
-      -- new behaviour shared by every mini
-      if globals.miniSharedScript then
-        selectedMiniScript = selectedMiniScript .. "\n" .. globals.miniSharedScript
-      end
+      -- Behaviour shared by every mini.
+      selectedMiniScript = selectedMiniScript .. "\n" .. globals.miniSharedScript
 
       -- SET SCRIPT
       local obj = objEntry.obj

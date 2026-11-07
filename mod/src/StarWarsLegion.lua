@@ -26,6 +26,7 @@ function onSave()
     welcome = welcomeDialogActive,
     overlays = overlayMode,
     poiSnap = isPoiSnapEnabled(),
+    poiRecon = isPoiReconPlacement(),
   })
 end
 
@@ -281,10 +282,12 @@ function onload(saveData)
 
     highestPoint = 0
 
-    -- POI snap points (only POI tokens snap to them), on unless the save
-    -- turned them off. Left a moment for a saved map to report its size.
+    -- POI snap points (only POI tokens snap to them) stay off until a mission
+    -- is set up, unless the save was made during one. Left a moment for a saved
+    -- map to report its size.
     Wait.time(function()
-      setPoiSnapPoints(loadData.poiSnap ~= false)
+      setPoiReconPlacement(loadData.poiRecon == true)
+      setPoiSnapPoints(loadData.poiSnap == true)
     end, 2)
 
     -- token Bags
@@ -307,10 +310,6 @@ function onload(saveData)
     redD6BagGUID = "22127e"
 
     unitIDTokenBagGUID = "21550f"
-
-    -- Options for the behaviour shared by every mini (see includes/data/MiniShared):
-    --   upright:  stand a mini back up if it tips over after a drop or collision
-    miniOptions = {upright = true}
 
     Wait.time(initHotkeys, 1)
   

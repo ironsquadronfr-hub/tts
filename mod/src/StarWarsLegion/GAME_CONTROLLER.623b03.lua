@@ -6,6 +6,7 @@ require('!/common/Zonex')
 function onload(save_state)
     -- So mission draws differ from one load to the next.
     math.randomseed(os.time())
+    Wait.time(clearMissionCards, 1)
     _G.Deck = Deck:create()
 
     -- init values
@@ -1912,7 +1913,13 @@ local function readMissionDecks()
   return decks, scenario
 end
 
+-- Tagged so a reload can find the cards left on the TV: missionCards is not saved.
+MISSION_CARD_TAG = "MissionCard"
+
 function clearMissionCards()
+  for _, card in ipairs(getObjectsWithTag(MISSION_CARD_TAG)) do
+    destroyObject(card)
+  end
   for _, stack in pairs(missionCards) do
     for _, entry in ipairs(stack) do
       if not entry.obj.isDestroyed() then
@@ -1964,6 +1971,7 @@ local function showMissionCard(slotKey, column, kind, card)
     return
   end
   local obj = Deck:spawnBattleCard(Deck.BATTLE_KINDS[kind].key, card.name, missionScenario)
+  obj.addTag(MISSION_CARD_TAG)
   obj.setLock(true)
   obj.setScale({MISSION_CARD_SCALE, 1, MISSION_CARD_SCALE})
   obj.setDescription("From the " .. missionSeatName(card.owner) .. "'s battle deck")

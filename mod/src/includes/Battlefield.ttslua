@@ -93,8 +93,17 @@ local function _poiWorldPositions(rect, layout, isThreeByThree)
   return positions
 end
 
--- True while a Recon mission is being set up, on a map of any size.
+-- True while a Recon mission is being set up, on a map of any size. Saved, so
+-- a reload during setup keeps the right snap points.
 local poiReconPlacement = false
+
+function isPoiReconPlacement()
+  return poiReconPlacement
+end
+
+function setPoiReconPlacement(value)
+  poiReconPlacement = value
+end
 
 function getPoiWorldPositions()
   local rect = getBattlefieldRect()

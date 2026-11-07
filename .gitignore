@@ -1,5 +1,5 @@
 dist
 mod/src/includes/generated/
-node_modules/
+node_modules
 .vs/
 .los-scene/
