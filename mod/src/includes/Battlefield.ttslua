@@ -189,8 +189,11 @@ function togglePoiGuideProjector()
   end
 end
 
--- The guide's bundle only shows the 6x3 grid, so a Recon table gets rings.
-local POI_RING_RADIUS = 1
+-- The guide's bundle only shows the 6x3 grid, so a Recon table gets rings:
+-- wider than a POI so they show around it, and lifted so the ground does not
+-- half-bury them.
+local POI_RING_RADIUS = 1.2
+local POI_RING_LIFT = 0.15
 local POI_RING_SEGMENTS = 32
 local poiRingsDrawn = false
 
@@ -201,12 +204,12 @@ local function _showPoiRings()
     for i = 0, POI_RING_SEGMENTS do
       local angle = i / POI_RING_SEGMENTS * 2 * math.pi
       table.insert(points, {
-        p.x + POI_RING_RADIUS * math.cos(angle),
-        p.y + 0.05,
-        p.z + POI_RING_RADIUS * math.sin(angle),
+        x = p.x + POI_RING_RADIUS * math.cos(angle),
+        y = p.y + POI_RING_LIFT,
+        z = p.z + POI_RING_RADIUS * math.sin(angle),
       })
     end
-    table.insert(lines, {points = points, color = {1, 1, 1}, thickness = 0.08})
+    table.insert(lines, {points = points, color = {1, 1, 1}, thickness = 0.1})
   end
   Global.setVectorLines(lines)
   poiRingsDrawn = true
