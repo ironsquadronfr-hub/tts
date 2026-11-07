@@ -322,14 +322,15 @@ local function losIsTerrain(miniGuids, o)
   end
   -- Game aids, many of them asset bundles the mod spawns: tokens, rulers,
   -- templates, silhouettes, deployment and masking boundaries, the POI and
-  -- height guides, smoke. Maps can build terrain from asset bundles too
+  -- height guides, smoke, and a map's dust, fog or mist. Maps can build terrain from asset bundles too
   -- (Alderaan's spires and landspeeders), so those are only skipped by name,
   -- or when unnamed.
   if string.find(name, "token") or string.find(name, "ruler")
     or string.find(name, "template") or string.find(name, "dice")
     or string.find(name, "silhouette") or string.find(name, "objective")
     or string.find(name, "boundary") or string.find(name, "maximum move")
-    or string.find(name, "guide") or string.find(name, "smoke") then
+    or string.find(name, "guide") or string.find(name, "smoke")
+    or string.find(name, "dust") or string.find(name, "fog") or string.find(name, "mist") then
     return false
   end
   if o.name == "Custom_Assetbundle" and name == "" then
