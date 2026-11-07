@@ -965,28 +965,8 @@ function losPrefetchCoroutine()
   return 1
 end
 
--- Scans only when something may have changed, instead of for the whole session.
--- One that misses a piece costs little: the verdict prepares what it needs.
-local losScanScheduled = false
-
-local function losScheduleScan()
-  if losScanScheduled then return end
-  losScanScheduled = true
-  Wait.time(function()
-    losScanScheduled = false
-    losPrefetchScan()
-  end, LOS_PREFETCH_INTERVAL)
-end
-
 function losStartPrefetch()
-  losScheduleScan()
-end
-
--- From the Global's onObjectSpawn and onObjectDrop.
-function losOnObjectPlaced(obj)
-  if obj ~= nil and obj.name == "Custom_Model" then
-    losScheduleScan()
-  end
+  Wait.time(losPrefetchScan, LOS_PREFETCH_INTERVAL, -1)
 end
 
 local function losSummaryHide()
