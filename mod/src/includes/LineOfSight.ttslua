@@ -1,8 +1,7 @@
 -- Line of sight engine, run by Global for every order token.
 --
--- The order token that ATTACKs builds a request (its unit's sample points,
--- the defending minis, the vehicles that block) and hands it to Global with
--- losStartVerdict; Global finds the witness lines, draws them, then calls the
+-- The order token that ATTACKs builds a request (its unit's minis, the
+-- defending minis) and hands it to Global with losStartVerdict; Global finds the witness lines, draws them, then calls the
 -- token's losVerdictDone so it can raise the silhouettes.
 --
 -- Why Global: every order token runs its own copy of the token script, so a
@@ -17,7 +16,7 @@
 -- grid, which tests a handful of triangles per line instead of thousands.
 
 -- Time budget per frame for a verdict the players are waiting on.
-local LOS_FRAME_BUDGET = 0.02
+local LOS_FRAME_BUDGET = 0.01
 -- Time budget per frame for preparing meshes in the background: small, so
 -- nobody notices the table working.
 local LOS_PREFETCH_BUDGET = 0.004
@@ -31,14 +30,21 @@ local function losLog(msg)
   if LOS_DEBUG then print("[LOS] " .. msg) end
 end
 
+local losBarShown = nil
+
+-- Only when the percentage changes: a UI write on every frame is not free.
 local function losBarSet(pct)
+  local whole = math.floor(pct)
+  if whole == losBarShown then return end
+  losBarShown = whole
   pcall(function()
-    UI.setAttribute("progressRuleFill", "width", math.floor(pct) .. "%")
+    UI.setAttribute("progressRuleFill", "width", whole .. "%")
     UI.setAttribute("progressRule", "active", "true")
   end)
 end
 
 local function losBarHide()
+  losBarShown = nil
   pcall(function() UI.setAttribute("progressRule", "active", "false") end)
 end
 
@@ -297,7 +303,8 @@ end
 -- miniGuids may be nil (background preparation): then only isAMini is asked.
 local function losIsTerrain(miniGuids, o)
   if miniGuids ~= nil and miniGuids[o.getGUID()] then return false end
-  if o.getVar("isAMini") == true then return false end
+  -- isAMini only marks leaders: the other minis carry leaderGUID.
+  if o.getVar("isAMini") == true or o.getVar("leaderGUID") ~= nil then return false end
   local t = o.type
   if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
     return false
@@ -548,7 +555,7 @@ local function losMeshBuild(entry)
       end
     end
     lines = lines + 1
-    if lines % 200 == 0 then losMeshYield() end
+    if lines % 20 == 0 then losMeshYield() end
   end
   entry.text = nil
   if n == 0 then
@@ -596,6 +603,7 @@ local function losMeshBuild(entry)
     local c0x, c0y, c0z = math.huge, math.huge, math.huge
     local c1x, c1y, c1z = -math.huge, -math.huge, -math.huge
     for k = s, e do
+      if k % 500 == 0 then losMeshYield() end
       local i = order[k]
       if tminx[i] < x0 then x0 = tminx[i] end
       if tminy[i] < y0 then y0 = tminy[i] end
@@ -627,7 +635,10 @@ local function losMeshBuild(entry)
         key, mid = cz, (c0z + c1z) / 2
       end
       local i, j = s, e
+      local swept = 0
       while i <= j do
+        swept = swept + 1
+        if swept % 500 == 0 then losMeshYield() end
         if key[order[i]] < mid then
           i = i + 1
         else
@@ -962,15 +973,15 @@ end
 ---------------------------------------------------------------------------
 
 -- Called by an order token's ATTACK. request = {
---   gen, tokenGuid, leaderGuid, pad,
+--   gen, tokenGuid, leaderGuid,
 --   attackerSil, defenderSil = {r, h, o} (each unit's silhouette),
 --   attackers = {{guid, pos}, ...} (the leader included),
 --   defenders = {{guid, name, pos}, ...},
 --   miniGuids = {guid, ...} (minis never block rays),
---   blockers = {cylinder, ...} (third-party ground vehicles),
 -- }
 function losStartVerdict(request)
   losVerdictGen = losVerdictGen + 1
+  losVerdictOwner = request.tokenGuid
   local miniGuids = {}
   for _, guid in ipairs(request.miniGuids or {}) do
     miniGuids[guid] = true
@@ -990,15 +1001,16 @@ function losStartVerdict(request)
       end
     end
   end
+  local blockers = zonePos and losFindVehicles(request, zonePos, zoneScale) or {}
   losVerdictRequest = {
     gen = losVerdictGen,
     request = request,
-    blockers = zonePos and losFindVehicles(request, zonePos, zoneScale) or {},
+    blockers = blockers,
     obbs = obbs,
     pois = pois,
   }
   losLog(LOS_BUILD .. " - " .. #obbs .. " terrain box(es), "
-    .. #(request.blockers or {}) .. " vehicle cylinder(s), "
+    .. #blockers .. " vehicle cylinder(s), "
     .. #(request.attackers or {}) .. " attacker(s), "
     .. #(request.defenders or {}) .. " defender(s)")
   startLuaCoroutine(Global, "losVerdictCoroutine")
@@ -1018,9 +1030,14 @@ local function losSummaryShow(green, red, coverText, modelText)
   end)
 end
 
--- Stops any verdict in progress and clears its lines, rings and summary.
-function losCancel()
+-- Stops any verdict in progress and clears its lines, rings and summary, when
+-- it belongs to this token: another token leaving its own attack mode must not
+-- wipe the lines someone else is reading. params = {tokenGuid = "..."}
+function losCancel(params)
+  if params and losVerdictOwner and params.tokenGuid ~= losVerdictOwner then return end
+  losVerdictOwner = nil
   losVerdictGen = losVerdictGen + 1
+  losVerdictRunning = false
   losBarHide()
   losSummaryHide()
   Global.setVectorLines({})
@@ -1440,8 +1457,11 @@ function losVerdictCoroutine()
     return ctx.gen ~= losVerdictGen
   end
   local function finish()
-    losVerdictRunning = false
-    losBarHide()
+    -- A run overtaken by a newer one must not reset what that one is using.
+    if ctx.gen == losVerdictGen then
+      losVerdictRunning = false
+      losBarHide()
+    end
     return 1
   end
   losVerdictRunning = true
