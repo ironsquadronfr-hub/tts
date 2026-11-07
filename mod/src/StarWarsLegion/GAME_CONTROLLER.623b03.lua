@@ -115,6 +115,8 @@ end
 function reset()
     clearMissionCards()
     mission = nil
+    missionMenuOpen = false
+    missionActingSeat = nil
     mainMenu()
 end
 
@@ -757,7 +759,8 @@ function createOptionButton(optionNumber, optionClickFunction, optionLabel, opti
     optionObj = optionObjs["gameControllerOption"..optionNumber]
     optionButton = optionButtons["gameControllerOption"..optionNumber.."Button"]
 
-    _G["gameControllerOptionFunction"..optionNumber] = function()
+    _G["gameControllerOptionFunction"..optionNumber] = function(_, playerColor)
+        if not missionClickAllowed(playerColor) then return end
         optionButtons["gameControllerOption"..optionNumber.."Button"].AssetBundle.playTriggerEffect(0)
         _G[optionClickFunction](optionNumber)
     end
@@ -782,7 +785,8 @@ function createOptionButton(optionNumber, optionClickFunction, optionLabel, opti
 end
 
 function changeBackButton(optionClickFunction, optionToolTip)
-    _G["gameControllerBackButtonFunction"] = function()
+    _G["gameControllerBackButtonFunction"] = function(_, playerColor)
+        if missionMenuOpen and playerColor == "Grey" then return end
         backButton.AssetBundle.playTriggerEffect(0)
         _G[optionClickFunction]()
     end
@@ -1638,6 +1642,7 @@ function unpackMap(text)
 end
 
 function createMenu(optionTable, selectedIndex)
+    menuDrawnAt = os.clock()
     clearAllButtons(backButton)
 
     if #optionTable > 5 then
@@ -1799,6 +1804,24 @@ MISSION_ACTION_TOOLTIPS = {
 
 missionCards = {}
 
+-- Who may press the mission buttons: not a spectator, and only the player whose
+-- choice it is when that seat is taken (a seat left empty stays open, so one
+-- person can still set up both sides). A button redrawn under a double click
+-- must not take the second click: it would answer a question nobody has read.
+local MISSION_REDRAW_GUARD = 0.5
+
+function missionClickAllowed(playerColor)
+  if not missionMenuOpen then return true end
+  if playerColor == "Grey" then return false end
+  if os.clock() - (menuDrawnAt or 0) < MISSION_REDRAW_GUARD then return false end
+  local seat = missionActingSeat
+  if seat ~= nil and Player[seat].seated and playerColor ~= seat then
+    Player[playerColor].broadcast("It is the " .. seat .. " player's choice.", {1, 0.8, 0.4})
+    return false
+  end
+  return true
+end
+
 -- Blank lines after the TV text push it up, clear of the card row.
 
 local function missionSeatName(seat)
@@ -1931,7 +1954,11 @@ end
 
 -- Shows a card on the TV in column 1..4, over the card it replaces.
 local function showMissionCard(slotKey, column, kind, card)
-  local stack = missionCards[slotKey] or {}
+  -- A player may have deleted a card off the TV.
+  local stack = {}
+  for _, entry in ipairs(missionCards[slotKey] or {}) do
+    if not entry.obj.isDestroyed() then table.insert(stack, entry) end
+  end
   missionCards[slotKey] = stack
   if card == nil or (stack[#stack] and stack[#stack].card == card) then
     return
@@ -1959,7 +1986,7 @@ local function clearReshuffledCards(reshuffled)
   local kept = {}
   for _, entry in ipairs(missionCards[slotKey] or {}) do
     if entry.card.owner == reshuffled.seat then
-      destroyObject(entry.obj)
+      if not entry.obj.isDestroyed() then destroyObject(entry.obj) end
     else
       table.insert(kept, entry)
     end
@@ -2029,6 +2056,8 @@ function buildMissionMenu()
   missionDecks = decks
   missionScenario = scenario
   mission = nil
+  missionMenuOpen = true
+  missionActingSeat = nil
 
   clearAllButtons()
   changeBackButton("reset", "Cancel and go back to Main Menu")
@@ -2137,6 +2166,7 @@ function missionTurnMenu()
     return
   end
   local seat = mission:currentSeat()
+  missionActingSeat = seat
   local turn = MISSION_TURNS - mission:turnsLeft() + 1
   local entries = {}
   for _, action in ipairs(mission:availableActions(seat)) do
@@ -2177,6 +2207,7 @@ end
 -- far edge turns the battlefield around instead, so that edge's terrain ends
 -- up in front of the blue player.
 local function createMissionSideButtons()
+  missionActingSeat = mission.blueSeat
   clearAllButtons()
   changeBackButton("reset", "Cancel and go back to Main Menu")
   -- Tinted with the blue player's seat color, like the modify turns.
@@ -2266,5 +2297,7 @@ function setUpMission(flipBattlefield)
   local summary = missionSummary():gsub("\n", ". ")
   broadcastToAll("Mission set up. " .. summary, {0.8, 0.9, 1})
   mission = nil
+  missionMenuOpen = false
+  missionActingSeat = nil
   mainMenu()
 end

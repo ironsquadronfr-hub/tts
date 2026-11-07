@@ -211,6 +211,7 @@ local POI_CLEARANCE_CENTER = 0.6
 local POI_CLEARANCE_SIZE = {1.6, 0.9, 1.6} -- under the POI's 2": grazing a wall is fine
 local POI_FOOTPRINT = {1.6, 0.1, 1.6}
 local POI_CAST_HEIGHT = 30
+local MISSION_POI_TAG = "MissionPOI"
 -- A mound's collider can sit well below what is drawn, which would sink the
 -- POI into it, so low terrain counts by its visible top. Not taller terrain:
 -- the visible top of a wood is its treetops, its collider the ground to stand on.
@@ -278,6 +279,10 @@ local function placeMissionPois(bag, cardName)
     broadcastToAll("The map doesn't match this mission: the POIs stay in the Objective's bag.", {1, 0.8, 0.4})
     return
   end
+  -- A mission built again must not leave the last one's POIs on the map.
+  for _, poi in ipairs(getObjectsWithTag(MISSION_POI_TAG)) do
+    destroyObject(poi)
+  end
   Wait.condition(function()
     for i, entry in ipairs(poisInBag(bag)) do
       local p = positions[i]
@@ -289,6 +294,7 @@ local function placeMissionPois(bag, cardName)
           rotation          = {0, 0, 0},
           smooth            = false,
           callback_function = function(poi)
+            poi.addTag(MISSION_POI_TAG)
             poi.setLock(true)
             poi.setPosition(target)
             poi.setRotation({0, 0, 0})

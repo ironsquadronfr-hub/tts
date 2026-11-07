@@ -549,11 +549,34 @@ function _loadArmy()
   )
 end
 
+-- Checked before anything is cleared: a bad list must not cost the player the
+-- army on the table, nor leave the import half started.
+function _isValidList(data)
+  if type(data.battlefieldDeck) ~= "table" or type(data.units) ~= "table" then
+    return false
+  end
+  data.commandCards = data.commandCards or {}
+  data.contingencies = data.contingencies or {}
+  if type(data.commandCards) ~= "table" or type(data.contingencies) ~= "table" then
+    return false
+  end
+  for _, unit in ipairs(data.units) do
+    if type(unit) ~= "table" or type(unit.name) ~= "string" then
+      return false
+    end
+  end
+  return true
+end
+
 function _loadArmyFromJson(data)
   -- Blurring the import field while it is empty or holds invalid text fires
   -- onEndEdit -> importFromText -> JSON.decode("") -> nil, and everything below
   -- reads data directly, so the script errored out on a stray click.
   if not data or isListImportBusy() then return end
+  if not _isValidList(data) then
+    broadcastToAll('List import: that list is incomplete, nothing was changed.', {0.9, 0.4, 0.4})
+    return
+  end
   _clearZone()
   if data.armyFaction == "" then
     data.armyFaction = "mercenary"
