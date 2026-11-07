@@ -232,6 +232,10 @@ local POI_CLEARANCE_CENTER = 0.6
 local POI_CLEARANCE_SIZE = {1.6, 0.9, 1.6} -- under the POI's 2": grazing a wall is fine
 local POI_FOOTPRINT = {1.6, 0.1, 1.6}
 local POI_CAST_HEIGHT = 30
+-- A mound's collider can sit well below what is drawn, which would sink the
+-- POI into it, so low terrain counts by its visible top. Not taller terrain:
+-- the visible top of a wood is its treetops, its collider the ground to stand on.
+local POI_LOW_TERRAIN = 1
 
 local function terrainOnSpot(p)
   local hits = Physics.cast({
@@ -263,8 +267,14 @@ local function poiRestHeight(p)
     max_distance = POI_CAST_HEIGHT + 1,
   })
   for _, hit in ipairs(hits or {}) do
-    if hit.hit_object ~= nil and terrain[hit.hit_object.getGUID()] and hit.point.y > height then
-      height = hit.point.y
+    local obj = hit.hit_object
+    if obj ~= nil and terrain[obj.getGUID()] then
+      local visual = obj.getVisualBoundsNormalized()
+      local visualTop = visual.center.y + visual.size.y / 2
+      if visualTop - p.y <= POI_LOW_TERRAIN then
+        height = math.max(height, visualTop)
+      end
+      height = math.max(height, hit.point.y)
     end
   end
   return height
