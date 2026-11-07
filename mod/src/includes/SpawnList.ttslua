@@ -5,6 +5,8 @@ require('!/common/Tablex')
 -- the other's state: the count lives on the Global, which both reach. Pass 0 to
 -- read it. A reload starts the Global fresh, so the count cannot survive as a
 -- stale value.
+local IMPORT_BLOCK_SECONDS = 60
+
 local function countImports(delta)
   local count = (Global.getVar("importsInFlight") or 0) + delta
   if count < 0 then
@@ -605,6 +607,15 @@ local function initListSpawner(params)
   end
 
   return function(listData)
+    -- Enter can be pressed again before anything shows, and every press would
+    -- spawn the list again. An import that never closed stops blocking after a
+    -- while, so a failed one cannot lock the player out.
+    if __importInFlight and os.time() - (__importStartedAt or 0) < IMPORT_BLOCK_SECONDS then
+      broadcastToAll("List already importing, please wait.", {1, 0.8, 0.4})
+      return
+    end
+    __importStartedAt = os.time()
+
     -- The synchronous version spawned the whole list in the frame of the
     -- import: ~120 objects instantiated at once froze the table for
     -- seconds. Instead the import builds a queue of jobs and a pump spawns
