@@ -558,9 +558,10 @@ function _isValidList(data)
   if data.armyFaction ~= nil and type(data.armyFaction) ~= "string" then
     return false
   end
-  for _, key in ipairs({"scenario", "objective", "deployment", "condition"}) do
+  -- Each is a card name or a list of them (LegionHQ and Tabletop Admiral both).
+  for _, key in ipairs({"scenario", "objective", "deployment", "condition", "conditions"}) do
     local value = data.battlefieldDeck[key]
-    if value ~= nil and type(value) ~= "string" then
+    if value ~= nil and type(value) ~= "string" and type(value) ~= "table" then
       return false
     end
   end
