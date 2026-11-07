@@ -4,6 +4,8 @@ require('!/Mission')
 require('!/common/Zonex')
 
 function onload(save_state)
+    -- So mission draws differ from one load to the next.
+    math.randomseed(os.time())
     _G.Deck = Deck:create()
 
     -- init values
