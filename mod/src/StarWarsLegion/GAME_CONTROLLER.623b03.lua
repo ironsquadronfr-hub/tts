@@ -1902,44 +1902,63 @@ local function readMissionDecks()
 end
 
 function clearMissionCards()
-  for _, card in pairs(missionCards) do
-    if card ~= nil and not card.isDestroyed() then
-      destroyObject(card)
+  for _, stack in pairs(missionCards) do
+    for _, entry in ipairs(stack) do
+      if not entry.obj.isDestroyed() then
+        destroyObject(entry.obj)
+      end
     end
   end
   missionCards = {}
 end
 
 -- The mission's cards sit in one row along the bottom of the TV, left to
--- right: Objective, Secondary, the blue seat's Advantage, the red seat's
+-- right: the blue seat's Advantage, Objective, Secondary, the red seat's
 -- Advantage (by seat, not role, so each sits on its owner's side). Offsets are
 -- subtracted from the screen's position (as gameController.setUpCardsPos):
 -- x and y place the row on the tilted screen, z spaces the cards.
 MISSION_CARD_SCALE = 0.95
 MISSION_CARD_ROW = {1.68, -1.21}
 MISSION_CARD_COLUMNS = {-3.75, -1.25, 1.25, 3.75}
+MISSION_CARD_STACK_STEP = 0.45
+MISSION_CARD_STACK_LIFT = 0.02
+MISSION_CARD_STACK_MAX = 3
+-- Along the tilted screen (55.91 degrees): down it, and out towards the players.
+MISSION_CARD_DOWN = {x = -0.561, y = -0.828}
+MISSION_CARD_OUT = {x = -0.828, y = 0.561}
 
--- Shows a card on the TV in column 1..4.
+-- Puts a card on the TV in its column. Each replacement sits lower than the
+-- card it covers, so the names of the cards underneath stay readable.
+local function positionMissionCard(obj, column, level)
+  local screenPos = screen.getPosition()
+  local step = (level - 1) * MISSION_CARD_STACK_STEP
+  local lift = (level - 1) * MISSION_CARD_STACK_LIFT
+  obj.setRotation({55.91, 270.00, 0.00})
+  obj.setPosition({
+    screenPos.x - MISSION_CARD_ROW[1] + MISSION_CARD_DOWN.x * step + MISSION_CARD_OUT.x * lift,
+    screenPos.y - MISSION_CARD_ROW[2] + MISSION_CARD_DOWN.y * step + MISSION_CARD_OUT.y * lift,
+    screenPos.z - MISSION_CARD_COLUMNS[column],
+  })
+end
+
+-- Shows a card on the TV in column 1..4, over the card it replaces.
 local function showMissionCard(slotKey, column, kind, card)
-  if missionCards[slotKey] and not missionCards[slotKey].isDestroyed() then
-    destroyObject(missionCards[slotKey])
-  end
-  missionCards[slotKey] = nil
-  if card == nil then
+  local stack = missionCards[slotKey] or {}
+  missionCards[slotKey] = stack
+  if card == nil or (stack[#stack] and stack[#stack].card == card) then
     return
   end
-  local screenPos = screen.getPosition()
   local obj = Deck:spawnBattleCard(Deck.BATTLE_KINDS[kind].key, card.name, missionScenario)
   obj.setLock(true)
   obj.setScale({MISSION_CARD_SCALE, 1, MISSION_CARD_SCALE})
-  obj.setRotation({55.91, 270.00, 0.00})
-  obj.setPosition({
-    screenPos.x - MISSION_CARD_ROW[1],
-    screenPos.y - MISSION_CARD_ROW[2],
-    screenPos.z - MISSION_CARD_COLUMNS[column],
-  })
   obj.setDescription("From the " .. missionSeatName(card.owner) .. "'s battle deck")
-  missionCards[slotKey] = obj
+  table.insert(stack, {card = card, obj = obj})
+  if #stack > MISSION_CARD_STACK_MAX then
+    destroyObject(table.remove(stack, 1).obj)
+  end
+  for level, entry in ipairs(stack) do
+    positionMissionCard(entry.obj, column, level)
+  end
 end
 
 local function showMission()
@@ -2015,8 +2034,8 @@ function buildMissionMenu()
   local modeName = scenario == "skirmish" and "RECON" or scenario:upper()
   local rollOff = scenario == "skirmish"
     and "Roll off as the rules describe, then pick the winner below."
-    or "Each player rolls 4 black attack dice: most Criticals,\nthen Hits, then Surges. Reroll ties, then pick the winner below."
-  printToScreen("BUILD MISSION (" .. modeName .. ")\n\nWho is the blue player?\n\n" .. rollOff, 70, 3)
+    or "Each player rolls 4 black attack dice:\nmost Criticals, then Hits, then Surges.\nReroll ties, then pick the winner below."
+  printToScreen("BUILD MISSION (" .. modeName .. ")\n\nWho is the blue player?\n\n" .. rollOff, 60, 3)
 end
 
 -- Shows the Objectives and Secondaries in both players' battle decks side by
