@@ -637,6 +637,15 @@ function Deck:splitBattleDeck(names, scenario)
   return result, unknown
 end
 
+-- All of a scenario's battle cards, by mission kind.
+function Deck:getBattleCardPool(scenario)
+  local pool = {}
+  for kind, info in pairs(Deck.BATTLE_KINDS) do
+    pool[kind] = self:getBattleCardNamesByType(info.key, scenario)
+  end
+  return pool
+end
+
 function Deck:getBattleCardNamesByType(name, scenario)
   if not scenario then
     scenario = 'standard'
