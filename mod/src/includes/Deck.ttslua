@@ -55,6 +55,14 @@ Deck.SCENARIO_ALIASES = {
   recon = "skirmish",
 }
 
+-- What players read: the data's "skirmish" is shown under its current name.
+function scenarioLabel(scenario)
+  if scenario ~= nil and scenario:lower() == "skirmish" then
+    return "Recon"
+  end
+  return scenario
+end
+
 function Deck:_scenarioKey(scenario)
   if scenario == nil then
     return "standard"
