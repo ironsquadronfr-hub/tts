@@ -161,7 +161,10 @@ local function _poiGuides()
   return guides
 end
 
-local function _showPoiGuide()
+local POI_GUIDE_STANDARD = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_isq_v3.unity3d"
+local POI_GUIDE_RECON = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_recon_isq_v1.unity3d"
+
+local function _showPoiGuide(asset)
   local projector = spawnObject({
     type     = "Custom_AssetBundle",
     position = {8, 30, 0},
@@ -170,7 +173,7 @@ local function _showPoiGuide()
   projector.setName("Poi Guide")
   projector.setLock(true)
   projector.setCustomObject({
-    assetbundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_isq_v3.unity3d",
+    assetbundle = asset,
   })
 end
 
@@ -185,40 +188,7 @@ function togglePoiGuideProjector()
   if #guides > 0 then
     _hidePoiGuide(guides)
   else
-    _showPoiGuide()
-  end
-end
-
--- The guide's bundle only shows the 6x3 grid, so a Recon table gets rings:
--- wider than a POI so they show around it, and lifted so the ground does not
--- half-bury them.
-local POI_RING_RADIUS = 1.2
-local POI_RING_LIFT = 0.15
-local POI_RING_SEGMENTS = 32
-local poiRingsDrawn = false
-
-local function _showPoiRings()
-  local lines = {}
-  for _, p in ipairs(getPoiWorldPositions()) do
-    local points = {}
-    for i = 0, POI_RING_SEGMENTS do
-      local angle = i / POI_RING_SEGMENTS * 2 * math.pi
-      table.insert(points, {
-        x = p.x + POI_RING_RADIUS * math.cos(angle),
-        y = p.y + POI_RING_LIFT,
-        z = p.z + POI_RING_RADIUS * math.sin(angle),
-      })
-    end
-    table.insert(lines, {points = points, color = {1, 1, 1}, thickness = 0.1})
-  end
-  Global.setVectorLines(lines)
-  poiRingsDrawn = true
-end
-
-local function _hidePoiRings()
-  if poiRingsDrawn then
-    Global.setVectorLines({})
-    poiRingsDrawn = false
+    _showPoiGuide(POI_GUIDE_STANDARD)
   end
 end
 
@@ -227,18 +197,10 @@ end
 -- does not jump back onto a guide circle.
 -- params = {show = true/false, isRecon = true/false}
 function setPoiPlacementAids(params)
-  local guides = _poiGuides()
-  _hidePoiRings()
+  _hidePoiGuide(_poiGuides())
   poiReconPlacement = params.show == true and params.isRecon == true
-  if poiReconPlacement then
-    _hidePoiGuide(guides)
-    _showPoiRings()
-  elseif params.show then
-    if #guides == 0 then
-      _showPoiGuide()
-    end
-  else
-    _hidePoiGuide(guides)
+  if params.show then
+    _showPoiGuide(poiReconPlacement and POI_GUIDE_RECON or POI_GUIDE_STANDARD)
   end
   setPoiSnapPoints(params.show == true)
 end
