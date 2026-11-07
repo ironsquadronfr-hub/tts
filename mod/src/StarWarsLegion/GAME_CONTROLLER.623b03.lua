@@ -2021,7 +2021,6 @@ function buildMissionMenu()
     return
   end
   clearMissionCards()
-  setUpController.call("setAdvantageLabels", {})
   missionDecks = decks
   missionScenario = scenario
   mission = nil
@@ -2223,7 +2222,6 @@ function setUpMission(flipBattlefield)
     local card = placeOnMount(advantageMounts[seat].mount, "advantage", result.advantage[seat])
     card.setDescription(role .. " player's Advantage (" .. seat .. " seat)")
   end
-  setUpController.call("setAdvantageLabels", {blueSeat = result.blueSeat})
 
   -- Turn the terrain first, so the deployment zones drawn next stay put.
   if flipBattlefield then
