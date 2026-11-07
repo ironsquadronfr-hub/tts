@@ -1943,9 +1943,9 @@ local function showMissionCard(slotKey, column, kind, card)
 end
 
 local function showMission()
-  showMissionCard("objective", 1, "objective", mission.cards.objective)
-  showMissionCard("secondary", 2, "secondary", mission.cards.secondary)
-  showMissionCard("advantageBlue", 3, "advantage", mission.cards.advantage.Blue)
+  showMissionCard("advantageBlue", 1, "advantage", mission.cards.advantage.Blue)
+  showMissionCard("objective", 2, "objective", mission.cards.objective)
+  showMissionCard("secondary", 3, "secondary", mission.cards.secondary)
   showMissionCard("advantageRed", 4, "advantage", mission.cards.advantage.Red)
 end
 
@@ -1978,9 +1978,9 @@ local function showMissionScreen(header)
   end
   add(mission.blueSeat:upper() .. " SEAT IS THE BLUE PLAYER", MISSION_BLUE_PLAYER_Y, 0, 55, MISSION_SEAT_COLORS[mission.blueSeat])
   local labels = {
+    {text = "BLUE SEAT", color = MISSION_SEAT_COLORS.Blue},
     {text = "OBJECTIVE"},
     {text = "SECONDARY"},
-    {text = "BLUE SEAT", color = MISSION_SEAT_COLORS.Blue},
     {text = "RED SEAT", color = MISSION_SEAT_COLORS.Red},
   }
   local scaleZ = screen.getScale().z
@@ -2009,11 +2009,14 @@ function buildMissionMenu()
   clearAllButtons()
   changeBackButton("reset", "Cancel and go back to Main Menu")
   createMenu({
-    {functionName = "missionBlueIsBlue", label = "Blue Seat is Blue", tooltip = "The player at the blue seat is the blue player", buttonTint = {0, 0.4, 1}},
-    {functionName = "missionRedIsBlue", label = "Red Seat is Blue", tooltip = "The player at the red seat is the blue player", buttonTint = {1, 0.2, 0.2}},
+    {functionName = "missionBlueIsBlue", label = "Blue Seat: Blue Player", tooltip = "The player at the blue seat is the blue player", buttonTint = {0, 0.4, 1}},
+    {functionName = "missionRedIsBlue", label = "Red Seat: Blue Player", tooltip = "The player at the red seat is the blue player", buttonTint = {1, 0.2, 0.2}},
   }, 1)
   local modeName = scenario == "skirmish" and "RECON" or scenario:upper()
-  printToScreen("BUILD MISSION (" .. modeName .. ")\n\nWho is the blue player?\n\nRoll off as the rules describe, then pick the winner below.", 70, 3)
+  local rollOff = scenario == "skirmish"
+    and "Roll off as the rules describe, then pick the winner below."
+    or "Each player rolls 4 black attack dice: most Criticals,\nthen Hits, then Surges. Reroll ties, then pick the winner below."
+  printToScreen("BUILD MISSION (" .. modeName .. ")\n\nWho is the blue player?\n\n" .. rollOff, 70, 3)
 end
 
 -- Shows the Objectives and Secondaries in both players' battle decks side by
@@ -2144,13 +2147,13 @@ function missionSideMenu()
   -- Tinted with the blue player's seat color, like the modify turns.
   local tint = mission.blueSeat == "Red" and {1, 0.2, 0.2} or {0, 0.4, 1}
   createMenu({
-    {functionName = "missionEdgeNear", label = "Edge at My Seat", tooltip = "Keep the battlefield as it is: blue deploys on the edge in front of them", buttonTint = tint},
-    {functionName = "missionEdgeFar", label = "Far Edge (Flip Map)", tooltip = "Turn the battlefield around so the far edge's terrain is in front of the blue player", buttonTint = tint},
+    {functionName = "missionEdgeNear", label = "Keep This Side", tooltip = "Keep the battlefield as it is: blue deploys on the edge in front of them", buttonTint = tint},
+    {functionName = "missionEdgeFar", label = "Take the Other Side (Flip Map)", tooltip = "Turn the battlefield around so the far edge's terrain is in front of the blue player", buttonTint = tint},
   }, 1)
   showMissionScreen({
     {text = "MISSION BUILT", size = 75},
     {text = "Blue player: choose your table edge", size = 60, color = MISSION_SEAT_COLORS[mission.blueSeat]},
-    {text = "Players keep their seats: the far edge flips the map", size = 50},
+    {text = "Players keep their seats: taking the other side flips the map", size = 50},
   })
 end
 
