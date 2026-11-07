@@ -23,4 +23,18 @@
     <Text id="losCover" fontSize="15" fontStyle="Bold" color="#E8801A" alignment="MiddleCenter" preferredHeight="22" resizeTextForBestFit="true" resizeTextMinSize="11" resizeTextMaxSize="15">Checking cover...</Text>
     <Text id="losModelCounts" fontSize="13" color="#B4B4BC" alignment="MiddleCenter" preferredHeight="20" resizeTextForBestFit="true" resizeTextMinSize="10" resizeTextMaxSize="13">Checking models...</Text>
   </VerticalLayout>
+  <!-- Shown while a verdict computes: big lists can take a while. -->
+  <Button
+    id="losCancelButton"
+    active="false"
+    rectAlignment="UpperRight"
+    offsetXY="-34 -32"
+    width="92"
+    height="24"
+    fontSize="12"
+    fontStyle="Bold"
+    textColor="#EDEDF2"
+    color="#E8801A"
+    onClick="losCancelClicked"
+  >CANCEL</Button>
 </Panel>

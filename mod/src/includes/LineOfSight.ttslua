@@ -989,6 +989,27 @@ function losOnObjectPlaced(obj)
   end
 end
 
+local function losSummaryHide()
+  pcall(function() UI.setAttribute("losSummary", "active", "false") end)
+end
+
+local function losCancelButton(shown)
+  pcall(function() UI.setAttribute("losCancelButton", "active", shown and "true" or "false") end)
+end
+
+-- The panel comes up as soon as an attack starts, saying it is working, with a
+-- button to stop it: on big lists a verdict takes a while.
+local function losSummaryCalculating()
+  pcall(function()
+    UI.setValue("losGreenCount", "")
+    UI.setValue("losRedCount", "")
+    UI.setValue("losCover", "Calculating line of sight...")
+    UI.setValue("losModelCounts", "")
+    UI.setAttribute("losSummary", "active", "true")
+  end)
+  losCancelButton(true)
+end
+
 ---------------------------------------------------------------------------
 -- VERDICT
 ---------------------------------------------------------------------------
@@ -1034,11 +1055,8 @@ function losStartVerdict(request)
     .. #blockers .. " vehicle cylinder(s), "
     .. #(request.attackers or {}) .. " attacker(s), "
     .. #(request.defenders or {}) .. " defender(s)")
+  losSummaryCalculating()
   startLuaCoroutine(Global, "losVerdictCoroutine")
-end
-
-local function losSummaryHide()
-  pcall(function() UI.setAttribute("losSummary", "active", "false") end)
 end
 
 local function losSummaryShow(green, red, coverText, modelText)
@@ -1059,9 +1077,15 @@ function losCancel(params)
   losVerdictOwner = nil
   losVerdictGen = losVerdictGen + 1
   losVerdictRunning = false
+  losCancelButton(false)
   losBarHide()
   losSummaryHide()
   Global.setVectorLines({})
+end
+
+-- The panel's CANCEL button: stops the verdict, whoever started it.
+function losCancelClicked()
+  losCancel()
 end
 
 -- A ring around a mini's base. Attackers: green when they see at least one
@@ -1482,6 +1506,7 @@ function losVerdictCoroutine()
     if ctx.gen == losVerdictGen then
       losVerdictRunning = false
       losBarHide()
+      losCancelButton(false)
     end
     return 1
   end
