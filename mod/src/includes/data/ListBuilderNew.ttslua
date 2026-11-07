@@ -550,24 +550,37 @@ function _loadArmy()
 end
 
 -- Checked before anything is cleared: a bad list must not cost the player the
--- army on the table, nor leave the import half started.
+-- army on the table, nor leave the import half started. A list may leave parts
+-- out (no command cards, no battle deck): those are filled in empty. Only a
+-- value of the wrong kind is refused, since a list is a file from someone else.
 function _isValidList(data)
-  if type(data.battlefieldDeck) ~= "table" or type(data.units) ~= "table" then
-    return false
+  local function listOf(value)
+    if value == nil then return {} end
+    if type(value) == "string" then return {value} end
+    if type(value) == "table" then return value end
+    return nil
   end
   if data.armyFaction ~= nil and type(data.armyFaction) ~= "string" then
     return false
   end
-  -- Each is a card name or a list of them (LegionHQ and Tabletop Admiral both).
-  for _, key in ipairs({"scenario", "objective", "deployment", "condition", "conditions"}) do
-    local value = data.battlefieldDeck[key]
-    if value ~= nil and type(value) ~= "string" and type(value) ~= "table" then
-      return false
-    end
+  data.battlefieldDeck = data.battlefieldDeck or {}
+  local deck = data.battlefieldDeck
+  if type(deck) ~= "table" then
+    return false
   end
-  data.commandCards = data.commandCards or {}
-  data.contingencies = data.contingencies or {}
-  if type(data.commandCards) ~= "table" or type(data.contingencies) ~= "table" then
+  if deck.scenario ~= nil and type(deck.scenario) ~= "string" then
+    return false
+  end
+  deck.scenario = deck.scenario or "standard"
+  deck.objective = listOf(deck.objective)
+  deck.deployment = listOf(deck.deployment)
+  deck.condition = listOf(deck.condition or deck.conditions)
+  deck.conditions = nil
+  data.units = listOf(data.units)
+  data.commandCards = listOf(data.commandCards)
+  data.contingencies = listOf(data.contingencies)
+  if not (deck.objective and deck.deployment and deck.condition and data.units
+      and data.commandCards and data.contingencies) then
     return false
   end
   for _, unit in ipairs(data.units) do
