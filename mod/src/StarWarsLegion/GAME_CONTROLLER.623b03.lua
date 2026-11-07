@@ -2207,6 +2207,7 @@ function setUpMission(flipBattlefield)
   -- The blue player's zone is drawn on the blue player's side of the table.
   setUpController.call("changeScenario", {missionScenario})
   setUpController.call("setMirrorDeployment", {mirror = result.blueSeat == "Red"})
+  setUpController.call("setPlaceMissionPois", {place = true})
 
   -- Give the cards a moment to land in the mount zones before checking them.
   Wait.time(function()

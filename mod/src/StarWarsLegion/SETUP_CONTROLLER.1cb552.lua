@@ -217,6 +217,75 @@ function setMirrorDeployment(params)
   _G.mirrorDeployment = params.mirror == true
 end
 
+-- Called by the game controller before setting up a mission: the Objective's
+-- POIs then go on the battlefield instead of staying in its bag.
+function setPlaceMissionPois(params)
+  _G.missionPoisOnMap = params.place == true
+end
+
+-- Dropped from above the tallest terrain so each POI lands on what is under
+-- it, and slowed down so it does not bounce off. Players can unlock one with
+-- the usual L key if it lands badly.
+local POI_DROP_HEIGHT = 12
+local POI_FALL_DRAG = 5
+local POI_SETTLE_TIMEOUT = 8
+
+local function settleMissionPoi(poi)
+  local drag = poi.drag
+  poi.drag = POI_FALL_DRAG
+  local function lock()
+    if poi ~= nil then
+      poi.drag = drag
+      poi.setLock(true)
+    end
+  end
+  -- A POI that just left the bag still counts as resting.
+  Wait.time(function()
+    Wait.condition(lock, function()
+      return poi == nil or poi.resting
+    end, POI_SETTLE_TIMEOUT, lock)
+  end, 0.5)
+end
+
+local function poisInBag(bag)
+  local pois = {}
+  for _, entry in ipairs(bag.getObjects()) do
+    if entry.name == "POI Token" then
+      table.insert(pois, entry)
+    end
+  end
+  return pois
+end
+
+local function placeMissionPois(bag, cardName)
+  local positions = Global.call("getMissionPoiPositions", {
+    cardName = cardName,
+    isRecon  = Deck:_scenarioKey(_G.selectedScenario) == "skirmish",
+  })
+  if positions == nil then
+    broadcastToAll("The map doesn't match this mission: the POIs stay in the Objective's bag.", {1, 0.8, 0.4})
+    return
+  end
+  Wait.condition(function()
+    for i, entry in ipairs(poisInBag(bag)) do
+      local p = positions[i]
+      if p ~= nil then
+        bag.takeObject({
+          guid              = entry.guid,
+          position          = {p.x, p.y + POI_DROP_HEIGHT, p.z},
+          rotation          = {0, 0, 0},
+          smooth            = false,
+          callback_function = settleMissionPoi,
+        })
+      end
+    end
+  end, function()
+    return #poisInBag(bag) >= #positions
+  end, 10, function()
+    broadcastToAll("The POIs took too long to load: they stay in the Objective's bag.", {1, 0.8, 0.4})
+  end)
+end
+
 -- Removes battle cards from the setup mounts (before the game controller
 -- places a new mission).
 function clearMountedCards()
@@ -232,7 +301,7 @@ end
 
 -- cardType is a card data key, or "advantageBlueSeat" for the Advantage on
 -- the mount nearer the blue seat (a "condition" card beside its own mount).
-function spawnObjs(cardType, selectedBattleCardName)
+function spawnObjs(cardType, selectedBattleCardName, callback)
   local dataType = cardType == "advantageBlueSeat" and "condition" or cardType
   local objects = Deck:getBattleCardObjects(
     selectedBattleCardName,
@@ -253,6 +322,7 @@ function spawnObjs(cardType, selectedBattleCardName)
     name     = selectedBattleCardName .. "'s Objects",
     position = position,
     objects  = objects,
+    callback = callback,
     -- TODO: Make this global somehow instead.
     scripts  = {
       ["toggle-range-1"] = _G.scriptRange1Token,
@@ -474,7 +544,12 @@ function activatedeployment(name)
       spawnDeploymentBoundary(zone, _G.mirrorDeployment)
     end
     deactivateDeploymentMenu()
-    spawnObjs("deployment", name)
+    local callback = nil
+    if _G.missionPoisOnMap then
+      _G.missionPoisOnMap = false
+      callback = function(bag) placeMissionPois(bag, name) end
+    end
+    spawnObjs("deployment", name, callback)
 end
 
 function deactivateDeploymentMenu()

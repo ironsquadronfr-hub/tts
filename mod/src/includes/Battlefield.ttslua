@@ -71,10 +71,9 @@ function getPoiLayoutForBattlefield(rect)
   return getPoiLayout6x3()
 end
 
-function getPoiWorldPositions()
-  local rect = getBattlefieldRect()
+local function _poiWorldPositions(rect, layout)
   local positions = {}
-  for _, p in ipairs(getPoiLayoutForBattlefield(rect)) do
+  for _, p in ipairs(layout) do
     local gx, gy = p[1], p[2]
     if POI_MIRROR then
       gy = 6 - gy
@@ -86,6 +85,25 @@ function getPoiWorldPositions()
     })
   end
   return positions
+end
+
+function getPoiWorldPositions()
+  local rect = getBattlefieldRect()
+  return _poiWorldPositions(rect, getPoiLayoutForBattlefield(rect))
+end
+
+-- Where an Objective's POIs go on the current map, or nil if the map is not
+-- the size the mission is played on. The map cards are the same turned 180
+-- degrees, so neither side of the table nor a flipped map changes the answer.
+-- params = {cardName = "...", isRecon = true/false}
+function getMissionPoiPositions(params)
+  local rect = getBattlefieldRect()
+  local isThreeByThree = (rect.maxX - rect.minX) < HALF_LENGTH_WIDTH_THRESHOLD
+  if isThreeByThree ~= (params.isRecon == true) then
+    return nil
+  end
+  local layout = getMissionPoiLayout(params.cardName, isThreeByThree)
+  return layout and _poiWorldPositions(rect, layout) or nil
 end
 
 local function _hasPoiTag(snapPoint)
