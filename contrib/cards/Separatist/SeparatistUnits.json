@@ -438,7 +438,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/maul_metal_v3.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/maul_metal_v2.unity3d"
         }
       ],
       "commands": [
@@ -473,7 +473,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/assajventress_metal_v3.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/assajventress_metal_v2.unity3d"
         }
       ],
       "commands": [
@@ -841,11 +841,11 @@
       "minis": [
         {
           "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_leader_metal_v2.unity3d",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_fx_metal_v3.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_fx_metal_v2.unity3d"
         },
         {
           "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_metal_v2.unity3d",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_fx_metal_v3.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/droideka_fx_metal_v2.unity3d"
         }
       ]
     },

@@ -60,7 +60,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/gar_saxon_model_metal_v3.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/gar_saxon_model_metal_v2.unity3d"
         }
       ],
       "commands": [
@@ -178,7 +178,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/maul_a_rival_model_metal_v3.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/maul_a_rival_model_metal_v2.unity3d"
         }
       ],
       "commands": [
@@ -579,7 +579,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/aa5_scan_shadow_metal_v3.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/aa5_scan_shadow_metal_v2.unity3d"
         }
       ]
     },
