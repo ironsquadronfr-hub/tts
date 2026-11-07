@@ -23,12 +23,13 @@
     <Text id="losCover" fontSize="15" fontStyle="Bold" color="#E8801A" alignment="MiddleCenter" preferredHeight="22" resizeTextForBestFit="true" resizeTextMinSize="11" resizeTextMaxSize="15">Checking cover...</Text>
     <Text id="losModelCounts" fontSize="13" color="#B4B4BC" alignment="MiddleCenter" preferredHeight="20" resizeTextForBestFit="true" resizeTextMinSize="10" resizeTextMaxSize="13">Checking models...</Text>
   </VerticalLayout>
-  <!-- Shown while a verdict computes: big lists can take a while. -->
+  <!-- Shown while a verdict computes (big lists can take a while), under the
+       "Calculating" line, where the model counts go once it is done. -->
   <Button
     id="losCancelButton"
     active="false"
-    rectAlignment="UpperRight"
-    offsetXY="-34 -32"
+    rectAlignment="LowerCenter"
+    offsetXY="0 34"
     width="92"
     height="24"
     fontSize="12"
