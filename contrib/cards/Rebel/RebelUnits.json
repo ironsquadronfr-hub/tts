@@ -790,7 +790,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ahsoka_metal_v2.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ahsoka_metal_v3.unity3d"
         }
       ],
       "commands": [
@@ -1457,7 +1457,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/aa5_scan_metal_v2.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/aa5_scan_metal_v3.unity3d"
         }
       ]
     },

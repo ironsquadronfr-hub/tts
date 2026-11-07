@@ -1398,7 +1398,7 @@
         "name": "DC-15X ARC Trooper",
         "image": "https://steamusercontent-a.akamaihd.net/ugc/9724672671096889082/B22903B590FA5B6D2AAEC2988AA0F9826C9D1EB2/",
         "mini": {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_dc15x_metal_v2.unity3d",
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_dc15x_metal_v3.unity3d",
           "secondary": "https://steamusercontent-a.akamaihd.net/ugc/773995200348530664/5E248091F8CC37B1023257338D4947E4ADFE48AB/"
         },
         "points": 37,
@@ -2004,7 +2004,7 @@
         "name": "Rook Kast",
         "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385148638438/ECEE74FD265762CEC44438C9D0C5FF263009C3F2/",
         "mini": {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/mauldelorian_rook_kast_model_metal_v2.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/mauldelorian_rook_kast_model_metal_v3.unity3d"
         },
         "leader": true,
         "points": 35,
@@ -2117,7 +2117,7 @@
         "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385148692176/FE7C110B78061106AA1471FE6B6EE3BD5F645AE2/",
         "mini": {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2004698291313160948/23CA698C8F2AF1C08D2DED3564B138E72E2ABCBF/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         "points": 45,
         "restrictions": {
@@ -2131,7 +2131,7 @@
         "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385148692274/A56AA57889F61A9BDE9C1C7338B023C30BF7108B/",
         "mini": {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2004698291313161010/1873BCD554A553BC2FF25A2BE16116EDEBFDCEF4/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         "points": 45,
         "restrictions": {
@@ -2145,7 +2145,7 @@
         "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385148691701/24C8FA07250A2FF8E6E94EC79E6B3F87145E7D5A/",
         "mini": {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2004698291313161066/7BD340C7AAB594CDA1644D900F606FEC8A0165A1/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         "points": 36,
         "restrictions": {
@@ -3294,7 +3294,7 @@
         "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385148691379/518F04086F72215062FDD24016FE412B7F0F9106/",
         "mini": {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1785135125810942938/E77EC5970DA310A2E1D96F796E98D82813AE0891/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         "points": 32,
         "restrictions": {

@@ -324,7 +324,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/yoda_metal_v1.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/yoda_metal_v2.unity3d"
         }
       ],
       "commands": [
@@ -759,11 +759,11 @@
           "secondary": "https://steamusercontent-a.akamaihd.net/ugc/773995200348530664/5E248091F8CC37B1023257338D4947E4ADFE48AB/"
         },
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_2_metal_v2.unity3d",
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_2_metal_v3.unity3d",
           "secondary": "https://steamusercontent-a.akamaihd.net/ugc/773995200348530664/5E248091F8CC37B1023257338D4947E4ADFE48AB/"
         },
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_3_metal_v2.unity3d",
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/arc_3_metal_v3.unity3d",
           "secondary": "https://steamusercontent-a.akamaihd.net/ugc/773995200348530664/5E248091F8CC37B1023257338D4947E4ADFE48AB/"
         }
       ]

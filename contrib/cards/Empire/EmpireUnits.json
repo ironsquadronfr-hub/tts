@@ -458,7 +458,7 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ig_88_model_metal_v2.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ig_88_model_metal_v3.unity3d"
         }
       ],
       "commands": [
@@ -1220,16 +1220,16 @@
       },
       "minis": [
         {
-          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_leader_metal_v2.unity3d",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "bundle": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_leader_metal_v3.unity3d",
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1785135125810942938/E77EC5970DA310A2E1D96F796E98D82813AE0891/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         },
         {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1785135125810943021/4B5888D461F54C2C281B108233D1F1D8D8C2A679/",
-          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v2.unity3d"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/darktrooper_mat_metal_v3.unity3d"
         }
       ]
     },
