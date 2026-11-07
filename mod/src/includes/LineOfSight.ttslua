@@ -1010,8 +1010,8 @@ end
 
 local function losSummaryShow(green, red, coverText, modelText)
   pcall(function()
-    UI.setValue("losGreenCount", green .. " green")
-    UI.setValue("losRedCount", red .. " red")
+    UI.setValue("losGreenCount", green .. " GREEN")
+    UI.setValue("losRedCount", red .. " RED")
     UI.setValue("losCover", coverText)
     UI.setValue("losModelCounts", modelText)
     UI.setAttribute("losSummary", "active", "true")
