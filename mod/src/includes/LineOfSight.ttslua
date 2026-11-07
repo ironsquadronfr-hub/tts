@@ -903,9 +903,11 @@ local function losOnBattlefield(p, zonePos, zoneScale)
     and math.abs(p.z - zonePos.z) <= zoneScale.z / 2 + 1
 end
 
+-- Returns true while there is work: terrain seen for the first time, or a
+-- mesh still downloading or being prepared.
 function losPrefetchScan()
   local zonePos, zoneScale = losBattlefieldFootprint()
-  if zonePos == nil then return end
+  if zonePos == nil then return false end
   local pending = false
   for _, obj in ipairs(getAllObjects()) do
     if obj.name == "Custom_Model" then
@@ -921,6 +923,7 @@ function losPrefetchScan()
           end
         end
         losScanned[guid] = seen
+        if seen then pending = true end
       end
       if seen then
         local entry = losMeshRequest(seen)
@@ -934,6 +937,7 @@ function losPrefetchScan()
     losPrefetching = true
     startLuaCoroutine(Global, "losPrefetchCoroutine")
   end
+  return pending
 end
 
 function losPrefetchCoroutine()
@@ -965,8 +969,44 @@ function losPrefetchCoroutine()
   return 1
 end
 
+-- Scans every few seconds while there is something to prepare, and for a while
+-- after the last change: a map unpacks its terrain over many frames and moves
+-- pieces into place after they appear. Once quiet it stops, and anything placed
+-- on the table wakes it up again.
+local LOS_SCAN_QUIET_LIMIT = 10
+local losScanQuiet = 0
+local losScanRunning = false
+
+local function losScanLoop()
+  if losPrefetchScan() then
+    losScanQuiet = 0
+  else
+    losScanQuiet = losScanQuiet + 1
+  end
+  if losScanQuiet < LOS_SCAN_QUIET_LIMIT then
+    Wait.time(losScanLoop, LOS_PREFETCH_INTERVAL)
+  else
+    losScanRunning = false
+  end
+end
+
+local function losWakeScan()
+  losScanQuiet = 0
+  if not losScanRunning then
+    losScanRunning = true
+    Wait.time(losScanLoop, LOS_PREFETCH_INTERVAL)
+  end
+end
+
 function losStartPrefetch()
-  Wait.time(losPrefetchScan, LOS_PREFETCH_INTERVAL, -1)
+  losWakeScan()
+end
+
+-- From the Global's onObjectSpawn and onObjectDrop.
+function losOnObjectPlaced(obj)
+  if obj ~= nil and obj.name == "Custom_Model" then
+    losWakeScan()
+  end
 end
 
 local function losSummaryHide()
