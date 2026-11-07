@@ -560,7 +560,10 @@ function activatedeployment(name)
     if zone and #zone > 0 then
       spawnDeploymentBoundary(zone, _G.mirrorDeployment)
     end
-    Global.call("setPoiPlacementAids", {show = true})
+    Global.call("setPoiPlacementAids", {
+      show    = true,
+      isRecon = Deck:_scenarioKey(_G.selectedScenario) == "skirmish",
+    })
     deactivateDeploymentMenu()
     local callback = nil
     if _G.missionPoisOnMap then

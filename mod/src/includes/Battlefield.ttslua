@@ -71,7 +71,13 @@ function getPoiLayoutForBattlefield(rect)
   return getPoiLayout6x3()
 end
 
-local function _poiWorldPositions(rect, layout)
+-- A Recon table is the 3x3 at the middle of the map, whatever the map's size.
+local function _poiWorldPositions(rect, layout, isThreeByThree)
+  local originX, originZ = rect.minX, rect.minZ
+  if isThreeByThree then
+    originX = (rect.minX + rect.maxX) / 2 - 18
+    originZ = (rect.minZ + rect.maxZ) / 2 - 18
+  end
   local positions = {}
   for _, p in ipairs(layout) do
     local gx, gy = p[1], p[2]
@@ -79,31 +85,37 @@ local function _poiWorldPositions(rect, layout)
       gy = 6 - gy
     end
     table.insert(positions, {
-      x = rect.minX + gx * 6,
+      x = originX + gx * 6,
       y = rect.top,
-      z = rect.minZ + gy * 6,
+      z = originZ + gy * 6,
     })
   end
   return positions
 end
 
+-- True while a Recon mission is being set up, on a map of any size.
+local poiReconPlacement = false
+
 function getPoiWorldPositions()
   local rect = getBattlefieldRect()
+  if poiReconPlacement then
+    return _poiWorldPositions(rect, getPoiLayout3x3(), true)
+  end
   return _poiWorldPositions(rect, getPoiLayoutForBattlefield(rect))
 end
 
--- Where an Objective's POIs go on the current map, or nil if the map is not
--- the size the mission is played on. The map cards are the same turned 180
--- degrees, so neither side of the table nor a flipped map changes the answer.
--- params = {cardName = "...", isRecon = true/false}
+-- Where an Objective's POIs go on the current map, or nil if the mission does
+-- not fit it (a Standard mission on a 3x3 map). The map cards are the same
+-- turned 180 degrees, so neither side of the table nor a flipped map changes
+-- the answer. params = {cardName = "...", isRecon = true/false}
 function getMissionPoiPositions(params)
   local rect = getBattlefieldRect()
-  local isThreeByThree = (rect.maxX - rect.minX) < HALF_LENGTH_WIDTH_THRESHOLD
-  if isThreeByThree ~= (params.isRecon == true) then
+  local isRecon = params.isRecon == true
+  if not isRecon and (rect.maxX - rect.minX) < HALF_LENGTH_WIDTH_THRESHOLD then
     return nil
   end
-  local layout = getMissionPoiLayout(params.cardName, isThreeByThree)
-  return layout and _poiWorldPositions(rect, layout) or nil
+  local layout = getMissionPoiLayout(params.cardName, isRecon)
+  return layout and _poiWorldPositions(rect, layout, isRecon) or nil
 end
 
 local function _hasPoiTag(snapPoint)
@@ -177,14 +189,52 @@ function togglePoiGuideProjector()
   end
 end
 
+-- The guide's bundle only shows the 6x3 grid, so a Recon table gets rings.
+local POI_RING_RADIUS = 1
+local POI_RING_SEGMENTS = 32
+local poiRingsDrawn = false
+
+local function _showPoiRings()
+  local lines = {}
+  for _, p in ipairs(getPoiWorldPositions()) do
+    local points = {}
+    for i = 0, POI_RING_SEGMENTS do
+      local angle = i / POI_RING_SEGMENTS * 2 * math.pi
+      table.insert(points, {
+        p.x + POI_RING_RADIUS * math.cos(angle),
+        p.y + 0.05,
+        p.z + POI_RING_RADIUS * math.sin(angle),
+      })
+    end
+    table.insert(lines, {points = points, color = {1, 1, 1}, thickness = 0.08})
+  end
+  Global.setVectorLines(lines)
+  poiRingsDrawn = true
+end
+
+local function _hidePoiRings()
+  if poiRingsDrawn then
+    Global.setVectorLines({})
+    poiRingsDrawn = false
+  end
+end
+
 -- The POI guide and snap points are there to set up the battlefield: they come
 -- with the deployment zones and leave with them, so a POI moved during the game
--- does not jump back onto a guide circle. params = {show = true/false}
+-- does not jump back onto a guide circle.
+-- params = {show = true/false, isRecon = true/false}
 function setPoiPlacementAids(params)
   local guides = _poiGuides()
-  if params.show and #guides == 0 then
-    _showPoiGuide()
-  elseif not params.show then
+  _hidePoiRings()
+  poiReconPlacement = params.show == true and params.isRecon == true
+  if poiReconPlacement then
+    _hidePoiGuide(guides)
+    _showPoiRings()
+  elseif params.show then
+    if #guides == 0 then
+      _showPoiGuide()
+    end
+  else
     _hidePoiGuide(guides)
   end
   setPoiSnapPoints(params.show == true)
