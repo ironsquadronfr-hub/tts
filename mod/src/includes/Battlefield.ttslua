@@ -137,6 +137,59 @@ function setPoiSnapPoints(enabled)
   poiSnapEnabled = enabled
 end
 
+-- POI GUIDE -----------------------------------------------------------------
+
+local function _poiGuides()
+  local guides = {}
+  for _, obj in ipairs(getAllObjects()) do
+    if obj.getName() == "Poi Guide" then
+      table.insert(guides, obj)
+    end
+  end
+  return guides
+end
+
+local function _showPoiGuide()
+  local projector = spawnObject({
+    type     = "Custom_AssetBundle",
+    position = {8, 30, 0},
+    scale    = {0, 0, 0},
+  })
+  projector.setName("Poi Guide")
+  projector.setLock(true)
+  projector.setCustomObject({
+    assetbundle = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_isq_v3.unity3d",
+  })
+end
+
+local function _hidePoiGuide(guides)
+  for _, obj in ipairs(guides) do
+    destroyObject(obj)
+  end
+end
+
+function togglePoiGuideProjector()
+  local guides = _poiGuides()
+  if #guides > 0 then
+    _hidePoiGuide(guides)
+  else
+    _showPoiGuide()
+  end
+end
+
+-- The POI guide and snap points are there to set up the battlefield: they come
+-- with the deployment zones and leave with them, so a POI moved during the game
+-- does not jump back onto a guide circle. params = {show = true/false}
+function setPoiPlacementAids(params)
+  local guides = _poiGuides()
+  if params.show and #guides == 0 then
+    _showPoiGuide()
+  elseif not params.show then
+    _hidePoiGuide(guides)
+  end
+  setPoiSnapPoints(params.show == true)
+end
+
 function isPoiSnapEnabled()
   return poiSnapEnabled == true
 end

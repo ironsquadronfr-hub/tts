@@ -581,6 +581,7 @@ function activatedeployment(name)
     if zone and #zone > 0 then
       spawnDeploymentBoundary(zone, _G.mirrorDeployment)
     end
+    Global.call("setPoiPlacementAids", {show = true})
     deactivateDeploymentMenu()
     local callback = nil
     if _G.missionPoisOnMap then
@@ -590,9 +591,14 @@ function activatedeployment(name)
     spawnObjs("deployment", name, callback)
 end
 
+function removeDeploymentOverlay()
+    Global.call("setPoiPlacementAids", {show = false})
+    deploymentMenu()
+end
+
 function deactivateDeploymentMenu()
     clearButton("deployment")
-    createOptionButton("deployment", "deploymentMenu", "Remove Overlay", "Remove Deployment Overlay", {0.7,0,0})
+    createOptionButton("deployment", "removeDeploymentOverlay", "Remove Overlay", "Remove Deployment Overlay", {0.7,0,0})
 end
 
 function activateconditions(name)

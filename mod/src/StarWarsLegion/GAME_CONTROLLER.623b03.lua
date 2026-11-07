@@ -1766,24 +1766,7 @@ function placeMask(x, z)
 end
 
 function togglePoiGuide()
-    local existing = findObjectsByName("Poi Guide")
-    if #existing > 0 then
-        for _, obj in ipairs(existing) do
-            destroyObject(obj)
-        end
-    else
-        local projector = spawnObject({
-            type = "Custom_AssetBundle",
-            position = { 8, 30, 0 },
-            scale = {0,0,0}
-        })
-        local asset = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_isq_v3.unity3d"
-        projector.setName("Poi Guide")
-        projector.setLock(true)
-        projector.setCustomObject({
-            assetbundle = asset
-        })
-    end
+    Global.call("togglePoiGuideProjector")
 end
 -- MISSION (2024 rules)
 --
