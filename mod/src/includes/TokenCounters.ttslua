@@ -209,20 +209,36 @@ function counterTokensOnObject(obj)
   end
 end
 
--- A long press takes one off a token: held still for a moment, the token goes
--- back to its place worth one less and a token worth one appears beside it. A
--- normal drag moves the whole token.
+-- A long press takes one off a token: held still for a moment, what is left
+-- appears where the token stood and the player keeps the token in hand, worth
+-- one once dropped. Scripts cannot put an object in a player's hand, and changing
+-- a held token's face replaces it and makes the player let go, so it keeps
+-- showing its old value until then. A normal drag moves the whole token.
 local LONG_PRESS_TIME, LONG_PRESS_STEP, LONG_PRESS_REACH = 0.6, 0.1, 0.5
 
 local function takeOneFromToken(o, start)
-  local kind, rot = o.getName(), o.getRotation()
-  local width = o.getBoundsNormalized().size.x
-  local v = value(o)
-  o.drop()
-  o.setPosition(start)
-  setValue(o, v - 1)
-  spawnCounter(kind, {start.x + width * 1.6, start.y + 0.3, start.z}, {0, rot.y, 0})
-  scanSoon()
+  local bag = bagFor(o.getName())
+  if not bag then return end
+  local rest, rot, memo = value(o) - 1, o.getRotation(), o.memo
+  o.memo = nil
+  bag.takeObject({
+    position = {start.x, start.y + 0.2, start.z},
+    rotation = {0, rot.y, 0},
+    smooth = false,
+    callback_function = function(t)
+      if memo then t.memo = memo end
+      register(t)
+      if rest > 1 then t.setState(rest) end -- the bag hands out face 1
+    end,
+  })
+  Wait.condition(function()
+    if isCounter(o) then
+      setValue(o, 1)
+      scanSoon()
+    end
+  end, function()
+    return not isCounter(o) or o.held_by_color == nil
+  end)
 end
 
 function counterTokensOnPickUp(color, o)
