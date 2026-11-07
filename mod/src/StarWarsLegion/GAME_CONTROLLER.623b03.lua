@@ -1961,6 +1961,24 @@ local function showMissionCard(slotKey, column, kind, card)
   end
 end
 
+-- The cards of a reshuffled deck are back in it, so they leave the TV: the
+-- card drawn next must not sit on top of a copy of itself.
+local function clearReshuffledCards(reshuffled)
+  local slotKey = reshuffled.kind
+  if slotKey == "advantage" then
+    slotKey = "advantage" .. reshuffled.seat
+  end
+  local kept = {}
+  for _, entry in ipairs(missionCards[slotKey] or {}) do
+    if entry.card.owner == reshuffled.seat then
+      destroyObject(entry.obj)
+    else
+      table.insert(kept, entry)
+    end
+  end
+  missionCards[slotKey] = kept
+end
+
 local function showMission()
   showMissionCard("advantageBlue", 1, "advantage", mission.cards.advantage.Blue)
   showMissionCard("objective", 2, "objective", mission.cards.objective)
@@ -2138,6 +2156,12 @@ function missionTurnMenu()
         message = message .. " -> " .. drawn.name
       end
       broadcastToAll(message, {0.8, 0.9, 1})
+      if mission.reshuffled then
+        local reshuffled = mission.reshuffled
+        mission.reshuffled = nil
+        clearReshuffledCards(reshuffled)
+        broadcastToAll(missionSeatName(reshuffled.seat) .. ": " .. Deck.BATTLE_KINDS[reshuffled.kind].label .. " deck reshuffled", {0.8, 0.9, 1})
+      end
       showMission()
       missionTurnMenu()
     end
