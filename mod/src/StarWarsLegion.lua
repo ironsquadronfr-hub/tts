@@ -37,11 +37,13 @@ function onObjectSpawn(obj)
   refreshPoiSnapForMap(obj)
   disinfectSpawnedObject(obj)
   counterTokensOnObject(obj)
+  losOnObjectPlaced(obj)
 end
 
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
 function onObjectDrop(_, obj)
   counterTokensOnObject(obj)
+  losOnObjectPlaced(obj)
 end
 
 function onObjectPickUp(color, obj)
