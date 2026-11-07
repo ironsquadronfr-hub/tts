@@ -16,7 +16,7 @@
 -- grid, which tests a handful of triangles per line instead of thousands.
 
 -- Time budget per frame for a verdict the players are waiting on.
-local LOS_FRAME_BUDGET = 0.01
+local LOS_FRAME_BUDGET = 0.02
 -- Time budget per frame for preparing meshes in the background: small, so
 -- nobody notices the table working.
 local LOS_PREFETCH_BUDGET = 0.004
