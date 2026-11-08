@@ -329,12 +329,26 @@ end
 
 -- Before an install, the table is emptied of the previous release. Only
 -- ever on a fresh table or on the host's explicit request.
+-- Scripted objects go first: some react to others being destroyed (the
+-- list builders recount the cards in their zone), and must be gone before
+-- the scriptless zones and pieces they read. The brain goes just before
+-- those, after every script that could still call it.
 function clearTable()
   local brain = getObjectFromGUID(BRAIN_GUID)
+  local scriptless = {}
+  for _, object in ipairs(getObjects()) do
+    if object ~= brain then
+      if object.getLuaScript() ~= '' then
+        object.destruct()
+      else
+        table.insert(scriptless, object)
+      end
+    end
+  end
   if brain then
     brain.destruct()
   end
-  for _, object in ipairs(getObjects()) do
+  for _, object in ipairs(scriptless) do
     object.destruct()
   end
   state.objects = {}
