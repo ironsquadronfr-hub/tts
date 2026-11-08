@@ -13,12 +13,13 @@
 --
 -- A fresh table (a Workshop load, or a save packed with !loader pack) first
 -- asks the host which version to run, Stable or Beta, then installs that
--- channel's latest release. The Workshop item also carries a version of its
--- own, held until the host chooses: it is kept when it is still the latest,
--- and it is what an offline table plays. A game in progress keeps the
--- version it started with.
+-- channel's latest release. The Workshop item carries a release of its own,
+-- packed inside the shell's saved state rather than installed on the table:
+-- nothing of the mod runs before the host has chosen. It is installed when
+-- it is still the channel's latest, and it is what an offline table plays.
+-- A game in progress keeps the version it started with.
 
-SHELL_VERSION = 2
+SHELL_VERSION = 3
 
 -- Test releases on the Iron Squadron fork, each under a fixed tag replaced
 -- in place. On swlegion/tts the stable becomes the newest full release.
@@ -41,24 +42,47 @@ BRAIN_POSITION = {55.2, -3.5, -1.42} -- hidden inside the computer screen
 
 state = {channel = 'stable', version = nil, fresh = true, ui = nil, uiAssets = nil, objects = {}}
 
--- Read by the saved brain's onload: while true, it waits for loaderGo.
-LOADER_HOLD = false
+-- The release packed in this save, if any: {channel, manifest, brain, ui,
+-- objects}. Saved as plain text after the state, cut by markers: TTS freezes
+-- decoding JSON of that size (measured), and finding a marker is instant.
+package = nil
+local PACKAGE_MARK = '\n<<<loader package>>>\n'
+local PARTS = {'channel', 'manifest', 'brain', 'ui', 'objects'}
 
 local function say(text)
   print('[loader] ' .. text)
 end
 
+local function readPackage(text)
+  local parts, position = {}, 1
+  for i, name in ipairs(PARTS) do
+    local mark = '<<<' .. name .. '>>>\n'
+    local start = text:find(mark, position, true)
+    if not start then return nil end
+    local after = start + #mark
+    local nextMark = PARTS[i + 1] and text:find('\n<<<' .. PARTS[i + 1] .. '>>>\n', after, true)
+    parts[name] = text:sub(after, (nextMark or (#text + 1)) - 1)
+    position = nextMark or #text
+  end
+  local ok, manifest = pcall(JSON.decode, parts.manifest)
+  if not ok or type(manifest) ~= 'table' then return nil end
+  parts.manifest = manifest
+  return parts
+end
+
 function onLoad(saved)
   if saved and saved ~= '' then
-    local ok, decoded = pcall(JSON.decode, saved)
+    local cut = saved:find(PACKAGE_MARK, 1, true)
+    local ok, decoded = pcall(JSON.decode, cut and saved:sub(1, cut - 1) or saved)
     if ok and type(decoded) == 'table' then
       state = decoded
+    end
+    if cut then
+      package = readPackage(saved:sub(cut + #PACKAGE_MARK))
     end
   end
   state.objects = state.objects or {}
   if state.fresh then
-    -- Global's onLoad runs before any object's: the saved brain sees this.
-    LOADER_HOLD = true
     showChooser()
   else
     -- TTS does not save a UI set by a script: put it back on every load.
@@ -70,7 +94,16 @@ function onLoad(saved)
 end
 
 function onSave()
-  return JSON.encode(state)
+  local text = JSON.encode(state)
+  if package then
+    text = text .. PACKAGE_MARK
+      .. '<<<channel>>>\n' .. package.channel
+      .. '\n<<<manifest>>>\n' .. JSON.encode(package.manifest)
+      .. '\n<<<brain>>>\n' .. package.brain
+      .. '\n<<<ui>>>\n' .. package.ui
+      .. '\n<<<objects>>>\n' .. package.objects
+  end
+  return text
 end
 
 -- Sets the global UI. Images declared a second time in a session only show
@@ -214,54 +247,55 @@ end
 ----------------------------------------------------------------------------
 -- Getting the version on the table.
 
--- Plays the version saved in the Workshop item: its UI, then the held brain.
-function keepSaved(reason)
+-- Installs the release packed in this save.
+function installPackage(reason)
   say(reason)
-  local brain = getObjectFromGUID(BRAIN_GUID)
-  if not brain or not state.ui then
-    say('no version saved in this table and none could be downloaded')
-    return
-  end
-  LOADER_HOLD = false
-  state.fresh = false
-  setUi(state.uiAssets, state.ui, function()
-    brain.call('loaderGo')
-  end)
+  install(package.manifest, package.brain, package.ui, package.objects)
 end
 
--- Downloads the channel's manifest and installs it when it is newer than
--- what the table holds.
+-- Falls back on the packed release when the server cannot help.
+local function fallBack(reason)
+  if package then
+    return installPackage(reason .. ', installing the packed ' .. package.manifest.version)
+  end
+  say(reason .. ', and no release is packed in this table')
+end
+
+-- Asks the channel for its latest manifest: installs the packed release when
+-- it is that one, downloads it otherwise.
 function check()
   local base = RELEASES[state.channel]
   WebRequest.get(base .. 'manifest.json', function(request)
     if request.is_error then
-      return keepSaved('release server unreachable (' .. tostring(request.error) .. '), playing ' .. tostring(state.version))
+      return fallBack('release server unreachable (' .. tostring(request.error) .. ')')
     end
     local ok, manifest = pcall(JSON.decode, request.text)
     if not ok or type(manifest) ~= 'table' or not manifest.version then
-      return keepSaved('unreadable manifest, playing ' .. tostring(state.version))
+      return fallBack('unreadable manifest')
     end
-    if manifest.version == state.version and state.channelOfVersion == state.channel and getObjectFromGUID(BRAIN_GUID) then
-      return keepSaved('up to date: ' .. manifest.version .. ' (' .. state.channel .. ')')
+    if package and package.channel == state.channel and package.manifest.version == manifest.version then
+      return installPackage('up to date: ' .. manifest.version .. ' (' .. state.channel .. '), installing the packed copy')
     end
-    download(base, manifest)
+    fetchRelease(base, manifest, function(brain, ui, objects)
+      install(manifest, brain, ui, objects)
+    end, fallBack)
   end)
 end
 
--- Fetches every file first and installs only when all of them arrived: a
--- half-downloaded release changes nothing.
-function download(base, manifest)
+-- Fetches every file first and hands them over only when all of them
+-- arrived: a half-downloaded release changes nothing.
+function fetchRelease(base, manifest, done, failed)
   local names = {manifest.brain, manifest.ui, manifest.objects}
   local texts = {}
   local started = os.clock()
   local function fetch(i)
     if i > #names then
       say(string.format('downloaded %s in %.2f s', manifest.version, os.clock() - started))
-      return install(manifest, texts[1], texts[2], texts[3])
+      return done(texts[1], texts[2], texts[3])
     end
     WebRequest.get(base .. names[i], function(request)
       if request.is_error then
-        return keepSaved('could not download ' .. names[i] .. ', playing ' .. tostring(state.version))
+        return failed('could not download ' .. names[i])
       end
       texts[i] = request.text
       fetch(i + 1)
@@ -280,8 +314,10 @@ local function step(name, fn)
 end
 
 function install(manifest, brainText, uiText, objectsText)
-  if not step('clear the table', clearTable) then return end
-  LOADER_HOLD = false
+  clearTable(function() installOnClearTable(manifest, brainText, uiText, objectsText) end)
+end
+
+function installOnClearTable(manifest, brainText, uiText, objectsText)
   state.ui = uiText
   state.uiAssets = manifest.uiAssets
   -- The mod's onload expects its UI to be there, as it is on a save load.
@@ -323,6 +359,8 @@ function spawnRelease(manifest, brainText, objectsText)
   state.version = manifest.version
   state.channelOfVersion = state.channel
   state.fresh = false
+  -- A game in progress does not need the packed copy: saves stay light.
+  package = nil
   say(string.format('installed %s (%s): brain + %d objects in %.2f s',
     manifest.version, state.channel, #guids, os.clock() - started))
 end
@@ -331,32 +369,61 @@ end
 -- ever on a fresh table or on the host's explicit request.
 -- Scripted objects go first: some react to others being destroyed (the
 -- list builders recount the cards in their zone), and must be gone before
--- the scriptless zones and pieces they read. The brain goes just before
--- those, after every script that could still call it.
-function clearTable()
+-- the scriptless zones and pieces they read. destruct() only takes effect
+-- at the end of the frame, so each wave waits for the previous one to be
+-- really gone. The brain goes with the scriptless wave, after every script
+-- that could still call it.
+function clearTable(done)
   local brain = getObjectFromGUID(BRAIN_GUID)
-  local scriptless = {}
+  local scripted, rest = {}, {}
   for _, object in ipairs(getObjects()) do
-    if object ~= brain then
-      if object.getLuaScript() ~= '' then
-        object.destruct()
-      else
-        table.insert(scriptless, object)
-      end
+    if object ~= brain and object.getLuaScript() ~= '' then
+      table.insert(scripted, object.getGUID())
+      object.destruct()
+    elseif object ~= brain then
+      table.insert(rest, object)
     end
   end
-  if brain then
-    brain.destruct()
+  local function gone()
+    for _, guid in ipairs(scripted) do
+      if getObjectFromGUID(guid) then return false end
+    end
+    return true
   end
-  for _, object in ipairs(scriptless) do
-    object.destruct()
+  local function second()
+    if brain then brain.destruct() end
+    for _, object in ipairs(rest) do object.destruct() end
+    state.objects = {}
+    Wait.frames(done, 2)
   end
-  state.objects = {}
+  Wait.condition(second, gone, 10, second)
 end
 
--- !loader                 what this table runs
--- !loader reinstall       wipe this table and choose a version again
--- !loader pack            mark this save as fresh before a Workshop upload
+-- Packs the channel's latest release into this save and empties the
+-- table: what is left is the shell and its package, ready for a Workshop
+-- upload.
+function pack(channel)
+  local base = RELEASES[channel]
+  say('packing the latest ' .. channel .. ' release...')
+  WebRequest.get(base .. 'manifest.json', function(request)
+    local ok, manifest = pcall(JSON.decode, request.is_error and '' or request.text)
+    if not ok or type(manifest) ~= 'table' or not manifest.version then
+      return say('could not read the ' .. channel .. ' manifest, nothing packed')
+    end
+    fetchRelease(base, manifest, function(brain, ui, objects)
+      clearTable(function()
+        package = {channel = channel, manifest = manifest, brain = brain, ui = ui, objects = objects}
+        state = {channel = channel, version = nil, fresh = true, objects = {}}
+        setUi({}, '')
+        say('packed ' .. manifest.version .. ' (' .. channel .. '). The table is empty: upload it now with Modding > Workshop Upload.')
+      end)
+    end, function(reason) say(reason .. ', nothing packed') end)
+  end)
+end
+
+-- !loader                       what this table runs
+-- !loader reinstall             wipe this table and choose a version again
+-- !loader pack [stable|beta]    pack a release into this save for the Workshop
 function onChat(message, player)
   if message:sub(1, 7) ~= '!loader' then
     return true
@@ -368,13 +435,13 @@ function onChat(message, player)
   if command == 'reinstall' then
     state.version = nil
     state.fresh = true
-    clearTable()
-    showChooser()
-  elseif command == 'pack' then
-    state.fresh = true
-    say('this save will ask for a version when opened')
+    clearTable(showChooser)
+  elseif command:sub(1, 4) == 'pack' then
+    local channel = command:sub(6)
+    pack(RELEASES[channel] and channel or 'stable')
   else
-    say('shell ' .. SHELL_VERSION .. ', ' .. tostring(state.version) .. ' (' .. tostring(state.channelOfVersion or state.channel) .. ')')
+    say('shell ' .. SHELL_VERSION .. ', ' .. tostring(state.version) .. ' (' .. tostring(state.channelOfVersion or state.channel) .. ')'
+      .. (package and (', packed ' .. package.manifest.version .. ' (' .. package.channel .. ')') or ''))
   end
   return false
 end
