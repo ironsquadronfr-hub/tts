@@ -513,7 +513,7 @@ function refreshOverlayToggleUI()
         local isExtended = (overlayMode == "extended")
         local attrs = {
             id = "overlayToggleMenuButton",
-            onClick = "toggleExtendedOverlays",
+            onClick = uiHandler("toggleExtendedOverlays"),
             tooltip = isExtended
                 and "Extended range and cohesion overlays: ON"
                 or  "Extended range and cohesion overlays: OFF",

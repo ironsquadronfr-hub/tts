@@ -1,17 +1,19 @@
+require('!/Brain')
+
 function onload(save_state)
     self.interactable = false
 
     -- defaults
-    battlefieldZone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
-    aimBag = getObjectFromGUID(Global.getVar("aimBagGUID"))
-    dodgeBag = getObjectFromGUID(Global.getVar("dodgeBagGUID"))
-    standbyBag = getObjectFromGUID(Global.getVar("standbyBagGUID"))
-    surgeBag = getObjectFromGUID(Global.getVar("surgeBagGUID"))
-    smokeBag = getObjectFromGUID(Global.getVar("smokeBagGUID"))
-    ionBag = getObjectFromGUID(Global.getVar("ionBagGUID"))
-    suppressionBag = getObjectFromGUID(Global.getVar("suppressionBagGUID"))
-    observationBag = getObjectFromGUID(Global.getVar("observationBagGUID"))
-    commandTokenTrayData = Global.getTable("commandTokenTrayData")
+    battlefieldZone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
+    aimBag = getObjectFromGUID(Brain().getVar("aimBagGUID"))
+    dodgeBag = getObjectFromGUID(Brain().getVar("dodgeBagGUID"))
+    standbyBag = getObjectFromGUID(Brain().getVar("standbyBagGUID"))
+    surgeBag = getObjectFromGUID(Brain().getVar("surgeBagGUID"))
+    smokeBag = getObjectFromGUID(Brain().getVar("smokeBagGUID"))
+    ionBag = getObjectFromGUID(Brain().getVar("ionBagGUID"))
+    suppressionBag = getObjectFromGUID(Brain().getVar("suppressionBagGUID"))
+    observationBag = getObjectFromGUID(Brain().getVar("observationBagGUID"))
+    commandTokenTrayData = Brain().getTable("commandTokenTrayData")
 
     assetButton = getObjectFromGUID("9a68d8")
 

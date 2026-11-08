@@ -10,3 +10,12 @@ BRAIN_GUID = 'b7a1e0'
 function Brain()
   return getObjectFromGUID(BRAIN_GUID) or Global
 end
+
+-- The name a global UI handler goes by: a bare function name reaches Global,
+-- so once the logic lives in the brain the handler has to name it.
+function uiHandler(name)
+  if getObjectFromGUID(BRAIN_GUID) then
+    return BRAIN_GUID .. '/' .. name
+  end
+  return name
+end

@@ -1,7 +1,9 @@
+require('!/Brain')
+
 --[[ Blank Order Token --]]
 local operative_marker_token_bag_GUID = "125746"
-local list_builder_table = Global.getTable("listBuilder")
-local command_token_data_table = Global.getTable("commandTokenData")
+local list_builder_table = Brain().getTable("listBuilder")
+local command_token_data_table = Brain().getTable("commandTokenData")
 local held_by_color = nil
 
 function onload()

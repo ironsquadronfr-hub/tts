@@ -1,3 +1,5 @@
+require('!/Brain')
+
 ﻿require('!/Cohesion')
 
 -- Model mini
@@ -9,7 +11,7 @@ function onload()
 end
 
 function setUp()
-    templateInfo = Global.getTable("templateInfo")
+    templateInfo = Brain().getTable("templateInfo")
 
     moveState = false
     silhouetteState = false
@@ -92,7 +94,7 @@ function scheduleOblongButtonFix()
 end
 
 function battlefieldButtonTint()
-  local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+  local gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
   return gameData ~= nil and gameData.getTable("battlefieldTint")
       or {r = 0.3, g = 0.3, b = 0.3}
 end
@@ -121,7 +123,7 @@ end
 function addLockButton()
     -- Same guard as addSilhouetteButton: never abort the button rebuild.
     local btnTint = battlefieldButtonTint()
-    local templateInfo = Global.getTable("templateInfo")
+    local templateInfo = Brain().getTable("templateInfo")
     local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
     lockBtnData = {
         click_function = "toggleLockButton",
@@ -333,7 +335,7 @@ end
 
 function showHeightGuide()
   clearHeightGuide()
-  local globals = Global.getTable("templateInfo")
+  local globals = Brain().getTable("templateInfo")
   -- baseRadius holds the base's width in inches, despite its name
   local width = globals.baseRadius[unitData.baseSize] or 1
   -- The minis' models face their object's back: in front of the leader is
@@ -383,7 +385,7 @@ function showSilhouette()
 end
 
 function spawnSilhouette(obj, pos, rot)
-  local globals = Global.getTable("templateInfo")
+  local globals = Brain().getTable("templateInfo")
   local scale = globals.baseRadius[unitData.baseSize]
   local height = 1.0
   local offset = 0.0

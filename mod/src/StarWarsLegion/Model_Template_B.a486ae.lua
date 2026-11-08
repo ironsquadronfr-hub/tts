@@ -1,9 +1,11 @@
+require('!/Brain')
+
 
 -- TEMPLATE B
 function onload(save_state)
     -- info
     if self.getName() ~= "Model Template B" then
-        templateInfo = Global.getTable("templateInfo")
+        templateInfo = Brain().getTable("templateInfo")
         
         aStart = templateInfo.aStart[unitInfo.baseSize][unitInfo.selectedSpeed]
         -- DEFAULT VALUES
@@ -34,7 +36,7 @@ end
 function onDropped(player_color)
     pickedUp = false
     positionTemplate()
-    Global.setVar("highestPoint", 0)
+    Brain().setVar("highestPoint", 0)
 end
 
 function turnToCursor()

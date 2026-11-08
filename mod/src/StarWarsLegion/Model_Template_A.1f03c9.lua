@@ -1,3 +1,5 @@
+require('!/Brain')
+
 
 --isDeploy = false
 
@@ -5,7 +7,7 @@
 function onload(save_state)
     -- info
     if self.getName() ~= "Model Template A" then
-        templateInfo = Global.getTable("templateInfo")
+        templateInfo = Brain().getTable("templateInfo")
 
         startOffset = 0.0
 
@@ -50,7 +52,7 @@ end
 function onDropped(player_color)
     pickedUp = false
     positionTemplate()
-    Global.setVar("highestPoint", 0)
+    Brain().setVar("highestPoint", 0)
 end
 
 function turnToCursor()

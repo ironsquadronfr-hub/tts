@@ -1,3 +1,5 @@
+require('!/Brain')
+
 rangeKey = "poi"
 
 require('!/RangeRulers')
@@ -43,7 +45,7 @@ local rangeButtonBuilt = false
 function createButton(rotation)
   if rangeButtonBuilt then return end
   rangeButtonBuilt = true
-  local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+  local gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
   local btnTint = gameData.getTable("battlefieldTint")
   self.createButton({
     click_function = "toggleRangeRuler",
@@ -100,7 +102,7 @@ end
 
 
 function addSilhouetteButton()
-    local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    local gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
     local btnTint = gameData.getTable("battlefieldTint")
     btnData = {
       click_function = "toggleSilhouettes",
@@ -151,7 +153,7 @@ function addSilhouetteButton()
   end
   
   function spawnSilhouette(obj, pos, rot)
-    local globals = Global.getTable("templateInfo")
+    local globals = Brain().getTable("templateInfo")
     local scale = 2.0
     local height = 3.0
     local offset = 0.0

@@ -2,15 +2,16 @@ require('!/common/Math')
 require('!/RangeRulers')
 require('!/data/MovementLinks')
 require('!/Cohesion')
+require('!/Brain')
 
 
 -- Model Token
 
 function onload()
   -- LOAD VALUES
-  _G.battlefieldZone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
-  _G.templateInfo = Global.getTable("templateInfo")
-  _G.highlightTints = Global.getTable("highlightTints")
+  _G.battlefieldZone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
+  _G.templateInfo = Brain().getTable("templateInfo")
+  _G.highlightTints = Brain().getTable("highlightTints")
 
   -- set info
   _G.selectedUnit = nil
@@ -18,7 +19,7 @@ function onload()
 
   -- setUp
   if _G.unitData ~= nil then
-    local dieRollerInfo = Global.getTable("dieRollerInfo")
+    local dieRollerInfo = Brain().getTable("dieRollerInfo")
     _G.isAToken = true
     _G.dieRoller = getObjectFromGUID(dieRollerInfo[_G.unitData.colorSide.."DieRollerGUID"])
     setTemplateVariables()
@@ -529,7 +530,7 @@ end
 -- The map in play: looked up in the battlefield zone first, the whole
 -- table only if it is not there.
 local function findBattlefield()
-    local zone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
+    local zone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
     if zone ~= nil then
         for _, obj in ipairs(zone.getObjects()) do
             if obj.getName() == "BATTLEFIELD" then return obj end
@@ -985,7 +986,7 @@ function clearAttackLine()
     -- Any verdict still computing is now stale: the coroutine checks the
     -- generation at every resume point and bows out.
     losGeneration = (losGeneration or 0) + 1
-    Global.call("losCancel", {tokenGuid = self.getGUID()})
+    Brain().call("losCancel", {tokenGuid = self.getGUID()})
     if losSilhouetteGUIDs then
         for _, guid in pairs(losSilhouetteGUIDs) do
             local leader = getObjectFromGUID(guid)
@@ -1033,7 +1034,7 @@ function aim()
     local tokenPosition = {basePos.x + b, basePos.y + 1, basePos.z + a}
     local tokenRotation = {0, baseRot.y, 0}
 
-    aimBag = getObjectFromGUID(Global.getVar("aimBagGUID"))
+    aimBag = getObjectFromGUID(Brain().getVar("aimBagGUID"))
     aimBag.takeObject({
         position = tokenPosition,
         rotation = tokenRotation
@@ -1053,7 +1054,7 @@ function dodge()
     local tokenPosition = {basePos.x + b, basePos.y + 1, basePos.z + a}
     local tokenRotation = {0, baseRot.y - 30, 0}
 
-    aimBag = getObjectFromGUID(Global.getVar("dodgeBagGUID"))
+    aimBag = getObjectFromGUID(Brain().getVar("dodgeBagGUID"))
     aimBag.takeObject({
         position = tokenPosition,
         rotation = tokenRotation
@@ -1073,7 +1074,7 @@ function overwatch()
     local tokenPosition = {basePos.x + b, basePos.y + 1, basePos.z + a}
     local tokenRotation = {0, baseRot.y, 0}
 
-    aimBag = getObjectFromGUID(Global.getVar("standbyBagGUID"))
+    aimBag = getObjectFromGUID(Brain().getVar("standbyBagGUID"))
     aimBag.takeObject({
         position = tokenPosition,
         rotation = tokenRotation
@@ -1093,7 +1094,7 @@ function surge()
     local tokenPosition = {basePos.x + b, basePos.y + 1, basePos.z + a}
     local tokenRotation = {0, baseRot.y, 0}
 
-    aimBag = getObjectFromGUID(Global.getVar("surgeBagGUID"))
+    aimBag = getObjectFromGUID(Brain().getVar("surgeBagGUID"))
     aimBag.takeObject({
         position = tokenPosition,
         rotation = tokenRotation
@@ -1249,7 +1250,7 @@ end
 function addSuppression(selectedSuppressionObj)
     local suppressionPos = selectedSuppressionObj.getPosition()
     suppressionPos.y = suppressionPos.y + 1
-    Global.call("gAddCounterToUnit", {
+    Brain().call("gAddCounterToUnit", {
         kind = "Suppression Token",
         leaderGUID = selectedSuppressionObj.getGUID(),
         spawnPos = suppressionPos,
@@ -1261,7 +1262,7 @@ function addWound(selectedWoundObj)
     local woundPos = selectedWoundObj.getPosition()
     woundPos.y = woundPos.y + 1
     woundPos = translatePos(woundPos,selectedWoundObj.getRotation(),1, 0)
-    Global.call("gAddCounterToUnit", {
+    Brain().call("gAddCounterToUnit", {
         kind = "Wound Token",
         leaderGUID = selectedWoundObj.getGUID(),
         spawnPos = woundPos,
@@ -1272,7 +1273,7 @@ end
 function addIon(selectedIonObj)
     local ionPos = selectedIonObj.getPosition()
     ionPos.y = ionPos.y + 1
-    ionBag = getObjectFromGUID(Global.getVar("ionBagGUID"))
+    ionBag = getObjectFromGUID(Brain().getVar("ionBagGUID"))
 
     ionPos = translatePos(ionPos,selectedIonObj.getRotation(),1, 180)
 
@@ -1371,7 +1372,7 @@ end
 function computeLosVerdicts(attackTargetObj)
     losGeneration = losGeneration + 1
     losTargetObj = attackTargetObj
-    Global.call("losStartVerdict", buildLosRequest(attackTargetObj))
+    Brain().call("losStartVerdict", buildLosRequest(attackTargetObj))
 end
 
 -- Called by Global once the witness lines are drawn. Silhouettes only rise
