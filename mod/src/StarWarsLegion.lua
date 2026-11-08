@@ -51,7 +51,20 @@ function onObjectPickUp(color, obj)
   counterTokensOnPickUp(color, obj)
 end
 
+-- With the loader, a fresh table first asks the host which version to run,
+-- so the brain saved in the Workshop item waits for the shell's go.
+function loaderGo()
+    local saveData = loaderPendingSave
+    loaderPendingSave = nil
+    onload(saveData)
+end
+
 function onload(saveData)
+    if Global.getVar('LOADER_HOLD') then
+        loaderPendingSave = saveData
+        return
+    end
+
     -- First, before anything that can throw: the veil is up from the XML,
     -- and this is what guarantees it comes back down.
     armSetupVeil()
