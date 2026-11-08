@@ -14,6 +14,8 @@
 -- JSON.decode of the full file freezes the table for 41 s in TTS, the
 -- upgrades file for 7.6 s (measured 12 Oct 2026).
 
+require('!/Brain')
+
 -- One set of addresses per language; a language selector on the computer
 -- only has to set LEGION_HELPER_LANGUAGE.
 LEGION_HELPER_LANGUAGE = "en"
@@ -364,7 +366,7 @@ end
 local function startQueue()
   if not queueRunning and head <= tail then
     queueRunning = true
-    startLuaCoroutine(Global, "legionHelperRunQueue")
+    startLuaCoroutine(Brain(), "legionHelperRunQueue")
   end
 end
 
@@ -565,7 +567,7 @@ local function receive(req, label, number)
   end
   -- Keep the text now: TTS drops the request once the callback returns.
   pending = {text = req.text, number = number}
-  startLuaCoroutine(Global, "legionHelperReadPending")
+  startLuaCoroutine(Brain(), "legionHelperReadPending")
 end
 
 -- Starts a load and returns its number, or nil if one is already running. A

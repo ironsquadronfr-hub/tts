@@ -1,19 +1,21 @@
+require('!/Brain')
+
 -- The welcome dialog is declared closed in the XML and opened from here. An
 -- undo reloads the whole mod, so a dialog the XML declares open pops straight
 -- back into the middle of a game every single time a player rewinds.
 function initUI(showWelcome)
   if showWelcome then
     Wait.frames(function()
-      UI.show("welcomeDialog")
+      Global.UI.show("welcomeDialog")
     end)
   end
 end
 
 function _toggleDialog(name)
-  if UI.getAttribute(name, "active") == "true" then
-    UI.hide(name)
+  if Global.UI.getAttribute(name, "active") == "true" then
+    Global.UI.hide(name)
   else
-    UI.show(name)
+    Global.UI.show(name)
   end
 end
 
@@ -26,16 +28,16 @@ end
 function setChessClockUI(visible)
   local scale = visible and 0.7 or 0
   if visible then
-    UI.show("floatingChessClockUI")
+    Global.UI.show("floatingChessClockUI")
   else
-    UI.hide("floatingChessClockUI")
+    Global.UI.hide("floatingChessClockUI")
   end
   getObjectFromGUID(clockGUIDs.blue).setScale({scale, scale, scale})
   getObjectFromGUID(clockGUIDs.red).setScale({scale, scale, scale})
 end
 
 function toggleChessClockUI()
-  setChessClockUI(UI.getAttribute("floatingChessClockUI", "active") ~= "true")
+  setChessClockUI(Global.UI.getAttribute("floatingChessClockUI", "active") ~= "true")
 end
 
 -- No default: the field starts empty and the player supplies the file. This used
@@ -66,7 +68,7 @@ function experimentalSideLoad()
             end
             unit.rank = rank
             unit.faction = faction
-            Global.call("sideLoadUnit", {
+            Brain().call("sideLoadUnit", {
               faction = faction,
               key     = key,
               unit    = unit,
@@ -82,7 +84,7 @@ function experimentalSideLoad()
       for type, upgrades in pairs(json.upgrades) do
         for _, upgrade in ipairs(upgrades) do
           upgrade.type = type
-          Global.call("sideLoadUpgrade", {
+          Brain().call("sideLoadUpgrade", {
             name = upgrade.name,
             data = upgrade,
           })
@@ -96,7 +98,7 @@ function experimentalSideLoad()
       for faction, commands in pairs(json.commands) do
         for _, command in ipairs(commands) do
           command.faction = faction
-          Global.call("sideLoadCommand", {
+          Brain().call("sideLoadCommand", {
             name = command.name,
             data = command,
           })
@@ -110,7 +112,7 @@ function experimentalSideLoad()
       for type, kinds in pairs(json.battlefield) do
         for kind, cards in pairs(kinds) do
           for _, card in ipairs(cards) do
-            Global.call("sideLoadBattlefield", {
+            Brain().call("sideLoadBattlefield", {
               name = card.name,
               data = card,
               type = type,
@@ -125,7 +127,7 @@ function experimentalSideLoad()
     if json.objects then
       local loaded = 0
       for name, data in pairs(json.objects) do
-        Global.call("sideLoadObject", {
+        Brain().call("sideLoadObject", {
           name = name,
           data = data,
         })
@@ -138,20 +140,20 @@ end
 local function markWelcomeTab(open)
   for _, n in ipairs({1, 3}) do
     local isOpen = n == open
-    UI.setAttribute("welcomeTabButton" .. n, "image", isOpen and "uiTabActive" or "uiTab")
-    UI.setAttribute("welcomeTabText" .. n, "color", isOpen and "#E8801A" or "#9AA0AA")
-    UI.setAttribute("welcomeTabText" .. n, "fontStyle", isOpen and "Bold" or "Normal")
+    Global.UI.setAttribute("welcomeTabButton" .. n, "image", isOpen and "uiTabActive" or "uiTab")
+    Global.UI.setAttribute("welcomeTabText" .. n, "color", isOpen and "#E8801A" or "#9AA0AA")
+    Global.UI.setAttribute("welcomeTabText" .. n, "fontStyle", isOpen and "Bold" or "Normal")
   end
 end
 
 function showWelcomeTab1()
   markWelcomeTab(1)
-  UI.show("welcomeTab1")
-  UI.hide("welcomeTab3")
+  Global.UI.show("welcomeTab1")
+  Global.UI.hide("welcomeTab3")
 end
 
 function showWelcomeTab3()
   markWelcomeTab(3)
-  UI.hide("welcomeTab1")
-  UI.show("welcomeTab3")
+  Global.UI.hide("welcomeTab1")
+  Global.UI.show("welcomeTab3")
 end

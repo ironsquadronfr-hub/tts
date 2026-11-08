@@ -8,6 +8,8 @@
 -- of a counter starts a short inspection of the table instead, over a
 -- registry fed by those events.
 
+require('!/Brain')
+
 local COUNTER_KINDS = {
   ["Suppression Token"] = "suppressionBagGUID",
   ["Wound Token"]       = "woundBagGUID",
@@ -51,7 +53,7 @@ local function counters(kind)
 end
 
 local function bagFor(kind)
-  return getObjectFromGUID(Global.getVar(COUNTER_KINDS[kind]))
+  return getObjectFromGUID(Brain().getVar(COUNTER_KINDS[kind]))
 end
 
 local function count(o)
@@ -294,7 +296,7 @@ end
 -- The REMOVE SUPPRESSION button: one suppression off every token and stack
 -- in the battlefield zone; a token at one goes back to the bag.
 function gRemoveOneSuppression(params)
-  local zone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
+  local zone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
   local inZone = {}
   for _, o in ipairs(zone and zone.getObjects() or {}) do inZone[o.getGUID()] = true end
   for _, o in ipairs(counters("Suppression Token")) do

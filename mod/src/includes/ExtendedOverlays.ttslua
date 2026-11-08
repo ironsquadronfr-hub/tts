@@ -506,7 +506,7 @@ function refreshOverlayToggleUI()
     -- content), the vanilla XML is not up yet: getXmlTable returns nothing,
     -- and pushing an empty table back logs "<UI.setXmlTable>: table was
     -- null". Nothing to edit into means nothing to do.
-    local tree = UI.getXmlTable()
+    local tree = Global.UI.getXmlTable()
     if not tree or #tree == 0 then return false end
     local menu = findXmlNodeById(tree, "legionFloatingMenu")
     if menu and menu.children then
@@ -556,7 +556,7 @@ function refreshOverlayToggleUI()
             end
         end
     end
-    UI.setXmlTable(tree)
+    Global.UI.setXmlTable(tree)
 end
 
 -- Defer one frame: TTS throws a UTF-8 byte-buffer encoding error if we

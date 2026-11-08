@@ -15,6 +15,8 @@
 -- The triangle pass now walks a bounding volume hierarchy instead of a flat
 -- grid, which tests a handful of triangles per line instead of thousands.
 
+require('!/Brain')
+
 -- Time budget per frame for a verdict the players are waiting on.
 local LOS_FRAME_BUDGET = 0.02
 -- Time budget per frame for preparing meshes in the background: small, so
@@ -38,14 +40,14 @@ local function losBarSet(pct)
   if whole == losBarShown then return end
   losBarShown = whole
   pcall(function()
-    UI.setAttribute("progressRuleFill", "width", whole .. "%")
-    UI.setAttribute("progressRule", "active", "true")
+    Global.UI.setAttribute("progressRuleFill", "width", whole .. "%")
+    Global.UI.setAttribute("progressRule", "active", "true")
   end)
 end
 
 local function losBarHide()
   losBarShown = nil
-  pcall(function() UI.setAttribute("progressRule", "active", "false") end)
+  pcall(function() Global.UI.setAttribute("progressRule", "active", "false") end)
 end
 
 losVerdictGen = 0
@@ -935,7 +937,7 @@ function losPrefetchScan()
   end
   if pending and not losPrefetching then
     losPrefetching = true
-    startLuaCoroutine(Global, "losPrefetchCoroutine")
+    startLuaCoroutine(Brain(), "losPrefetchCoroutine")
   end
   return pending
 end
@@ -1010,22 +1012,22 @@ function losOnObjectPlaced(obj)
 end
 
 local function losSummaryHide()
-  pcall(function() UI.setAttribute("losSummary", "active", "false") end)
+  pcall(function() Global.UI.setAttribute("losSummary", "active", "false") end)
 end
 
 function losCancelButton(shown)
-  pcall(function() UI.setAttribute("losCancelButton", "active", shown and "true" or "false") end)
+  pcall(function() Global.UI.setAttribute("losCancelButton", "active", shown and "true" or "false") end)
 end
 
 -- The panel comes up as soon as an attack starts, saying it is working, with a
 -- button to stop it: on big lists a verdict takes a while.
 function losSummaryCalculating()
   pcall(function()
-    UI.setValue("losGreenCount", "")
-    UI.setValue("losRedCount", "")
-    UI.setValue("losCover", "Calculating line of sight...")
-    UI.setValue("losModelCounts", "")
-    UI.setAttribute("losSummary", "active", "true")
+    Global.UI.setValue("losGreenCount", "")
+    Global.UI.setValue("losRedCount", "")
+    Global.UI.setValue("losCover", "Calculating line of sight...")
+    Global.UI.setValue("losModelCounts", "")
+    Global.UI.setAttribute("losSummary", "active", "true")
   end)
   losCancelButton(true)
 end
@@ -1076,16 +1078,16 @@ function losStartVerdict(request)
     .. #(request.attackers or {}) .. " attacker(s), "
     .. #(request.defenders or {}) .. " defender(s)")
   losSummaryCalculating()
-  startLuaCoroutine(Global, "losVerdictCoroutine")
+  startLuaCoroutine(Brain(), "losVerdictCoroutine")
 end
 
 local function losSummaryShow(green, red, coverText, modelText)
   pcall(function()
-    UI.setValue("losGreenCount", green .. " GREEN")
-    UI.setValue("losRedCount", red .. " RED")
-    UI.setValue("losCover", coverText)
-    UI.setValue("losModelCounts", modelText)
-    UI.setAttribute("losSummary", "active", "true")
+    Global.UI.setValue("losGreenCount", green .. " GREEN")
+    Global.UI.setValue("losRedCount", red .. " RED")
+    Global.UI.setValue("losCover", coverText)
+    Global.UI.setValue("losModelCounts", modelText)
+    Global.UI.setAttribute("losSummary", "active", "true")
   end)
 end
 
