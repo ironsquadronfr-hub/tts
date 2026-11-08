@@ -17,15 +17,18 @@
 
 SHELL_VERSION = 1
 
+-- Test releases on the Iron Squadron fork. The beta is a pre-release under
+-- a fixed tag, replaced in place; the stable is the newest full release.
+-- Both move to swlegion/tts when the loader goes live.
 RELEASES = {
-  stable = 'http://127.0.0.1:8765/stable/',
-  beta = 'http://127.0.0.1:8765/beta/',
+  stable = 'https://github.com/ironsquadronfr-hub/tts/releases/latest/download/',
+  beta = 'https://github.com/ironsquadronfr-hub/tts/releases/download/loader-beta/',
 }
 
 BRAIN_GUID = 'b7a1e0'
 BRAIN_POSITION = {55.2, -3.5, -1.42} -- hidden inside the computer screen
 
-state = {channel = 'stable', version = nil, fresh = true, ui = nil, uiAssets = nil, objects = {}}
+state = {channel = 'beta', version = nil, fresh = true, ui = nil, uiAssets = nil, objects = {}}
 
 local function say(text)
   print('[loader] ' .. text)
