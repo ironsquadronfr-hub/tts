@@ -27,10 +27,11 @@ RELEASES = {
   beta = 'https://github.com/ironsquadronfr-hub/tts/releases/download/loader-beta/',
 }
 
--- The chooser's pictures. They belong to the shell, so they never move.
+-- The chooser's pictures, in the asset store: they belong to the shell, so
+-- they never move.
 CHOOSER_ASSETS = {
-  {name = 'loaderChoiceStable', url = 'https://github.com/ironsquadronfr-hub/tts/releases/download/loader-shell/choix-stable-fond.jpg'},
-  {name = 'loaderChoiceBeta', url = 'https://github.com/ironsquadronfr-hub/tts/releases/download/loader-shell/choix-beta-fond.jpg'},
+  {name = 'loaderChoiceStable', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/loader_choice_stable_v1.jpg'},
+  {name = 'loaderChoiceBeta', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/loader_choice_beta_v1.jpg'},
   {name = 'loaderTab', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ui_tab_v2.png'},
   {name = 'loaderTabActive', url = 'https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/ui_tab_active_v2.png'},
 }
@@ -101,7 +102,7 @@ end
 local function chooserHalf(id, image, tagline, label)
   return [[
   <Panel id="]] .. id .. [[" color="#090D23" onMouseEnter="loaderEnter" onMouseExit="loaderExit" onClick="loaderChoose">
-    <Image image="]] .. image .. [[" width="100%" height="100%" preserveAspect="true" raycastTarget="false" />
+    <Image id="]] .. id .. [[Art" image="]] .. image .. [[" width="100%" height="100%" preserveAspect="true" raycastTarget="false" color="#FFFFFF00" />
     <Panel id="]] .. id .. [[Shade" width="100%" height="100%" raycastTarget="false" color="]] .. veil(DIM) .. [[" />
     <Text id="]] .. id .. [[Tag" raycastTarget="false" rectAlignment="LowerCenter" offsetXY="0 182" width="800" height="30"
       fontSize="16" color="#C9D2E0">]] .. tagline .. [[</Text>
@@ -132,6 +133,27 @@ function showChooser()
   -- UI comes up without declaring images a second time.
   for _, asset in ipairs(state.uiAssets or {}) do table.insert(assets, asset) end
   setUi(assets, CHOOSER_XML, updateWaitingLine)
+  -- The pictures start invisible: until it has downloaded one, TTS draws a
+  -- white box in its place. On a player's very first load they are still
+  -- downloading when the XML goes up, and TTS does not redraw them when they
+  -- arrive, so the XML is set once more a little later, and the pictures
+  -- fade in.
+  Wait.time(function()
+    if not chooserOpen then return end
+    level.loaderStable, level.loaderBeta = DIM, DIM
+    target.loaderStable, target.loaderBeta = DIM, DIM
+    UI.setXml(CHOOSER_XML)
+    Wait.condition(function()
+      updateWaitingLine()
+      for i = 1, 12 do
+        Wait.frames(function()
+          local alpha = string.format('#FFFFFF%02X', math.floor(255 * i / 12))
+          UI.setAttribute('loaderStableArt', 'color', alpha)
+          UI.setAttribute('loaderBetaArt', 'color', alpha)
+        end, i)
+      end
+    end, function() return not UI.loading end, 10)
+  end, 1.5)
 end
 
 -- The guests' line: everyone but the host.
