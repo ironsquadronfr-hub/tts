@@ -4,6 +4,7 @@ require('!/common/Zonex')
 require('!/Deck')
 require('!/Shelf')
 require('!/SpawnList')
+require('!/Brain')
 
 local __state = {}
 
@@ -186,7 +187,7 @@ function _clearZone()
   zonex.clearExcept(getObjectFromGUID(__state.guids.handZone), "Table")
   zonex.clearExcept(getObjectFromGUID(__state.guids.battleZone), "Table")
 
-  local data = Global.getTable("commandTokenTrayData")[__state.color:lower()]
+  local data = Brain().getTable("commandTokenTrayData")[__state.color:lower()]
   for _, obj in ipairs(getObjectFromGUID(data.trayZoneGUID).getObjects()) do
     if obj.getVar("isAToken") == true then
       destroyObject(obj)
@@ -198,7 +199,7 @@ function _clearZone()
 end
 
 function _spawnTemplates()
-  local globals = Global.getTable("listBuilder")
+  local globals = Brain().getTable("listBuilder")
   local deckBuilder = spawnObject({
     type       = "Custom_Model",
     position   = globals.deckBuilderPos[__state.color:lower()],
@@ -454,7 +455,7 @@ function _generateListData()
 end
 
 function _saveArmy()
-  local globals = Global.getTable("listBuilder")
+  local globals = Brain().getTable("listBuilder")
   local listData = _generateListData()
   local diskZone = getObjectFromGUID(__state.guids.diskZone)
   local diskMount = getObjectFromGUID(__state.guids.mount)
@@ -608,11 +609,11 @@ function _loadArmyFromJson(data)
   local spawn = initListSpawner({
     deck        = _deck,
     shelf       = _shelf,
-    globals     = Global.getTable("listBuilder"),
+    globals     = Brain().getTable("listBuilder"),
     color       = __state.color,
     mount       = getObjectFromGUID(__state.guids.battleDeck),
     orientation = self.getRotation(),
-    unitTokens  = getObjectFromGUID(Global.getVar("unitIDTokenBagGUID")),
+    unitTokens  = getObjectFromGUID(Brain().getVar("unitIDTokenBagGUID")),
     -- TODO: Make this global somehow instead.
     scripts     = {
       ["toggle-range-1"] = _scriptRange1Token,

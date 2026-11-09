@@ -16,6 +16,8 @@
 -- !/Cohesion, because it captures their original functions before shadowing
 -- them (see the aliases just below).
 
+require('!/Brain')
+
 
 -- Capture the ORIGINAL Global functions loaded by !/RangeRulers BEFORE we
 -- overwrite them below: the toggle wrapper resolves them by NAME at call
@@ -506,14 +508,14 @@ function refreshOverlayToggleUI()
     -- content), the vanilla XML is not up yet: getXmlTable returns nothing,
     -- and pushing an empty table back logs "<UI.setXmlTable>: table was
     -- null". Nothing to edit into means nothing to do.
-    local tree = UI.getXmlTable()
+    local tree = Global.UI.getXmlTable()
     if not tree or #tree == 0 then return false end
     local menu = findXmlNodeById(tree, "legionFloatingMenu")
     if menu and menu.children then
         local isExtended = (overlayMode == "extended")
         local attrs = {
             id = "overlayToggleMenuButton",
-            onClick = "toggleExtendedOverlays",
+            onClick = uiHandler("toggleExtendedOverlays"),
             tooltip = isExtended
                 and "Extended range and cohesion overlays: ON"
                 or  "Extended range and cohesion overlays: OFF",
@@ -556,7 +558,7 @@ function refreshOverlayToggleUI()
             end
         end
     end
-    UI.setXmlTable(tree)
+    Global.UI.setXmlTable(tree)
 end
 
 -- Defer one frame: TTS throws a UTF-8 byte-buffer encoding error if we

@@ -1,3 +1,5 @@
+require('!/Brain')
+
 function onLoadShared(_colorSide, _splitButton, _stackButton, _shuffleButton)
   self.interactable = false
   colorSide = _colorSide
@@ -7,7 +9,7 @@ function onLoadShared(_colorSide, _splitButton, _stackButton, _shuffleButton)
 
   -- init
   strColor = colorSide:gsub("^%l", string.upper)
-  commandTokenTrayData = Global.getTable("commandTokenTrayData")
+  commandTokenTrayData = Brain().getTable("commandTokenTrayData")
   trayZone = getObjectFromGUID(commandTokenTrayData[colorSide].trayZoneGUID)
   commandStack = getObjectFromGUID(commandTokenTrayData[colorSide].stack)
 

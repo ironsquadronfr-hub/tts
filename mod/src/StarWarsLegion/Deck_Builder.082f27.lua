@@ -1,11 +1,12 @@
 require('!/Deck')
+require('!/Brain')
 
 -- Defined via setLuaScript:
 --   _G.selectedScenario
 
 function onload(save_state)
     self.interactable = false
-    listBuilder = Global.getTable("listBuilder")
+    listBuilder = Brain().getTable("listBuilder")
     _G.Deck = Deck:create()
 
     battlefieldEntry = {}

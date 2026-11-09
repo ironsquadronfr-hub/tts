@@ -9,36 +9,38 @@
 -- all, which keeps the mod working with this file present and IsqOverlays
 -- absent.
 
+require('!/Brain')
+
 -- True only when a player has turned the overlays on for the table.
 function isqOverlaysOn()
   if gGetMode then
     return gGetMode() ~= 'windows'
   end
-  local ok, mode = pcall(function() return Global.call('gGetMode') end)
+  local ok, mode = pcall(function() return Brain().call('gGetMode') end)
   return ok and mode ~= nil and mode ~= 'windows'
 end
 
 function isqToggleRange(params)
   if gToggleRange then return gToggleRange(params) end
-  return Global.call('gToggleRange', params)
+  return Brain().call('gToggleRange', params)
 end
 
 function isqClearRange(params)
   if gClearRange then return gClearRange(params) end
-  return Global.call('gClearRange', params)
+  return Brain().call('gClearRange', params)
 end
 
 function isqRangeTrigger(params)
   if gRangeTrigger then return gRangeTrigger(params) end
-  return Global.call('gRangeTrigger', params)
+  return Brain().call('gRangeTrigger', params)
 end
 
 function isqToggleCohesion(params)
   if gToggleCohesion then return gToggleCohesion(params) end
-  return Global.call('gToggleCohesion', params)
+  return Brain().call('gToggleCohesion', params)
 end
 
 function isqClearCohesion(params)
   if gClearCohesion then return gClearCohesion(params) end
-  return Global.call('gClearCohesion', params)
+  return Brain().call('gClearCohesion', params)
 end

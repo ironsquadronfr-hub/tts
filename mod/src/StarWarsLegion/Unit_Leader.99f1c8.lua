@@ -1,3 +1,5 @@
+require('!/Brain')
+
 ﻿require('!/Cohesion')
 
 -- Model mini
@@ -9,7 +11,7 @@ function onload()
 end
 
 function setUp()
-    templateInfo = Global.getTable("templateInfo")
+    templateInfo = Brain().getTable("templateInfo")
 
     moveState = false
     silhouetteState = false
@@ -82,7 +84,7 @@ function scheduleOblongButtonFix()
 end
 
 function addSilhouetteButton()
-  local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+  local gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
   local btnTint = gameData.getTable("battlefieldTint")
   local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
   btnData = {
@@ -102,9 +104,9 @@ function addSilhouetteButton()
 end
 
 function addLockButton()
-    local gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    local gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
     local btnTint = gameData.getTable("battlefieldTint")
-    local templateInfo = Global.getTable("templateInfo")
+    local templateInfo = Brain().getTable("templateInfo")
     local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
     lockBtnData = {
         click_function = "toggleLockButton",
@@ -249,7 +251,7 @@ function showSilhouette()
 end
 
 function spawnSilhouette(obj, pos, rot)
-  local globals = Global.getTable("templateInfo")
+  local globals = Brain().getTable("templateInfo")
   local scale = globals.baseRadius[unitData.baseSize]
   local height = 1.0
   local offset = 0.0

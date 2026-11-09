@@ -1,4 +1,5 @@
 require('!/common/Tablex')
+require('!/Brain')
 
 -- Values written into a mini's or a token's script come from the list, and a
 -- list is a file from someone else: quoted, they stay data and cannot run.
@@ -30,12 +31,12 @@ end
 -- read it. A reload starts the Global fresh, so the count cannot survive as a
 -- stale value.
 local function countImports(delta)
-  local count = (Global.getVar("importsInFlight") or 0) + delta
+  local count = (Brain().getVar("importsInFlight") or 0) + delta
   if count < 0 then
     count = 0
   end
   if delta ~= 0 then
-    Global.setVar("importsInFlight", count)
+    Brain().setVar("importsInFlight", count)
   end
   return count
 end
@@ -221,7 +222,7 @@ local function initListSpawner(params)
   end
 
   local function getGlobalTint()
-    return getObjectFromGUID(Global.getVar("gameDataGUID")).getTable("battlefieldTint")
+    return getObjectFromGUID(Brain().getVar("gameDataGUID")).getTable("battlefieldTint")
   end
 
   -- Names and describes every model of a unit, then queues one job per
@@ -333,7 +334,7 @@ local function initListSpawner(params)
     tokenObj.setCustomObject({
       mesh = "https://steamusercontent-a.akamaihd.net/ugc/786359883314446513/4DBBAC00ABA5EABE88C2A86C3311C3FB6645FF25/",
       collider = "https://steamusercontent-a.akamaihd.net/ugc/785234780866339915/85F7E717B9EFBE0396126CA673DF17EAFEC7D451/",
-      diffuse = Global.getTable("commandTokenData")[color:lower()][cData.commandType],
+      diffuse = Brain().getTable("commandTokenData")[color:lower()][cData.commandType],
       type = 0,
       material = 3
     })
@@ -428,7 +429,7 @@ local function initListSpawner(params)
     initializeMini(miniData, push)
 
     local commandTray = getObjectFromGUID(
-      Global.getTable("commandTokenTrayData")[color:lower()][commandType]
+      Brain().getTable("commandTokenTrayData")[color:lower()][commandType]
     )
     local position = commandTray.getPosition()
     position.y = position.y + 0.5 + (0.2 * index)

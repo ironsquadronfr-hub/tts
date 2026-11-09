@@ -1,5 +1,6 @@
 require('!/Deck')
 require('!/Shelf')
+require('!/Brain')
 
 function onload(save_state)
     _G.Deck = Deck:create()
@@ -7,10 +8,10 @@ function onload(save_state)
     self.interactable = false
 
     -- intialize
-    setUpCards = Global.getTable("setUpCards")
-    setUpData = Global.getTable("setUpData")
-    battlefieldZone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
-    gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    setUpCards = Brain().getTable("setUpCards")
+    setUpData = Brain().getTable("setUpData")
+    battlefieldZone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
+    gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
     battlefieldTint = gameData.getTable("battlefieldTint")
 
     -- token scripts
@@ -313,7 +314,7 @@ local function poisInBag(bag)
 end
 
 local function placeMissionPois(bag, cardName)
-  local positions = Global.call("getMissionPoiPositions", {
+  local positions = Brain().call("getMissionPoiPositions", {
     cardName = cardName,
     isRecon  = isReconSelected(),
   })
@@ -608,7 +609,7 @@ function activatedeployment(name)
     if zone and #zone > 0 then
       spawnDeploymentBoundary(zone, _G.mirrorDeployment)
     end
-    Global.call("setPoiPlacementAids", {
+    Brain().call("setPoiPlacementAids", {
       show    = true,
       isRecon = isReconSelected(),
     })
@@ -622,7 +623,7 @@ function activatedeployment(name)
 end
 
 function removeDeploymentOverlay()
-    Global.call("setPoiPlacementAids", {show = false})
+    Brain().call("setPoiPlacementAids", {show = false})
     deploymentMenu()
 end
 

@@ -1,4 +1,5 @@
 require('!/common/Stringx')
+require('!/Brain')
 
 local __state = {}
 
@@ -91,6 +92,6 @@ function defineBattlefield()
   getObjectFromGUID(__state.guids.button).AssetBundle.playTriggerEffect(0)
   -- The game controller reads both players' decks, so either mount's button
   -- starts building the mission.
-  local game = getObjectFromGUID(Global.getTable("gameController").objGUID)
+  local game = getObjectFromGUID(Brain().getTable("gameController").objGUID)
   game.call("buildMissionMenu")
 end
