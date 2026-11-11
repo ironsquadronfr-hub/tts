@@ -195,26 +195,35 @@ local function deployStep(gen, crate, pending, index, total, deployed, raisedAt)
     waitForAssets(gen, deployed, raisedAt, 0)
     return
   end
-  -- Re-checked at take time: a save made mid-cascade, then undone into,
-  -- may hold any mix of deployed and crated objects. The pcall keeps the
-  -- cascade alive even if the crate itself was destroyed under us.
-  if getObjectFromGUID(entry.g) == nil then
-    pcall(function()
-      local obj = crate.takeObject({
-        guid = entry.g,
-        position = {entry.p.x, entry.p.y, entry.p.z},
-        rotation = {entry.r.x, entry.r.y, entry.r.z},
-        smooth = false,
-      })
-      -- Locked on the returned reference, same frame: the object must not
-      -- feel gravity for even one frame.
-      if entry.l == 1 and obj ~= nil then obj.setLock(true) end
-    end)
+  -- Objects taken out per frame. Every frame has a fixed cost of its own,
+  -- whatever the script does in it, and on a weak processor it is what the
+  -- cascade mostly pays: 81 frames of ~140 ms each on a throttled Mac
+  -- (measured 11/11/2026). The brain installed by the loader takes them by
+  -- batches; the classic mod, whose Global is self, keeps one per frame.
+  local last = math.min(index + ((self == Global) and 1 or 8) - 1, total)
+  for i = index, last do
+    entry = pending[i]
+    -- Re-checked at take time: a save made mid-cascade, then undone into,
+    -- may hold any mix of deployed and crated objects. The pcall keeps the
+    -- cascade alive even if the crate itself was destroyed under us.
+    if getObjectFromGUID(entry.g) == nil then
+      pcall(function()
+        local obj = crate.takeObject({
+          guid = entry.g,
+          position = {entry.p.x, entry.p.y, entry.p.z},
+          rotation = {entry.r.x, entry.r.y, entry.r.z},
+          smooth = false,
+        })
+        -- Locked on the returned reference, same frame: the object must not
+        -- feel gravity for even one frame.
+        if entry.l == 1 and obj ~= nil then obj.setLock(true) end
+      end)
+    end
+    deployed[#deployed + 1] = entry.g
   end
-  deployed[#deployed + 1] = entry.g
-  veilProgress(index, total, index == total)
+  veilProgress(last, total, last == total)
   Wait.frames(function()
-    deployStep(gen, crate, pending, index + 1, total, deployed, raisedAt)
+    deployStep(gen, crate, pending, last + 1, total, deployed, raisedAt)
   end, 1)
 end
 
