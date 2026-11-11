@@ -87,7 +87,7 @@ function onLoad(saved)
   else
     -- TTS does not save a UI set by a script: put it back on every load.
     if state.ui then
-      setUi(state.uiAssets, state.ui)
+      setUi(state.uiAssets, state.ui, nil, true)
     end
     say('game on ' .. tostring(state.version) .. ' (' .. state.channel .. ')')
   end
@@ -107,9 +107,17 @@ function onSave()
 end
 
 -- Sets the global UI. Images declared a second time in a session only show
--- once the XML is set again (measured), hence the blank step.
-function setUi(assets, xml, done)
+-- once the XML is set again (measured), hence the blank step. A game in
+-- progress skips it (immediate): its UI is back 0.3 s sooner.
+function setUi(assets, xml, done, immediate)
   UI.setCustomAssets(assets or {})
+  if immediate then
+    UI.setXml(xml)
+    if done then
+      Wait.condition(done, function() return not UI.loading end, 10, done)
+    end
+    return
+  end
   UI.setXml('')
   Wait.time(function()
     UI.setXml(xml)
@@ -158,6 +166,10 @@ CHOOSER_XML = [[
 
 chooserOpen = false
 
+-- How long after the chooser's first XML has loaded it is set once more and
+-- the pictures fade in (see below).
+CHOOSER_REVEAL_SECONDS = 0.3
+
 function showChooser()
   chooserOpen = true
   local assets = {}
@@ -165,28 +177,36 @@ function showChooser()
   -- The saved version's own images too: if the host keeps it, the mod's
   -- UI comes up without declaring images a second time.
   for _, asset in ipairs(state.uiAssets or {}) do table.insert(assets, asset) end
-  setUi(assets, CHOOSER_XML, updateWaitingLine)
-  -- The pictures start invisible: until it has downloaded one, TTS draws a
-  -- white box in its place. On a player's very first load they are still
-  -- downloading when the XML goes up, and TTS does not redraw them when they
-  -- arrive, so the XML is set once more a little later, and the pictures
-  -- fade in.
-  Wait.time(function()
-    if not chooserOpen then return end
-    level.loaderStable, level.loaderBeta = DIM, DIM
-    target.loaderStable, target.loaderBeta = DIM, DIM
-    UI.setXml(CHOOSER_XML)
-    Wait.condition(function()
-      updateWaitingLine()
-      for i = 1, 12 do
-        Wait.frames(function()
-          local alpha = string.format('#FFFFFF%02X', math.floor(255 * i / 12))
-          UI.setAttribute('loaderStableArt', 'color', alpha)
-          UI.setAttribute('loaderBetaArt', 'color', alpha)
-        end, i)
-      end
-    end, function() return not UI.loading end, 10)
-  end, 1.5)
+  setUi(assets, CHOOSER_XML, function()
+    updateWaitingLine()
+    Wait.time(revealChooser, CHOOSER_REVEAL_SECONDS)
+  end)
+  -- While the host looks at the chooser, the server is asked about the
+  -- channel already ticked, and its release downloaded if needed: by the
+  -- click, it is usually all in.
+  prepare(state.channel)
+end
+
+-- The pictures start invisible: until it has downloaded one, TTS draws a
+-- white box in its place. On a player's very first load they are still
+-- downloading when the XML goes up, and TTS does not redraw them when they
+-- arrive, so the XML is set once more once it has loaded, and the pictures
+-- fade in.
+function revealChooser()
+  if not chooserOpen then return end
+  level.loaderStable, level.loaderBeta = DIM, DIM
+  target.loaderStable, target.loaderBeta = DIM, DIM
+  UI.setXml(CHOOSER_XML)
+  Wait.condition(function()
+    updateWaitingLine()
+    for i = 1, 12 do
+      Wait.frames(function()
+        local alpha = string.format('#FFFFFF%02X', math.floor(255 * i / 12))
+        UI.setAttribute('loaderStableArt', 'color', alpha)
+        UI.setAttribute('loaderBetaArt', 'color', alpha)
+      end, i)
+    end
+  end, function() return not UI.loading end, 10)
 end
 
 -- The guests' line: everyone but the host.
@@ -261,25 +281,63 @@ local function fallBack(reason)
   say(reason .. ', and no release is packed in this table')
 end
 
--- Asks the channel for its latest manifest: installs the packed release when
--- it is that one, downloads it otherwise.
-function check()
-  local base = RELEASES[state.channel]
+-- What the release server answered, per channel, once per load:
+-- {done, waiters, failure | packed | files, manifest}.
+local prepared = {}
+
+local function settle(entry)
+  entry.done = true
+  for _, waiter in ipairs(entry.waiters) do waiter(entry) end
+  entry.waiters = {}
+end
+
+-- Asks the channel for its latest manifest and, unless the packed release
+-- is that one, downloads it. Started early by the chooser, finished or
+-- joined by check().
+function prepare(channel)
+  if prepared[channel] then return prepared[channel] end
+  local entry = {done = false, waiters = {}}
+  prepared[channel] = entry
+  local base = RELEASES[channel]
   WebRequest.get(base .. 'manifest.json', function(request)
     if request.is_error then
-      return fallBack('release server unreachable (' .. tostring(request.error) .. ')')
+      entry.failure = 'release server unreachable (' .. tostring(request.error) .. ')'
+      return settle(entry)
     end
     local ok, manifest = pcall(JSON.decode, request.text)
     if not ok or type(manifest) ~= 'table' or not manifest.version then
-      return fallBack('unreadable manifest')
+      entry.failure = 'unreadable manifest'
+      return settle(entry)
     end
-    if package and package.channel == state.channel and package.manifest.version == manifest.version then
-      return installPackage('up to date: ' .. manifest.version .. ' (' .. state.channel .. '), installing the packed copy')
+    entry.manifest = manifest
+    if package and package.channel == channel and package.manifest.version == manifest.version then
+      entry.packed = true
+      return settle(entry)
     end
     fetchRelease(base, manifest, function(brain, ui, objects)
-      install(manifest, brain, ui, objects)
-    end, fallBack)
+      entry.files = {brain, ui, objects}
+      settle(entry)
+    end, function(reason)
+      entry.failure = reason
+      settle(entry)
+    end)
   end)
+  return entry
+end
+
+-- Installs the chosen channel's latest release: the packed copy when it is
+-- that one, the downloaded files otherwise.
+function check()
+  local channel = state.channel
+  local entry = prepare(channel)
+  local function go(e)
+    if e.failure then return fallBack(e.failure) end
+    if e.packed then
+      return installPackage('up to date: ' .. e.manifest.version .. ' (' .. channel .. '), installing the packed copy')
+    end
+    install(e.manifest, e.files[1], e.files[2], e.files[3])
+  end
+  if entry.done then go(entry) else table.insert(entry.waiters, go) end
 end
 
 -- Fetches every file first and hands them over only when all of them
@@ -321,9 +379,36 @@ function installOnClearTable(manifest, brainText, uiText, objectsText)
   state.ui = uiText
   state.uiAssets = manifest.uiAssets
   -- The mod's onload expects its UI to be there, as it is on a save load.
-  setUi(manifest.uiAssets, uiText, function()
+  -- On a slow processor the veil's pictures are not ready when its XML goes
+  -- up, and TTS does not redraw them when they arrive: the veil came up
+  -- without its backdrop or logo (seen on a throttled Mac, 11/11/2026).
+  -- As for the chooser, the XML is set once more once it has loaded, before
+  -- anything of the mod runs and changes it.
+  -- The chooser stays on top meanwhile, its pictures shown: no bare screen
+  -- and no blank step between the click and the veil.
+  local function spawn()
     step('spawn', function() spawnRelease(manifest, brainText, objectsText) end)
-  end)
+  end
+  local assets = {}
+  for _, asset in ipairs(manifest.uiAssets or {}) do table.insert(assets, asset) end
+  for _, asset in ipairs(CHOOSER_ASSETS) do table.insert(assets, asset) end
+  local underChooser = uiText .. '\n' .. CHOOSER_XML:gsub('#FFFFFF00', '#FFFFFFFF')
+  -- Same rhythm as setUi's blank step (assets, 0.3 s, XML, loaded, XML
+  -- again), with the chooser in place of the blank: without the pause the
+  -- veil came up with no pictures, and one frame is not enough either
+  -- (11/11/2026).
+  local function loaded(fn)
+    Wait.condition(fn, function() return not UI.loading end, 10, fn)
+  end
+  UI.setCustomAssets(assets)
+  UI.setXml(underChooser)
+  Wait.time(function()
+    UI.setXml(underChooser)
+    loaded(function()
+      UI.setXml(uiText)
+      loaded(spawn)
+    end)
+  end, 0.3)
 end
 
 -- The brain goes first, then the objects in the same frame: that is the
