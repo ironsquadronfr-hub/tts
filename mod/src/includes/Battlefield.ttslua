@@ -174,7 +174,7 @@ end
 local POI_GUIDE_STANDARD = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_isq_v3.unity3d"
 local POI_GUIDE_RECON = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_guide_recon_isq_v1.unity3d"
 -- One guide circle, projected at a single spot.
-local POI_GUIDE_SPOT = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_spot_isq_v1.unity3d"
+local POI_GUIDE_SPOT = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/poi_spot_v1.unity3d"
 
 local function _showPoiGuide(asset, pos)
   local projector = spawnObject({
