@@ -606,14 +606,16 @@ function activatedeployment(name)
     if zone and #zone > 0 then
       spawnDeploymentBoundary(zone, _G.mirrorDeployment)
     end
+    local placePois = _G.missionPoisOnMap
+    _G.missionPoisOnMap = false
     Brain().call("setPoiPlacementAids", {
-      show    = true,
-      isRecon = isReconSelected(),
+      show     = true,
+      isRecon  = isReconSelected(),
+      cardName = placePois and name or nil,
     })
     deactivateDeploymentMenu()
     local callback = nil
-    if _G.missionPoisOnMap then
-      _G.missionPoisOnMap = false
+    if placePois then
       callback = function(bag) placeMissionPois(bag, name) end
     end
     spawnObjs("deployment", name, callback)
