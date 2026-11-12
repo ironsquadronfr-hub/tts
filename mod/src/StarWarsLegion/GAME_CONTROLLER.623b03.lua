@@ -1033,6 +1033,12 @@ MIRRORED_ASSETS = {
     "eb6ae4de00d00f4bd03f.jpg",
 }
 
+-- Every other file the Featured Maps load, from Steam's CDN and the rest,
+-- served from our store as well. Empty here: the beta's release is cut with
+-- loader/build_release.py --assets-map, which fills it from
+-- loader/assets-map.csv (same keys and values as MIRRORED_ASSETS).
+REPATRIATED_ASSETS = {}
+
 -- Where our copies are served from. One flat directory, under a contract that
 -- nothing in it is ever renamed, overwritten or deleted - see the swl-assets
 -- store - so these addresses never have to move again.
@@ -1539,6 +1545,7 @@ function repairDeadSteamHost(text)
   repaired = applyTerrainColliders(repaired)
   repaired = applyPositionFixes(repaired)
   repaired = applySwaps(repaired, MIRRORED_ASSETS, ASSET_STORE)
+  repaired = applySwaps(repaired, REPATRIATED_ASSETS, ASSET_STORE)
   return repaired
 end
 
