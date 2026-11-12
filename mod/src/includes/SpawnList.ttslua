@@ -732,13 +732,23 @@ local function initListSpawner(params)
       end)
     end
     local scenario = listData.battlefieldDeck.scenario or "standard"
-    buildBattlefieldDeck(
-      tasks,
-      scenario,
-      listData.battlefieldDeck.objective,
-      listData.battlefieldDeck.deployment,
-      listData.battlefieldDeck.condition or listData.battlefieldDeck.conditions
-    )
+    -- Blitz was taken out of the mod: an older list made for it still brings
+    -- its units, just not its battle cards.
+    if scenario:lower() == "blitz" then
+      broadcastToAll(
+        "Blitz is no longer in the mod: this list's battle cards were skipped.",
+        {1, 0.8, 0.4}
+      )
+      scenario = "standard"
+    else
+      buildBattlefieldDeck(
+        tasks,
+        scenario,
+        listData.battlefieldDeck.objective,
+        listData.battlefieldDeck.deployment,
+        listData.battlefieldDeck.condition or listData.battlefieldDeck.conditions
+      )
+    end
     local totalUnits = #listData.units
     for i, unit in ipairs(listData.units) do
       table.insert(tasks, function()

@@ -47,8 +47,7 @@ end
 -- deck builder produced twelve of those on top of whatever was actually
 -- picked.
 --
--- Nothing is selected to begin with now, which is what blitz already did and
--- what the player expects: pick nine cards, get nine cards.
+-- Nothing is selected to begin with now, which is what the player expects: pick nine cards, get nine cards.
 function defaultBattlefieldSelection(_scenario)
   return {
     objective  = {},
