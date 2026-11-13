@@ -1,4 +1,5 @@
 require('!/data/PoiLayout')
+require('!/Brain')
 
 -- Battlefield geometry helpers and POI snap points. Bundled into Global.
 
@@ -14,7 +15,7 @@ local _fallbackRect = {
 }
 
 function findBattlefieldObject()
-  local zone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
+  local zone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
   if zone ~= nil then
     for _, obj in ipairs(zone.getObjects()) do
       if obj.getName() == "BATTLEFIELD" then

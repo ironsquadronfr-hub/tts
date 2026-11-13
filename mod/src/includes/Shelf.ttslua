@@ -1,3 +1,5 @@
+require('!/Brain')
+
 -- Utilities around creating and managing minis.
 Shelf = {}
 Shelf.__index = Shelf;
@@ -32,11 +34,11 @@ end
 -- everything else keeps reading the live table, so side-loaded homebrew
 -- shows up as soon as it is added.
 function Shelf:_getSchema()
-  return self._cache.schema or Global.getTable("CardsSchema")
+  return self._cache.schema or Brain().getTable("CardsSchema")
 end
 
 function Shelf:pinSchema()
-  self._cache.schema = Global.getTable("CardsSchema")
+  self._cache.schema = Brain().getTable("CardsSchema")
 end
 
 function Shelf:unpinSchema()

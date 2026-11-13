@@ -9,38 +9,40 @@
 -- all, which keeps the mod working with this file present and ExtendedOverlays
 -- absent.
 
+require('!/Brain')
+
 -- True only when a player has turned the overlays on for the table.
 function extendedOverlaysOn()
   if gGetMode then
     return gGetMode() ~= 'original'
   end
-  local ok, mode = pcall(function() return Global.call('gGetMode') end)
+  local ok, mode = pcall(function() return Brain().call('gGetMode') end)
   return ok and mode ~= nil and mode ~= 'original'
 end
 
 function toggleOverlayRange(params)
   if gToggleRange then return gToggleRange(params) end
-  return Global.call('gToggleRange', params)
+  return Brain().call('gToggleRange', params)
 end
 
 function clearOverlayRange(params)
   if gClearRange then return gClearRange(params) end
-  return Global.call('gClearRange', params)
+  return Brain().call('gClearRange', params)
 end
 
 function triggerOverlayRange(params)
   if gRangeTrigger then return gRangeTrigger(params) end
-  return Global.call('gRangeTrigger', params)
+  return Brain().call('gRangeTrigger', params)
 end
 
 function toggleOverlayCohesion(params)
   if gToggleCohesion then return gToggleCohesion(params) end
-  return Global.call('gToggleCohesion', params)
+  return Brain().call('gToggleCohesion', params)
 end
 
 function clearOverlayCohesion(params)
   if gClearCohesion then return gClearCohesion(params) end
-  return Global.call('gClearCohesion', params)
+  return Brain().call('gClearCohesion', params)
 end
 
 -- Probe a script-global on a foreign object; pcall keeps a hostile or

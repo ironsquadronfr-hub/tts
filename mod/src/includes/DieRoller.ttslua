@@ -1,7 +1,9 @@
+require('!/Brain')
+
 function onLoadShared(_colorSide)
   self.interactable = false
   colorSide = _colorSide
-  dieRollerInfo = Global.getTable("dieRollerInfo")
+  dieRollerInfo = Brain().getTable("dieRollerInfo")
   dieRollerZone = getObjectFromGUID(dieRollerInfo.dieRollerZone[colorSide])
   mode = nil
   selectedMode = "attack"
@@ -241,7 +243,7 @@ function spawnDie(dieColor,dieType)
     pos.z = pos.z - b
     pos.y = 3
 
-    local dieBag = getObjectFromGUID(Global.getVar(dieColor .. dieType .."BagGUID"))
+    local dieBag = getObjectFromGUID(Brain().getVar(dieColor .. dieType .."BagGUID"))
 
     local diceRot
     if mode == "attack" then
@@ -256,7 +258,7 @@ function spawnDie(dieColor,dieType)
     newDice.setPosition(pos)
     newDice.setLuaScript(
         "function onDestroy() " ..
-        "  dieRollerInfo = Global.getTable('dieRollerInfo')\n" ..
+        "  dieRollerInfo = (getObjectFromGUID('" .. BRAIN_GUID .. "') or Global).getTable('dieRollerInfo')\n" ..
         "  dieRoller = getObjectFromGUID(dieRollerInfo."..colorSide.."DieRollerGUID)\n" ..
         "  dieRoller.call('updateDieCountDisplay', {guid = self.getGUID()})\n" ..
         "end")

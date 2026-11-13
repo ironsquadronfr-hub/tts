@@ -1,3 +1,4 @@
+require('!/Brain')
 require('!/Analytics')
 require('!/CardSchema')
 require('!/common/SHA256')
@@ -18,8 +19,8 @@ require('!/TokenCounters')
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
 -- so an onsave() is never called and the global script saves nothing at all.
 function onSave()
-  local chessClocksActive = UI.getAttribute("floatingChessClockUI", "active") == "true"
-  local welcomeDialogActive = UI.getAttribute("welcomeDialog", "active") == "true"
+  local chessClocksActive = Global.UI.getAttribute("floatingChessClockUI", "active") == "true"
+  local welcomeDialogActive = Global.UI.getAttribute("welcomeDialog", "active") == "true"
   return JSON.encode({
     clocks = chessClocksActive,
     welcome = welcomeDialogActive,
@@ -64,10 +65,10 @@ function onload(saveData)
     -- banner: runtime UI state is written into saves, so force both off
     -- here (imposed, never toggled). The count of imports in flight goes
     -- with them, since no pump survives the reload that would clear it.
-    UI.setAttribute("importProgressRed", "active", false)
-    UI.setAttribute("importProgressBlue", "active", false)
-    UI.setAttribute("importRuleRed", "active", false)
-    UI.setAttribute("importRuleBlue", "active", false)
+    Global.UI.setAttribute("importProgressRed", "active", false)
+    Global.UI.setAttribute("importProgressBlue", "active", false)
+    Global.UI.setAttribute("importRuleRed", "active", false)
+    Global.UI.setAttribute("importRuleBlue", "active", false)
     importsInFlight = 0
 
     local loadData = {
@@ -811,11 +812,11 @@ function updateClockButton()
   -- skipping the next, so the banner is read often and written only when it
   -- has something new to say.
   if label ~= clockButtonLabel then
-    UI.setValue("toggleClockText", label)
+    Global.UI.setValue("toggleClockText", label)
     clockButtonLabel = label
   end
   if colors ~= clockButtonColors then
-    UI.setAttribute("toggleClockButton", "colors", colors)
+    Global.UI.setAttribute("toggleClockButton", "colors", colors)
     clockButtonColors = colors
   end
   scheduleClockButtonTick()

@@ -1,5 +1,6 @@
 require('!/common/Math')
 require('!/RangeRulers')
+require('!/Brain')
 
 scripted = true
 
@@ -16,7 +17,7 @@ function onLoad()
   selectedSpeed = 2
 
   -- Initial setup.
-  templateInfo = Global.getTable("templateInfo")
+  templateInfo = Brain().getTable("templateInfo")
   clearRangeRulers()
   hideUI()
 
@@ -306,7 +307,7 @@ function showSilhouette()
 end
 
 function spawnSilhouette(obj, pos, rot)
-  local globals = Global.getTable("templateInfo")
+  local globals = Brain().getTable("templateInfo")
   local scale = globals.baseRadius["medium"]
   local height = 1.111
   local offset = 0.0 

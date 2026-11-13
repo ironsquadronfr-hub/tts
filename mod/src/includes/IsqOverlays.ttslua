@@ -563,7 +563,7 @@ function macRefreshModeUI()
         local isMac = (overlayMode == "mac")
         local attrs = {
             id = "macModeMenuButton",
-            onClick = "macModeToggle",
+            onClick = uiHandler("macModeToggle"),
             tooltip = isMac
                 and "Iron Squadron overlays: ON for the whole table. Click to go back to the mod's original overlays."
                 or  "Iron Squadron overlays: OFF, the mod's original overlays are in use. Click to turn them on for the whole table.",

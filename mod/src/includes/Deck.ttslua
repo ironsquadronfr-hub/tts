@@ -1,3 +1,5 @@
+require('!/Brain')
+
 -- Utilities around creating and managing decks of cards.
 Deck = {}
 Deck.__index = Deck;
@@ -37,11 +39,11 @@ end
 -- keeps reading the live table, so side-loaded homebrew shows up as soon as
 -- it is added.
 function Deck:_getSchema()
-  return self._cache.schema or Global.getTable("CardsSchema")
+  return self._cache.schema or Brain().getTable("CardsSchema")
 end
 
 function Deck:pinSchema()
-  self._cache.schema = Global.getTable("CardsSchema")
+  self._cache.schema = Brain().getTable("CardsSchema")
 end
 
 function Deck:unpinSchema()
@@ -199,7 +201,7 @@ end
 function Deck:spawnCommandCard(name, isContingency)
   -- Legion Helper card art raises the revision: the cache holds copies of
   -- the cards, so it has to be read again.
-  local revision = Global.getVar("CardsSchemaRevision")
+  local revision = Brain().getVar("CardsSchemaRevision")
   if not self._cache.commands or self._cache.commandsRevision ~= revision then
     self:_cacheCommandCardsByName()
     self._cache.commandsRevision = revision

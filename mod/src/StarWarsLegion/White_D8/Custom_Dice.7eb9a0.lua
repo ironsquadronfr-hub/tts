@@ -1,4 +1,6 @@
-function ondestroy() dieRollerInfo = Global.getTable('dieRollerInfo') dieRoller = getObjectFromGUID(dieRollerInfo.redDieRollerGUID) dieRoller.call('waitToUpdate') end
+require('!/Brain')
+
+function ondestroy() dieRollerInfo = Brain().getTable('dieRollerInfo') dieRoller = getObjectFromGUID(dieRollerInfo.redDieRollerGUID) dieRoller.call('waitToUpdate') end
 
 
 

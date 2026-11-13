@@ -1,10 +1,12 @@
+require('!/Brain')
+
 function ga_track(data)
   local url =  "http://www.google-analytics.com/collect"
   local payload = {
     v   = "1",
     tid = "UA-192712398-2",
-    cid = Global.getVar("CCID"),
-    uid = Global.getVar("UUID"),
+    cid = Brain().getVar("CCID"),
+    uid = Brain().getVar("UUID"),
   }
   for k, v in pairs(data) do
     payload[tostring(k)] = tostring(v)

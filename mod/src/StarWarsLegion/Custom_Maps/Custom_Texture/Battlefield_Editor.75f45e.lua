@@ -1,3 +1,5 @@
+require('!/Brain')
+
 position = {x = -25.4028015136719, y = 1.4477014541626, z = -14.9005193710327}
 rotation = {x = -0.000304694869555533, y = 180.008102416992, z = 7.81823182478547E-05}
 
@@ -16,7 +18,7 @@ board_6x4 = "https://steamusercontent-a.akamaihd.net/ugc/1861690318337395348/1A2
 scripted = true
 function onload(save_state)
     urlString = ""
-    gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
 
     Wait.frames(function() setBattlefieldObj() end, 30)
 
@@ -85,7 +87,7 @@ end
 
 function setBaseTint()
     battlefieldTint = self.getColorTint()
-    Global.setTable("battlefieldTint", battlefieldTint)
+    Brain().setTable("battlefieldTint", battlefieldTint)
     enterTintData(gameData, "battlefieldTint", battlefieldTint)
     broadcastToAll("Mini Base tint set!", {1,1,1})
 end

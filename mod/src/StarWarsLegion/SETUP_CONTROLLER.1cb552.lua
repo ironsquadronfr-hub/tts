@@ -1,5 +1,6 @@
 require('!/Deck')
 require('!/Shelf')
+require('!/Brain')
 
 function onload(save_state)
     _G.Deck = Deck:create()
@@ -7,10 +8,10 @@ function onload(save_state)
     self.interactable = false
 
     -- intialize
-    setUpCards = Global.getTable("setUpCards")
-    setUpData = Global.getTable("setUpData")
-    battlefieldZone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
-    gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    setUpCards = Brain().getTable("setUpCards")
+    setUpData = Brain().getTable("setUpData")
+    battlefieldZone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
+    gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
     battlefieldTint = gameData.getTable("battlefieldTint")
 
     -- token scripts
@@ -324,7 +325,7 @@ local function poisInBag(bag)
 end
 
 local function placeMissionPois(bag, cardName)
-  local positions = Global.call("getMissionPoiPositions", {
+  local positions = Brain().call("getMissionPoiPositions", {
     cardName = cardName,
     isRecon  = isReconSelected(),
   })
@@ -653,7 +654,7 @@ end
 
 -- Only the mission's POI spots are shown.
 function showPoiOverlay(show)
-    Global.call("setPoiPlacementAids", {
+    Brain().call("setPoiPlacementAids", {
       show     = show,
       isRecon  = overlay.isRecon,
       cardName = overlay.name,

@@ -2,6 +2,7 @@ require('!/Analytics')
 require('!/Deck')
 require('!/Mission')
 require('!/common/Zonex')
+require('!/Brain')
 
 function onload(save_state)
     -- So mission draws differ from one load to the next.
@@ -10,30 +11,30 @@ function onload(save_state)
     _G.Deck = Deck:create()
 
     -- init values
-    gameData = getObjectFromGUID(Global.getVar("gameDataGUID"))
+    gameData = getObjectFromGUID(Brain().getVar("gameDataGUID"))
     battlefieldTint = gameData.getTable("battlefieldTint")
 
-    gameController = Global.getTable("gameController")
+    gameController = Brain().getTable("gameController")
     mountZone = getObjectFromGUID(gameController.mountZoneGUID)
-    battlefieldZone = getObjectFromGUID(Global.getVar("battlefieldZoneGUID"))
-    battlefieldTable = getObjectFromGUID(Global.getVar("battlefieldTable"))
+    battlefieldZone = getObjectFromGUID(Brain().getVar("battlefieldZoneGUID"))
+    battlefieldTable = getObjectFromGUID(Brain().getVar("battlefieldTable"))
     customMapsCartridge = getObjectFromGUID(gameController.customMapsGUID)
     deploymentOverlays = getObjectFromGUID(gameController.deploymentOverlaysGUID)
 
-    listBuilder = Global.getTable("listBuilder")
+    listBuilder = Brain().getTable("listBuilder")
     redZone = getObjectFromGUID(listBuilder.redZoneGUID)
     blueZone = getObjectFromGUID(listBuilder.blueZoneGUID)
-    screen = getObjectFromGUID(Global.getVar("screenGUID"))
-    setUpData = Global.getTable("setUpData")
+    screen = getObjectFromGUID(Brain().getVar("screenGUID"))
+    setUpData = Brain().getTable("setUpData")
     setUpData.deploymentMount = getObjectFromGUID(setUpData.deploymentMountGUID)
     setUpData.conditionsMount = getObjectFromGUID(setUpData.conditionsMountGUID)
     setUpData.advantageBlueSeatMount = getObjectFromGUID(setUpData.advantageBlueSeatMountGUID)
     setUpData.objectiveMount = getObjectFromGUID(setUpData.objectiveMountGUID)
-    commandTokenTrayData = Global.getTable("commandTokenTrayData")
-    commandTokenData = Global.getTable("commandTokenData")
-    zonesGUIDs = Global.getTable("zonesGUIDs")
+    commandTokenTrayData = Brain().getTable("commandTokenTrayData")
+    commandTokenData = Brain().getTable("commandTokenData")
+    zonesGUIDs = Brain().getTable("zonesGUIDs")
 
-    setUpController = getObjectFromGUID(Global.getVar("setUpControllerGUID"))
+    setUpController = getObjectFromGUID(Brain().getVar("setUpControllerGUID"))
 
     blueDeckMount = getObjectFromGUID(listBuilder.blueDeckMountGUID)
     redDeckMount = getObjectFromGUID(listBuilder.redDeckMountGUID)
@@ -241,22 +242,22 @@ end
 
 function loadCardArtActive()
     ga_event("Game", "loadLegionHelperActiveArmy")
-    Global.call("loadLegionHelperActiveArmy")
+    Brain().call("loadLegionHelperActiveArmy")
 end
 
 function loadCardArtUpgrades()
     ga_event("Game", "loadLegionHelperUpgrades")
-    Global.call("loadLegionHelperUpgrades")
+    Brain().call("loadLegionHelperUpgrades")
 end
 
 function restoreCardArtMod()
     ga_event("Game", "restoreModCardArt")
-    Global.call("restoreModCardArt")
+    Brain().call("restoreModCardArt")
 end
 
 function loadCardArtAll()
     ga_event("Game", "loadLegionHelperCards")
-    Global.call("loadLegionHelperCards")
+    Brain().call("loadLegionHelperCards")
 end
 
 function mapMenu()
@@ -284,7 +285,7 @@ end
 
 function togglePoiSnap()
     ga_event("Game", "togglePoiSnap")
-    Global.call("togglePoiSnapPoints")
+    Brain().call("togglePoiSnapPoints")
 end
 
 function featuredMapsMenu()
@@ -1815,7 +1816,7 @@ function placeMask(x, z)
 end
 
 function togglePoiGuide()
-    Global.call("togglePoiGuideProjector")
+    Brain().call("togglePoiGuideProjector")
 end
 -- MISSION (2024 rules)
 --

@@ -1,3 +1,5 @@
+require('!/Brain')
+
 --Runs on load, creates button and makes sure the lockout is off
 function onload()
     self.interactable = false
@@ -6,7 +8,7 @@ function onload()
     font_color = {0.7692, 0, 0, 100}, tooltip = "Spawn White Defense Dice", alignment = 3}
 
     self.createButton(data)
-    dieRollerInfo = Global.getTable("dieRollerInfo")
+    dieRollerInfo = Brain().getTable("dieRollerInfo")
     dieRoller = getObjectFromGUID(dieRollerInfo.redDieRollerGUID)
 end
 

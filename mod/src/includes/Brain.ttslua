@@ -1,0 +1,21 @@
+-- Where the mod's logic lives.
+--
+-- Today it runs in Global. With the loader, Global becomes a small frozen
+-- shell and the same logic runs in a "brain" object with a fixed GUID. Code
+-- that reaches the logic from elsewhere goes through Brain(), so it works in
+-- both setups: no brain on the table means Global, as before.
+
+BRAIN_GUID = 'b7a1e0'
+
+function Brain()
+  return getObjectFromGUID(BRAIN_GUID) or Global
+end
+
+-- The name a global UI handler goes by: a bare function name reaches Global,
+-- so once the logic lives in the brain the handler has to name it.
+function uiHandler(name)
+  if getObjectFromGUID(BRAIN_GUID) then
+    return BRAIN_GUID .. '/' .. name
+  end
+  return name
+end

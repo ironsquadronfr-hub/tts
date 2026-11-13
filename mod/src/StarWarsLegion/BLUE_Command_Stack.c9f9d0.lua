@@ -1,5 +1,7 @@
 function onload(save_state)
-    updateStack()
+    -- Spawned by script (the loader), a custom bag is only a container once
+    -- its model has loaded; on a save load it already is.
+    Wait.condition(updateStack, function() return not self.loading_custom end)
 end
 
 function onObjectLeaveContainer(container, leave_object)

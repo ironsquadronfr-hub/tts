@@ -1,3 +1,5 @@
+require('!/Brain')
+
 function onload(save_state)
     self.interactable = false
 
@@ -11,5 +13,5 @@ end
 -- off every token and stack in the battlefield zone, a token at one goes back.
 function removeSuppression()
     assetButton.AssetBundle.playTriggerEffect(0)
-    Global.call("gRemoveOneSuppression", {})
+    Brain().call("gRemoveOneSuppression", {})
 end
