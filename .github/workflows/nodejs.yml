@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, loader]
   pull_request:
-    branches: [main]
+    branches: [main, loader]
   workflow_dispatch:
 
 jobs:
@@ -26,8 +26,18 @@ jobs:
       - name: Compile
         run: npm run compile
 
+      - name: Install Lua tools
+        run: sudo apt-get update && sudo apt-get install -y lua5.4 lua-check
+
+      - name: Lint Lua
+        run: npm run lint:lua
+
+      - name: Test Lua
+        run: npm run test:lua && npm run test:los
+
   release:
-    if: github.event_name == 'push'
+    # Only main publishes the "latest" release; other branches are only checked.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
