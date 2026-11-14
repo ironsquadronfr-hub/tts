@@ -23,6 +23,11 @@
         "collider": {
           "type": "string",
           "minLength": 1
+        },
+        "scale": {
+          "description": "Uniform scale applied when the object is spawned.",
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       },
 
