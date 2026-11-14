@@ -63,7 +63,7 @@ function spawnFollowingProjector(name, bundle, target, kill)
     Name = "Custom_Assetbundle",
     Nickname = name,
     Locked = true,
-    Memo = JSON.encode({isqFollow = target.getGUID(), kill = kill or nil}),
+    Memo = JSON.encode({follows = target.getGUID(), kill = kill or nil}),
     Rigidbody = {UseGravity = false},
     Transform = {
       posX = p.x, posY = p.y + 20, posZ = p.z,

@@ -62,7 +62,7 @@ local function fakeMini(guid, opts)
   return o
 end
 
-local MEMO = '{"isqMini":1,"leader":"lead","color":"red","type":"Trooper"}'
+local MEMO = '{"unitMini":1,"leader":"lead","color":"red","type":"Trooper"}'
 
 local function loop()
   return coroutine.create(miniUprightLoop)
@@ -109,7 +109,7 @@ test("a mini reads its leader from its script or from its memo", function()
   assert(miniLeaderGUID(fakeMini("old", {vars = {leaderGUID = "lead"}})) == "lead", "scripted")
   assert(miniLeaderGUID(fakeMini("new", {memo = MEMO})) == "lead", "memo")
   assert(miniLeaderGUID(fakeMini("die")) == nil, "no memo")
-  assert(miniLeaderGUID(fakeMini("tok", {memo = '{"isqTpl":"A"}'})) == nil, "another memo")
+  assert(miniLeaderGUID(fakeMini("tok", {memo = '{"template":"A"}'})) == nil, "another memo")
   assert(miniLeaderGUID(nil) == nil, "nil")
 end)
 

@@ -323,7 +323,7 @@ local function initListSpawner(params)
         -- the brain stands them back up (see !/MiniInfo, !/MiniUpright).
         -- Writing a memo costs ~0.5 ms; a script cost 30-45 ms per mini.
         objEntry.obj.memo = JSON.encode({
-          isqMini = 1,
+          unitMini = 1,
           leader = leaderGUID,
           color = pMiniTable.colorSide,
           type = pMiniTable.type or "",

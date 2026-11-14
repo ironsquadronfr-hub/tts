@@ -682,12 +682,12 @@ function moveUnit(isDeploy)
         fixedMove = unitData.baseSize ~= "small"
     end
     templateA.memo = JSON.encode({
-        isqTpl = "A", partner = templateBGUID,
+        template = "A", partner = templateBGUID,
         bx = basePos.x, bz = basePos.z,
         aStart = unitData.aStart + startOffset,
         fixed = fixedMove,
     })
-    templateB.memo = JSON.encode({isqTpl = "B", partner = templateAGUID})
+    templateB.memo = JSON.encode({template = "B", partner = templateAGUID})
 
     local maxMoveBundles = getMovementLinks()
     local baseSizeMoveBundles = maxMoveBundles[unitData.baseSize]

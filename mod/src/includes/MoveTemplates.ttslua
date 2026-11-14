@@ -20,8 +20,8 @@
 --     and drags B along; B pivots on the joint, within 90 degrees of A.
 --
 -- Each half carries its wiring in its memo, written by the Order Token:
---   A: {isqTpl = "A", partner = <B guid>, bx, bz = base, aStart, fixed}
---   B: {isqTpl = "B", partner = <A guid>}
+--   A: {template = "A", partner = <B guid>, bx, bz = base, aStart, fixed}
+--   B: {template = "B", partner = <A guid>}
 -- A memo survives a save, a load and an undo, unlike script variables.
 -- A "fixed" A (deployment, or any base but small) never unlocks: only its B
 -- turns, as before.
@@ -79,7 +79,7 @@ local function wiring(obj)
     return nil
   end
   local ok, w = pcall(JSON.decode, obj.memo or "")
-  if ok and type(w) == "table" and w.isqTpl then
+  if ok and type(w) == "table" and w.template then
     return w
   end
   return nil
@@ -163,7 +163,7 @@ function moveTemplatesOnPickUp(color, obj)
   if partner == nil then
     return
   end
-  local h = {color = color, obj = obj, role = w.isqTpl, partner = partner}
+  local h = {color = color, obj = obj, role = w.template, partner = partner}
   if h.role == "A" then
     h.bx, h.bz, h.aStart = w.bx, w.bz, w.aStart
     h.rotationDifference = partner.getRotation().y - obj.getRotation().y

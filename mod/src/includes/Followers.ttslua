@@ -10,7 +10,7 @@
 -- What a follower carries: its memo, written in its spawn data so that the
 -- brain hears it in onObjectSpawn whichever script spawned it (a token's R
 -- button runs in the token):
---   {isqFollow = <target guid>, kill = true|nil}
+--   {follows = <target guid>, kill = true|nil}
 -- kill: destroy the follower when its target is gone, as the classic ruler
 -- script did. The extended overlays leave that to their own onObjectDestroy.
 --
@@ -25,11 +25,11 @@ local followers, looping = {}, false
 
 local function followWiring(obj)
   local memo = obj.memo
-  if memo == nil or memo == "" or not string.find(memo, "isqFollow", 1, true) then
+  if memo == nil or memo == "" or not string.find(memo, "follows", 1, true) then
     return nil
   end
   local ok, w = pcall(JSON.decode, memo)
-  if ok and type(w) == "table" and w.isqFollow then
+  if ok and type(w) == "table" and w.follows then
     return w
   end
   return nil
@@ -94,7 +94,7 @@ function followersAdd(obj)
   end
   local guid = obj.getGUID()
   if followers[guid] == nil then
-    followers[guid] = {obj = obj, targetGUID = w.isqFollow, kill = w.kill}
+    followers[guid] = {obj = obj, targetGUID = w.follows, kill = w.kill}
   end
   if not looping then
     looping = true

@@ -6,7 +6,7 @@
 -- values and the uprighting, so they now spawn without one. The import
 -- writes their wiring in the memo instead, which survives a save, a load and
 -- an undo:
---   {isqMini = 1, leader = <leader guid>, color = "red"|"blue", type = <unit type>}
+--   {unitMini = 1, leader = <leader guid>, color = "red"|"blue", type = <unit type>}
 -- The uprighting moved to the brain (!/MiniUpright).
 --
 -- Minis imported before that still carry a script with the same values as
@@ -18,11 +18,11 @@ function miniWiring(obj)
     return nil
   end
   local memo = obj.memo
-  if memo == nil or memo == "" or not string.find(memo, "isqMini", 1, true) then
+  if memo == nil or memo == "" or not string.find(memo, "unitMini", 1, true) then
     return nil
   end
   local ok, w = pcall(JSON.decode, memo)
-  if ok and type(w) == "table" and w.isqMini then
+  if ok and type(w) == "table" and w.unitMini then
     return w
   end
   return nil
