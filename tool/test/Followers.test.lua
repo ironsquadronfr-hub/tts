@@ -10,10 +10,13 @@
 
 local objects, started = {}, 0
 
--- Enough of JSON.decode for the memos the mod writes.
+-- Enough of JSON.decode for the memos the mod writes. loadstring: the CI's
+-- `lua` can be 5.1, whose load() takes no string.
+local loadText = rawget(_G, "loadstring") or load
 JSON = {
   decode = function(s)
-    return load("return " .. s:gsub('"([%w_]+)":', "%1="))()
+    local text = s:gsub('"([%w_]+)":', "%1=")
+    return loadText("return " .. text)()
   end,
 }
 
