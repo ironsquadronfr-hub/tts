@@ -117,12 +117,12 @@ function stackTokens()
           broadcastToAll("No Command Tokens in Tray", {1,1,1})
       end
   end
-  commandStack.call("updateStack")
+  Brain().call("tableToolUpdateCommandStack", {guid = commandStack.getGUID()})
 end
 
 function shuffleTokens()
   shuffleButton.AssetBundle.playTriggerEffect(0)
-  commandStack.call("updateStack")
+  Brain().call("tableToolUpdateCommandStack", {guid = commandStack.getGUID()})
   if #commandStack.getObjects() > 0 then
       commandStack.shuffle()
       if Player[strColor].seated then

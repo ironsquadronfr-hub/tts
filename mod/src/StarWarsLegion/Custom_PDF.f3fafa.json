@@ -16,6 +16,7 @@
     "Nickname": "Core Rulebook (VO)",
     "Description": "",
     "GMNotes": "rules-lectern-1",
+    "Memo": "{\"tool\":\"lectern\"}",
     "ColorDiffuse": {
       "r": 0.6500202,
       "g": 0.6500202,
@@ -40,7 +41,7 @@
       "PDFPage": 0,
       "PDFPageOffset": 0
     },
-    "LuaScript": "#include ./Custom_PDF.f3fafa.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

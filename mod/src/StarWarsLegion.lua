@@ -33,6 +33,8 @@ function onSave()
     overlays = overlayMode,
     poiSnap = isPoiSnapEnabled(),
     poiRecon = isPoiReconPlacement(),
+    -- The chess clocks have no script of their own to keep their time.
+    clockValues = tableToolsSaveClocks(),
   })
 end
 
@@ -72,6 +74,11 @@ end
 
 -- The minis without a script stand back up from here (see !/MiniUpright).
 -- Under the loader, collisions reach the brain through the shell's relay.
+-- A command stack resizes when a token is taken out (see !/TableTools).
+function onObjectLeaveContainer(container, obj)
+  tableToolOnLeaveContainer(container)
+end
+
 function onObjectRotate(obj, spin, flip, color, oldSpin, oldFlip)
   miniUprightOnRotate(obj, flip, oldFlip)
 end
@@ -142,6 +149,7 @@ function onload(saveData)
     clockGUIDs.blue = "4f823a"
     clockGUIDs.red = "6ce1bb"
     initChessClocks(loadData.clocks)
+    tableToolsRestoreClocks(loadData.clockValues)
 
     battlefieldTable = "3a3ed9"
 

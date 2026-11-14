@@ -8,7 +8,7 @@
       "posZ": 18.5214577,
       "rotX": 0.00175188773,
       "rotY": 179.985764,
-      "rotZ": 0.0000122997872,
+      "rotZ": 1.22997872e-05,
       "scaleX": 1,
       "scaleY": 1,
       "scaleZ": 1
@@ -16,6 +16,7 @@
     "Nickname": "BLUE Command Stack",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"commandStack\"}",
     "ColorDiffuse": {
       "r": 0.254899353,
       "g": 0.345095456,
@@ -50,7 +51,7 @@
     "Bag": {
       "Order": 0
     },
-    "LuaScript": "#include ./BLUE_Command_Stack.c9f9d0.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

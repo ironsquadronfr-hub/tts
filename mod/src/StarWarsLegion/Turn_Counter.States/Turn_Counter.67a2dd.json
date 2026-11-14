@@ -6,9 +6,9 @@
       "posX": 49.54264,
       "posY": 1.01278687,
       "posZ": 4.081627,
-      "rotX": -4.41572956e-9,
+      "rotX": -4.41572956e-09,
       "rotY": 270.020325,
-      "rotZ": 0.000004359325,
+      "rotZ": 4.359325e-06,
       "scaleX": 1.7,
       "scaleY": 1.7,
       "scaleZ": 1.7
@@ -16,6 +16,7 @@
     "Nickname": "Turn Counter",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"turnCounter\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 1,
@@ -44,7 +45,7 @@
       "TypeIndex": 0,
       "CastShadows": true
     },
-    "LuaScript": "#include ./Turn_Counter.67a2dd.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

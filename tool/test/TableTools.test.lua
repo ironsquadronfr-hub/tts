@@ -8,7 +8,7 @@
 
 -- Fake TTS ---------------------------------------------------------------
 
-local objects, calls, broadcasts
+local objects, calls, broadcasts, dialogs
 
 local loadText = rawget(_G, "loadstring") or load
 JSON = {
@@ -34,6 +34,15 @@ end
 
 self = {name = "brain"}
 
+Player = setmetatable({}, {__index = function(_, color)
+  return {showInputDialog = function(_, _, fn)
+    dialogs[#dialogs + 1] = {color = color, answer = fn}
+  end}
+end})
+
+-- Wait.condition runs at once here: the bag is always loaded.
+Wait = {condition = function(fn) fn() end}
+
 local function fake(guid, memo, extra)
   local o = {memo = memo, buttons = {}, interactable = true, gm = "", pressed = 0}
   for k, v in pairs(extra or {}) do o[k] = v end
@@ -43,6 +52,12 @@ local function fake(guid, memo, extra)
   function o.clearButtons() o.buttons = {} end
   function o.setColorTint(c) o.tint = c end
   function o.call(fn, arg) calls[#calls + 1] = {guid = guid, fn = fn, arg = arg} end
+  function o.getStateId() return o.state or 1 end
+  function o.setState(n) o.newState = n end
+  function o.clearContextMenu() o.menu = {} end
+  function o.addContextMenuItem(label, fn) o.menu[#o.menu + 1] = {label = label, fn = fn} end
+  function o.getObjects() return o.held or {} end
+  function o.setScale(sc) o.scale = sc end
   o.AssetBundle = {playTriggerEffect = function() o.pressed = o.pressed + 1 end}
   objects[guid] = o
   return o
@@ -50,7 +65,7 @@ end
 
 local failures = 0
 local function test(name, fn)
-  objects, calls, broadcasts = {}, {}, {}
+  objects, calls, broadcasts, dialogs = {}, {}, {}, {}
   dieRollerInfo = {redDieRollerGUID = "rr", blueDieRollerGUID = "br"}
   fake("rr")
   fake("br")
@@ -106,8 +121,12 @@ test("a page box calls the lectern with the same number, or says it is missing",
   tableToolEquip(box)
   assert(box.interactable, "page boxes stay clickable, as before")
   assert(box.tint and box.tint[1] == 0.93, "tint")
+  local pages = {}
+  objects.l2.Book = {getPage = function() return 1 end, setPage = function(n) pages[#pages + 1] = n return n <= 300 end}
   tableToolRulesPage(box, "Red")
-  assert(#calls == 1 and calls[1].guid == "l2" and calls[1].fn == "rulesLecternGoToPage" and calls[1].arg == "Red", "lectern")
+  assert(#dialogs == 1 and dialogs[1].color == "Red", "no page dialog")
+  dialogs[1].answer("42.7")
+  assert(pages[1] == 42, "page")
   box.gm = "rules-page-9"
   tableToolRulesPage(box, "Red")
   assert(#broadcasts == 1 and broadcasts[1].color == "Red", "missing lectern")
@@ -130,6 +149,60 @@ test("the token buttons keep their tint and tooltips", function()
   assert(ret.tint[1] == 0.7 and ret.buttons[1].click_function == "tableToolReturnTokens", "return")
   assert(sup.buttons[1].click_function == "tableToolRemoveSuppression", "suppression")
   assert(ret.interactable and sup.interactable, "the asset buttons were clickable before")
+end)
+
+test("a lectern gets its Go to page menu, and a page past the end is said", function()
+  local l = fake("l", '{"tool":"lectern"}')
+  local pages = {}
+  l.Book = {getPage = function() return 3 end, setPage = function(n) pages[#pages + 1] = n return n <= 10 end}
+  tableToolEquip(l)
+  assert(#l.menu == 1 and l.menu[1].label == "Go to page", "menu")
+  l.menu[1].fn("Blue")
+  dialogs[1].answer("12")
+  assert(pages[1] == 12 and #broadcasts == 1 and broadcasts[1].color == "Blue", "no page 12")
+end)
+
+test("the turn counter shows < from turn 2 and > up to turn 4", function()
+  local first = fake("t1", '{"tool":"turnCounter"}', {state = 1})
+  local mid = fake("t3", '{"tool":"turnCounter"}', {state = 3})
+  local last = fake("t5", '{"tool":"turnCounter"}', {state = 5})
+  tableToolEquip(first)
+  tableToolEquip(mid)
+  tableToolEquip(last)
+  assert(#first.buttons == 1 and first.buttons[1].label == ">", "turn 1")
+  assert(#mid.buttons == 2, "turn 3")
+  assert(#last.buttons == 1 and last.buttons[1].label == "<", "turn 5")
+  _G[mid.buttons[1].click_function](mid)
+  assert(mid.newState == 2, "previous")
+  _G[mid.buttons[2].click_function](mid)
+  assert(mid.newState == 4, "next")
+end)
+
+test("a command stack is as tall as its tokens, and blue when empty", function()
+  local st = fake("st", '{"tool":"commandStack"}', {held = {1, 2, 3}})
+  tableToolEquip(st)
+  assert(st.scale[2] == 3 and st.tint[1] == 1, "three tokens")
+  st.held = {}
+  tableToolOnLeaveContainer(st)
+  assert(st.scale[2] == 1 and st.tint[3] == 114 / 255, "empty")
+  st.held = {1}
+  tableToolUpdateCommandStack({guid = "st"})
+  assert(st.scale[2] == 1 and st.tint[1] == 1, "from a tray")
+  local bag = fake("bag", nil, {held = {}})
+  tableToolOnLeaveContainer(bag)
+  assert(bag.scale == nil, "another bag was resized")
+end)
+
+test("the chess clocks keep their time through the brain's save", function()
+  local value = {red = 0, blue = 0}
+  clockGUIDs = {red = "cr", blue = "cb"}
+  fake("cr").Clock = {getValue = function() return 125 end, setValue = function(v) value.red = v end}
+  fake("cb").Clock = {getValue = function() return 7 end, setValue = function(v) value.blue = v end}
+  local saved = tableToolsSaveClocks()
+  assert(saved.red == 125 and saved.blue == 7, "save")
+  tableToolsRestoreClocks({red = 30, blue = "9"})
+  assert(value.red == 30 and value.blue == 9, "restore")
+  tableToolsRestoreClocks(nil)
 end)
 
 if failures > 0 then

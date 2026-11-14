@@ -11,7 +11,12 @@
 --   {tool = "roll" | "clear", side = "red"|"blue"}
 --   {tool = "returnTokens"} / {tool = "removeSuppression"}  (the asset buttons)
 --   {tool = "rulesPage"}   (finds its lectern through its GMNotes)
+--   {tool = "lectern"}     (a rules PDF: "Go to page" in its right-click menu)
+--   {tool = "turnCounter"} (in each of its five states: < and > buttons)
+--   {tool = "commandStack"} (sized and tinted by the tokens it holds)
 --   {tool = "inert"}       (the table, the two label panels: unclickable only)
+-- The two chess clocks need no memo: the brain keeps their time in its own
+-- save (tableToolsSaveClocks / tableToolsRestoreClocks).
 --
 -- Buttons are not saved: the brain equips the tools at load, as each one
 -- leaves the setup crate, and whenever one appears (a paste, a state change).
@@ -148,6 +153,25 @@ function tableToolReturnTokens(obj)
   end
 end
 
+-- Asks the player for a page of a rules PDF. Book.setPage takes effect at
+-- once, no reload involved.
+function tableToolGoToPage(lectern, color)
+  local book = lectern.Book
+  if not book then
+    return
+  end
+  Player[color].showInputDialog("Page number", tostring(book.getPage()), function(text)
+    local page = tonumber(text)
+    if not page then
+      return
+    end
+    page = math.floor(page)
+    if not book.setPage(page) then
+      broadcastToColor("This document has no page " .. page .. ".", color, {1, 0.5, 0.5})
+    end
+  end)
+end
+
 -- A page box finds its lectern by the mark in its GMNotes, not by GUID:
 -- swapping a document respawns the lectern, which can change its GUID.
 function tableToolRulesPage(obj, color)
@@ -156,11 +180,71 @@ function tableToolRulesPage(obj, color)
   local wanted = index and ("rules-lectern-" .. index)
   for _, o in ipairs(getAllObjects()) do
     if wanted ~= nil and o.getGMNotes() == wanted then
-      o.call("rulesLecternGoToPage", color)
+      tableToolGoToPage(o, color)
       return
     end
   end
   broadcastToColor("The lectern for this button is missing.", color, {1, 0.5, 0.5})
+end
+
+-- The turn counter has five states; changing state respawns it under a new
+-- GUID, which the brain hears as a spawn and equips again.
+function tableToolTurnPrev(obj)
+  obj.setState(obj.getStateId() - 1)
+end
+
+function tableToolTurnNext(obj)
+  obj.setState(obj.getStateId() + 1)
+end
+
+-- A command stack stands as tall as the tokens it holds, and turns blue
+-- when empty.
+local function updateCommandStack(stack)
+  local tokens = stack.getObjects()
+  if #tokens == 0 then
+    stack.setColorTint({65 / 255, 88 / 255, 114 / 255})
+    stack.setScale({1, 1, 1})
+  else
+    stack.setScale({1, #tokens, 1})
+    stack.setColorTint({1, 1, 1})
+  end
+end
+
+-- Called by the command trays after stacking or shuffling (they live in
+-- their own scripts, hence the GUID).
+function tableToolUpdateCommandStack(params)
+  local stack = getObjectFromGUID(params.guid or "")
+  if stack ~= nil then
+    updateCommandStack(stack)
+  end
+end
+
+function tableToolOnLeaveContainer(container)
+  local w = tableToolWiring(container)
+  if w ~= nil and w.tool == "commandStack" then
+    updateCommandStack(container)
+  end
+end
+
+-- The chess clocks' time, kept in the brain's save.
+function tableToolsSaveClocks()
+  local values = {}
+  for side, guid in pairs(clockGUIDs or {}) do
+    local clock = getObjectFromGUID(guid)
+    if clock ~= nil then
+      values[side] = clock.Clock.getValue()
+    end
+  end
+  return values
+end
+
+function tableToolsRestoreClocks(values)
+  for side, value in pairs(values or {}) do
+    local clock = getObjectFromGUID((clockGUIDs or {})[side] or "")
+    if clock ~= nil and tonumber(value) then
+      clock.Clock.setValue(tonumber(value))
+    end
+  end
 end
 
 -- The buttons, as the tools' own scripts made them.
@@ -207,6 +291,36 @@ local EQUIP = {
     button(obj, "tableToolRulesPage", {label = "PAGE", tooltip = "Jump to a page of the document above",
       scale = {1, 1, 1.4}, width = 1500, height = 2000, font_size = 400, color = GREY, font_color = BLACK})
     obj.setColorTint({0.93, 0.94, 0.88})
+  end,
+  lectern = function(obj)
+    obj.clearContextMenu()
+    obj.addContextMenuItem("Go to page", function(color)
+      tableToolGoToPage(obj, color)
+    end)
+  end,
+  turnCounter = function(obj)
+    local state = obj.getStateId()
+    local look = {scale = {0.5, 0.5, 0.5}, width = 400, height = 500, font_size = 400,
+      color = {0.1498, 0.1498, 0.1498, 1}, font_color = {1, 1, 1, 1}}
+    if state > 1 then
+      local b = {label = "<", position = {-0.95, 0.1, 0}}
+      for k, v in pairs(look) do b[k] = v end
+      button(obj, "tableToolTurnPrev", b)
+    end
+    if state < 5 then
+      local b = {label = ">", position = {0.95, 0.1, 0}}
+      for k, v in pairs(look) do b[k] = v end
+      button(obj, "tableToolTurnNext", b)
+    end
+  end,
+  commandStack = function(obj)
+    -- A custom bag is only a container once its model has loaded.
+    Wait.condition(function()
+      pcall(updateCommandStack, obj)
+    end, function()
+      local ok, loading = pcall(function() return obj.loading_custom end)
+      return not ok or not loading
+    end)
   end,
   inert = function(obj)
     obj.interactable = false

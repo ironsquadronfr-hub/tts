@@ -8,7 +8,7 @@
       "posZ": -18.4527512,
       "rotX": -0.00144464406,
       "rotY": 0.000382490369,
-      "rotZ": 0.000020996411,
+      "rotZ": 2.0996411e-05,
       "scaleX": 1,
       "scaleY": 1,
       "scaleZ": 1
@@ -16,6 +16,7 @@
     "Nickname": "Red Command Stack",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"commandStack\"}",
     "ColorDiffuse": {
       "r": 0.254899353,
       "g": 0.345095456,
@@ -50,7 +51,7 @@
     "Bag": {
       "Order": 0
     },
-    "LuaScript": "#include ./Red_Command_Stack.e2202d.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },
