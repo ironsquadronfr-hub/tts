@@ -7,6 +7,9 @@
 -- is set before it loads.
 
 LOS_EXPOSE_FOR_TESTS = true
+-- In TTS the build pastes required files in place; here Brain is not needed
+-- by the geometry, so its require is satisfied with nothing.
+package.preload["!/Brain"] = function() end
 dofile("mod/src/includes/LineOfSight.ttslua")
 local T = LOS_TEST
 losSliceEnd = math.huge -- never yield while building meshes
