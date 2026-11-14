@@ -97,11 +97,11 @@ function Deck:spawnUnitCard(faction, name)
     if image == "" then
       card.setDescription("No image specified! Using fallback.")
     end
-    local name = unit.name
+    local cardName = unit.name
     if unit.title ~= nil then
-      name = name .. ": " .. unit.title
+      cardName = cardName .. ": " .. unit.title
     end
-    card.setName(name)
+    card.setName(cardName)
     return card
   end
 end
@@ -153,13 +153,13 @@ function Deck:spawnUpgradeCard(name)
     return self:_spawnUpgradeDud(name, "No matching upgrade found.")
   else
     local unknown = self._unknown.upgrade
-    local name = upgrade.name
+    local cardName = upgrade.name
     local front = upgrade.image
     local back
     if upgrade.flip == nil then
       back = front
     else
-      name = name .. " / " .. upgrade.flip.name
+      cardName = cardName .. " / " .. upgrade.flip.name
       back = upgrade.flip.image
     end
     if front == "" then
@@ -172,7 +172,7 @@ function Deck:spawnUpgradeCard(name)
     if front == unknown or back == unknown then
       card.setDescription("One or more images not specified! Using fallback.")
     end
-    card.setName(name)
+    card.setName(cardName)
     return card
   end
 end
@@ -210,7 +210,7 @@ function Deck:spawnCommandCard(name, isContingency)
   if command == nil then
     return self:_spawnCommandDud(name, "No matching command found.", isContingency)
   else
-    local name = command.name
+    local cardName = command.name
     local image = command.image
     if image == "" then
       image = self._unknown.command
@@ -223,7 +223,7 @@ function Deck:spawnCommandCard(name, isContingency)
     if command.image == "" then
       card.setDescription("No image specified! Using fallback.")
     end
-    card.setName(name)
+    card.setName(cardName)
     return card
   end
 end

@@ -246,8 +246,8 @@ end
 function Shelf:_spawnComplimentaryObject(name, container, scripts)
   if not self._cache.objects then
     local cache = {}
-    for name, details in pairs(self:_getSchema().objects) do
-      cache[name:upper()] = details
+    for objectName, details in pairs(self:_getSchema().objects) do
+      cache[objectName:upper()] = details
     end
     self._cache.objects = cache
   end

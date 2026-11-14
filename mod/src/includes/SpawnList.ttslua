@@ -163,13 +163,13 @@ local function initListSpawner(params)
   local function initialZOffset(upgradeCount)
     local cardHeight = globals.spawnOffsets.cardHeight
     local padding = globals.spawnOffsets.padding
-    local initialZOffset = cardHeight + padding
+    local offset = cardHeight + padding
     if upgradeCount > 1 and upgradeCount < 5 then
-      initialZOffset = initialZOffset + (cardHeight + padding)
+      offset = offset + (cardHeight + padding)
     elseif upgradeCount > 4 then
-      initialZOffset = initialZOffset + (cardHeight + padding) * 2
+      offset = offset + (cardHeight + padding) * 2
     end
-    return initialZOffset
+    return offset
   end
 
   local function computeMiniPositions(
@@ -284,8 +284,8 @@ local function initListSpawner(params)
         end
 
         local miniGUIDsScript = "miniGUIDs = {}\n"
-        for n, objEntry in pairs(pMiniTable.miniObjs) do
-          miniGUIDsScript = miniGUIDsScript .. "miniGUIDs["..n.."] = '" .. objEntry.obj.getGUID() .. "'\n"
+        for n, mini in pairs(pMiniTable.miniObjs) do
+          miniGUIDsScript = miniGUIDsScript .. "miniGUIDs["..n.."] = '" .. mini.obj.getGUID() .. "'\n"
         end
 
         local miniName = ""

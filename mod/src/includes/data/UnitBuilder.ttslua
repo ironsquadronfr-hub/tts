@@ -378,9 +378,9 @@ function _listUpgrades(unit)
   end
 
   local slots = {}
-  for name, amount in pairs(unit.upgrades) do
+  for slot, amount in pairs(unit.upgrades) do
     for _ = 1, amount do
-      table.insert(slots, name)
+      table.insert(slots, slot)
     end
   end
   __state.slots = slots
@@ -557,8 +557,8 @@ function _drawUpgradeSlot(name, slotIndex)
         scale          = {0.5, 0.5, 0.5},
       })
     end,
-    itemPressed = function(upgrade)
-      __state.upgrades[slotIndex] = upgrade
+    itemPressed = function(chosen)
+      __state.upgrades[slotIndex] = chosen
       _drawUpgradeUI()
     end,
     pageChange  = function(newPage)

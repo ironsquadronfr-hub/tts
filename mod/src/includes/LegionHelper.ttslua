@@ -300,9 +300,9 @@ function readLegionHelperArt(text, knownFactions, yieldEvery)
         local faction = markAt(factions, at)
         if faction then
           local title = stringField(card, "title")
-          local key = title and (name .. " " .. title) or name
+          local unitKey = title and (name .. " " .. title) or name
           art.units[faction.name] = art.units[faction.name] or {}
-          art.units[faction.name][key:upper()] = {
+          art.units[faction.name][unitKey:upper()] = {
             image = image,
             shown = title and (name .. ": " .. title) or name,
           }
