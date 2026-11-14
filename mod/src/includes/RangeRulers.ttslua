@@ -50,6 +50,39 @@ end
 -- =============================================================================
 
 require('!/data/RangeRulerLinks')
+
+-- A projector that stays 20in above `target`, without a script of its own:
+-- the brain moves it (see !/Followers), because a scripted object costs
+-- 30-45 ms more to appear. The spawn data carries the memo, so the brain
+-- hears it in onObjectSpawn even when a token's script spawned it. Scale 0
+-- hides the TTS placeholder box without touching the projector. kill: the
+-- projector goes when its target does, as the old ruler script did.
+function spawnFollowingProjector(name, bundle, target, kill)
+  local p = target.getPosition()
+  local obj = spawnObjectData({data = {
+    Name = "Custom_Assetbundle",
+    Nickname = name,
+    Locked = true,
+    Memo = JSON.encode({isqFollow = target.getGUID(), kill = kill or nil}),
+    Rigidbody = {UseGravity = false},
+    Transform = {
+      posX = p.x, posY = p.y + 20, posZ = p.z,
+      rotX = 0, rotY = target.getRotation().y, rotZ = 0,
+      scaleX = 0, scaleY = 0, scaleZ = 0,
+    },
+    CustomAssetbundle = {
+      AssetbundleURL = bundle,
+      AssetbundleSecondaryURL = "",
+      MaterialIndex = 0,
+      TypeIndex = 0,
+    },
+  }})
+  -- Defined in the brain only: there it takes the projector over at once.
+  if followersAdd ~= nil then
+    followersAdd(obj)
+  end
+  return obj
+end
 require('!/ExtendedOverlaysBridge')
 
 function showRangeOnHoveredModel(hoverObject)
@@ -123,25 +156,7 @@ function spawnRangeRuler(rangeSourceObject, projectorBundleOverride)
     rulerBundleToSpawn = rulerBundleTable[baseSize]
   end
 
-  basePos = rangeSourceObject.getPosition()
-  baseRot = rangeSourceObject.getRotation()
-
-  rangeRuler = spawnObject({
-    type = "Custom_AssetBundle",
-    position = {basePos.x, basePos.y + 20, basePos.z},
-    rotation = {90, baseRot.y, 0},
-    scale = {0,0,0} -- 0 scale will hide TTS default box and won't impact projector
-  })
-
-  rangeRuler.setCustomObject({
-    type = 0,
-    assetbundle = rulerBundleToSpawn
-  })
-
-  rangeRuler.setLock(true)
-  rangeRuler.setName("Range Ruler")
-  luaScript = "targetGUID = '"..rangeSourceObject.getGUID().."'\n function onFixedUpdate()\nif targetGUID ~= nil then\n targetObj = getObjectFromGUID(targetGUID)\n if targetObj == nil then\n self.destruct()\n return\n end\n local targetPosition = targetObj.getPosition()\n self.setPosition({targetPosition.x, targetPosition.y + 20, targetPosition.z})\n self.setRotation({0,targetObj.getRotation().y,0})\n end\n end"
-  rangeRuler.setLuaScript(luaScript)
+  rangeRuler = spawnFollowingProjector("Range Ruler", rulerBundleToSpawn, rangeSourceObject, true)
 
   noRulers = false
 end

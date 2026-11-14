@@ -1,0 +1,103 @@
+-- Helper objects that follow a figure, driven by the brain.
+--
+-- Why: every scripted object costs 30-45 ms to appear on a Mac (about four
+-- times that on an average PC), whatever its script. The range rulers and
+-- the extended overlays used to carry a small onFixedUpdate script each, to
+-- stay above their figure: 83-103 ms per ruler, and 1 s for four extended
+-- ranges at once (measured 14/11/2026). They now appear without a script
+-- (spawnFollowingProjector, in !/RangeRulers) and this one loop moves them.
+--
+-- What a follower carries: its memo, written in its spawn data so that the
+-- brain hears it in onObjectSpawn whichever script spawned it (a token's R
+-- button runs in the token):
+--   {isqFollow = <target guid>, kill = true|nil}
+-- kill: destroy the follower when its target is gone, as the classic ruler
+-- script did. The extended overlays leave that to their own onObjectDestroy.
+--
+-- Nothing survives a load: standbyTokens sweeps every ruler by name at load
+-- and on undo, so no follower needs to be found again.
+--
+-- The loop runs every frame, which is at least as often as onFixedUpdate
+-- did (50 times a second), so a ruler does not lag behind a dragged figure.
+-- It only moves a follower whose target has moved or turned.
+
+local followers, looping = {}, false
+
+local function followWiring(obj)
+  local memo = obj.memo
+  if memo == nil or memo == "" or not string.find(memo, "isqFollow", 1, true) then
+    return nil
+  end
+  local ok, w = pcall(JSON.decode, memo)
+  if ok and type(w) == "table" and w.isqFollow then
+    return w
+  end
+  return nil
+end
+
+-- One step of a follower. Returns false once it should be forgotten.
+local function followStep(f)
+  local t = f.target
+  if t == nil then
+    -- A reloaded target is a new reference under the same GUID.
+    t = getObjectFromGUID(f.targetGUID)
+    f.target = t
+  end
+  if t == nil then
+    if f.kill then
+      f.obj.destruct()
+    end
+    return false
+  end
+  local p = t.getPosition()
+  local yaw = t.getRotation().y
+  if p.x ~= f.x or p.y ~= f.y or p.z ~= f.z or yaw ~= f.yaw then
+    f.obj.setPosition({p.x, p.y + 20, p.z})
+    f.obj.setRotation({0, yaw, 0})
+    f.x, f.y, f.z, f.yaw = p.x, p.y, p.z, yaw
+  end
+  return true
+end
+
+function followersLoop()
+  while next(followers) ~= nil do
+    for guid, f in pairs(followers) do
+      local keep = false
+      if f.obj ~= nil then
+        local ok, result = pcall(followStep, f)
+        if ok then
+          keep = result
+        else
+          print("Follower: " .. tostring(result))
+        end
+      end
+      if not keep then
+        followers[guid] = nil
+      end
+    end
+    coroutine.yield(0)
+  end
+  looping = false
+  return 1
+end
+
+-- Takes over an object if its memo names a target; harmless otherwise, and
+-- harmless twice (the brain registers what it spawns itself at once, then
+-- hears it again in onObjectSpawn).
+function followersAdd(obj)
+  if obj == nil then
+    return
+  end
+  local w = followWiring(obj)
+  if w == nil then
+    return
+  end
+  local guid = obj.getGUID()
+  if followers[guid] == nil then
+    followers[guid] = {obj = obj, targetGUID = w.isqFollow, kill = w.kill}
+  end
+  if not looping then
+    looping = true
+    startLuaCoroutine(self, "followersLoop")
+  end
+end

@@ -145,30 +145,15 @@ local TOKEN_RING_BUNDLES = {
 -- The Advantage / Asset token replaces both: same base, same ring.
 TOKEN_RING_BUNDLES["Advantage / Asset Token"] = TOKEN_RING_BUNDLES["Objective Token"]
 
--- Per family: the name TTS gives the spawned object, whether it tracks its
--- figure, and the pitch the vanilla spawn uses.
+-- Per family: the name TTS gives the spawned object.
 --
 -- The names are deliberately the vanilla ones. standbyTokens (Global) and
 -- removeLockedRulers (GAME_CONTROLLER) sweep by name, so our Projectors
 -- inherit the mod's own cleanup.
 local PROJECTOR_SPEC = {
-    range      = {name = "Range Ruler",         follows = true,  pitch = 90},
-    cohesion   = {name = "Cohesion Ruler",      follows = true,  pitch = 0},
+    range      = {name = "Range Ruler"},
+    cohesion   = {name = "Cohesion Ruler"},
 }
-
--- Vanilla injects this into its Range ruler so it tracks the figure. Reusing
--- it for cohesion is what makes cohesion follow during a drag. Guarded
--- against a destroyed target, which the vanilla one is not.
-local function followFigureScript(targetGUID)
-    return "targetGUID = '" .. targetGUID .. "'\n"
-        .. "function onFixedUpdate()\n"
-        .. "  local t = getObjectFromGUID(targetGUID)\n"
-        .. "  if t == nil then return end\n"
-        .. "  local p = t.getPosition()\n"
-        .. "  self.setPosition({p.x, p.y + 20, p.z})\n"
-        .. "  self.setRotation({0, t.getRotation().y, 0})\n"
-        .. "end"
-end
 
 local function isLiveObject(obj)
     if obj == nil then return false end
@@ -225,25 +210,11 @@ local function spawnOverlayProjector(kind, fig, params)
     if not bundle then return nil end
     if not fig then return nil end
 
-    local p = fig.getPosition()
-    local pos = {p.x, p.y + 20, p.z}
-    local yaw = fig.getRotation().y
-
-    local obj = spawnObject({
-        type     = "Custom_AssetBundle",
-        position = pos,
-        rotation = {spec.pitch, yaw, 0},
-        -- Scale 0 hides the TTS placeholder box without touching the
-        -- Projector itself, exactly as the vanilla spawns do.
-        scale    = {0, 0, 0},
-    })
-    obj.setCustomObject({type = 0, assetbundle = bundle})
-    obj.setLock(true)
-    obj.use_gravity = false
-    obj.setName(spec.name)
-    if spec.follows then
-        obj.setLuaScript(followFigureScript(fig.getGUID()))
-    end
+    -- No script on the projector: the brain keeps it above the figure (see
+    -- !/Followers), cohesion included, which is what makes it follow during
+    -- a drag. A gone figure is handled by onObjectDestroy below, not by the
+    -- follower.
+    local obj = spawnFollowingProjector(spec.name, bundle, fig, false)
     return obj
 end
 
@@ -375,8 +346,8 @@ end
 
 -- Note: no onObjectPickUp/onObjectDrop handlers here (the Global's
 -- onObjectDrop only feeds !/TokenCounters). Cohesion, like Range, stays
--- visible during a drag and follows because its Projector carries the
--- tracking script; the vanilla onPickedUp clear is neutralized in
+-- visible during a drag and follows because the brain moves its Projector
+-- (!/Followers); the vanilla onPickedUp clear is neutralized in
 -- gClearCohesion while the fig is held.
 
 function onObjectDestroy(obj)

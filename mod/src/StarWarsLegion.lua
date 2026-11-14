@@ -17,6 +17,7 @@ require('!/DeferredSetup')
 require('!/Antivirus')
 require('!/TokenCounters')
 require('!/MoveTemplates')
+require('!/Followers')
 require('!/ShellRelay')
 
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
@@ -35,12 +36,14 @@ end
 
 -- Anything brought onto the table (out of a bag, a deck, an additive load)
 -- is defused as soon as TTS reports it. A loaded map brings its own
--- battlefield: the POI snap points follow it.
+-- battlefield: the POI snap points follow it. A ruler spawned by a token's
+-- script is taken over here (see !/Followers).
 function onObjectSpawn(obj)
   refreshPoiSnapForMap(obj)
   disinfectSpawnedObject(obj)
   counterTokensOnObject(obj)
   losOnObjectPlaced(obj)
+  followersAdd(obj)
 end
 
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
