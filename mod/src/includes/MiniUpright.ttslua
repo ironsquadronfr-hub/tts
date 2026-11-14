@@ -1,0 +1,129 @@
+-- Standing tipped minis back up, from the brain, for the minis without a
+-- script (see !/MiniInfo). The rule and the math are those of the script
+-- every mini used to carry (!/data/MiniShared), which leaders still carry:
+--   * a mini dropped, or knocked while not held, is watched until it rests;
+--     if it then leans more than ~70 degrees, it is stood up on its yaw;
+--   * a mini turned over on purpose gets the "Flipped" tag and is left so,
+--     through a save or an undo.
+-- Only minis with the memo are handled here; a scripted mini (a leader, or
+-- one imported before) still does it itself, so none is handled twice.
+--
+-- Events: the brain hears drops and rotations (measured 14/11/2026).
+-- Collisions of an object without a script only reach Global: the minis are
+-- registered for them (enter only, no "stay" every physics step) and, under
+-- the loader, the shell relays them (!/ShellRelay). A registration does not
+-- travel with a save, so the brain registers them again on load.
+
+local TILT_LIMIT = 0.34 -- roughly cos(70deg); below this the mini is tipped (vehicles may stand at 45deg)
+local SETTLE_SECONDS = 6
+local FLIPPED_TAG = "Flipped"
+
+local atan2 = math.atan2 or math.atan
+
+-- Pure math, kept apart for tool/test/MiniUpright.test.lua: the yaw a tipped
+-- mini is stood up on, from its forward and right axes.
+function miniUprightYaw(forward, right)
+  if math.abs(forward.y) < 0.9 then
+    return math.deg(atan2(forward.x, forward.z))
+  end
+  return math.deg(atan2(right.x, right.z)) - 90
+end
+
+function miniIsTipped(up)
+  return up.y < TILT_LIMIT
+end
+
+local function fixUpright(obj)
+  if obj.held_by_color ~= nil or obj.hasTag(FLIPPED_TAG) then
+    return
+  end
+  if not miniIsTipped(obj.getTransformUp()) then
+    return
+  end
+  local yaw = miniUprightYaw(obj.getTransformForward(), obj.getTransformRight())
+  local pos = obj.getPosition()
+  obj.setVelocity({0, 0, 0})
+  obj.setAngularVelocity({0, 0, 0})
+  obj.setRotation({0, yaw, 0})
+  obj.setPosition({pos.x, pos.y + 0.3, pos.z})
+end
+
+-- Minis waiting to rest, by GUID.
+local settling, looping = {}, false
+
+function miniUprightLoop()
+  while next(settling) ~= nil do
+    local now = os.clock()
+    for guid, s in pairs(settling) do
+      local done = false
+      if s.obj == nil or now > s.deadline then
+        done = true
+      else
+        local ok, rested = pcall(function()
+          return s.obj.resting or s.obj.held_by_color ~= nil
+        end)
+        if not ok then
+          done = true
+        elseif rested then
+          done = true
+          pcall(fixUpright, s.obj)
+        end
+      end
+      if done then
+        settling[guid] = nil
+      end
+    end
+    coroutine.yield(0)
+  end
+  looping = false
+  return 1
+end
+
+local function scheduleSettle(obj)
+  local guid = obj.getGUID()
+  if settling[guid] ~= nil then
+    return
+  end
+  settling[guid] = {obj = obj, deadline = os.clock() + SETTLE_SECONDS}
+  if not looping then
+    looping = true
+    startLuaCoroutine(self, "miniUprightLoop")
+  end
+end
+
+function miniUprightOnDrop(obj)
+  if miniWiring(obj) ~= nil then
+    scheduleSettle(obj)
+  end
+end
+
+function miniUprightOnCollision(obj)
+  if obj ~= nil and obj.held_by_color == nil and not obj.resting and miniWiring(obj) ~= nil then
+    scheduleSettle(obj)
+  end
+end
+
+function miniUprightOnRotate(obj, flip, oldFlip)
+  if flip == oldFlip or miniWiring(obj) == nil then
+    return
+  end
+  if flip > 90 and flip < 270 then
+    obj.addTag(FLIPPED_TAG)
+  else
+    obj.removeTag(FLIPPED_TAG)
+  end
+end
+
+-- Registers a mini for its collisions; harmless on anything else.
+function miniUprightWatch(obj)
+  if miniWiring(obj) ~= nil then
+    obj.registerCollisions(false)
+  end
+end
+
+-- On load: the minis of the table, registered again.
+function miniUprightInit()
+  for _, obj in ipairs(getAllObjects()) do
+    pcall(miniUprightWatch, obj)
+  end
+end

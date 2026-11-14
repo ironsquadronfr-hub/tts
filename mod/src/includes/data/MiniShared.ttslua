@@ -1,4 +1,6 @@
--- Script appended to every miniature (leader or not) when a unit is spawned.
+-- Script appended to every unit leader when a unit is spawned. The other
+-- minis have no script since 14/11/2026: the brain stands them up with the
+-- same rule (!/MiniUpright), and minis imported before keep this script.
 --
 -- Kept as a string so it can be concatenated at runtime by SpawnList without
 -- reading it from a template object. It wraps any event handlers already

@@ -222,12 +222,13 @@ local function initListSpawner(params)
     return getObjectFromGUID(Brain().getVar("gameDataGUID")).getTable("battlefieldTint")
   end
 
-  -- Names and describes every model of a unit, then queues one job per
-  -- model to attach its script: giving an object a script costs a flat
+  -- Names and describes every model of a unit, then queues one job to
+  -- attach the leader's script: giving an object a script costs a flat
   -- ~70-140 ms in TTS however small the script is (creating the script
   -- context; measured 21/08 - size, spawn path and attach order change
-  -- nothing), so attaching a whole squad's scripts in one frame is what
-  -- used to freeze it. The strings are built here and now - every model
+  -- nothing; 30-45 ms more than without one on 14/11), so attaching a whole
+  -- squad's scripts in one frame is what used to freeze it. The other minis
+  -- get no script at all. The strings are built here and now - every model
   -- already exists, so every GUID is known.
   function initializeMini(pMiniTable, push)
     local strColor = pMiniTable.colorSide
@@ -239,20 +240,18 @@ local function initListSpawner(params)
     local leaderGUID = pMiniTable.miniObjs[leaderInt].obj.getGUID()
 
     for i, objEntry in pairs(pMiniTable.miniObjs) do
-      -- init mini script
-      local selectedMiniScript = ""
-
       -- SET NAME
       local displayName = pMiniTable.displayName or objEntry.name
       objEntry.obj.setName(strColor.. " "..displayName)
-      selectedMiniScript = selectedMiniScript .. "colorSide = " .. luaString(pMiniTable.colorSide) .. "\nminiName = " .. luaString(objEntry.name) .. "\n"
-
-      -- SET LEADER GUID
-      selectedMiniScript = selectedMiniScript .. "leaderGUID = \"" .. leaderGUID .. "\"\n"
-      -- Read by the line of sight (vehicles block it).
-      selectedMiniScript = selectedMiniScript .. "unitType = " .. string.format("%q", pMiniTable.type or "") .. "\n"
 
       if i == leaderInt then
+        -- The leader's script; the other minis get none (see below).
+        local selectedMiniScript = "colorSide = " .. luaString(pMiniTable.colorSide) .. "\nminiName = " .. luaString(objEntry.name) .. "\n"
+        -- SET LEADER GUID
+        selectedMiniScript = selectedMiniScript .. "leaderGUID = \"" .. leaderGUID .. "\"\n"
+        -- Read by the line of sight (vehicles block it).
+        selectedMiniScript = selectedMiniScript .. "unitType = " .. string.format("%q", pMiniTable.type or "") .. "\n"
+
         -- DESCRIPTION
         local description = ""
 
@@ -307,21 +306,31 @@ local function initListSpawner(params)
           "\n baseSize = " .. luaString(pMiniTable.baseSize) ..
           "\n unitID = " .. luaNumber(pMiniTable.unitID) ..
           "\n unitIDTokenGUID = " .. luaString(pMiniTable.unitIDTokenGUID) ..
-          "\n" .. globals.modelMiniScript
+          "\n" .. globals.modelMiniScript ..
+          -- Behaviour shared by every scripted mini.
+          "\n" .. globals.miniSharedScript
+
+        -- SET SCRIPT
+        local obj = objEntry.obj
+        local script = selectedMiniScript
+        push(function()
+          obj.setLuaScript(script)
+          return true
+        end)
       else
         objEntry.obj.use_snap_points = false
+        -- The other minis get no script: their wiring goes in the memo and
+        -- the brain stands them back up (see !/MiniInfo, !/MiniUpright).
+        -- Writing a memo costs ~0.5 ms; a script cost 30-45 ms per mini.
+        objEntry.obj.memo = JSON.encode({
+          isqMini = 1,
+          leader = leaderGUID,
+          color = pMiniTable.colorSide,
+          type = pMiniTable.type or "",
+        })
+        -- A registration is per object, whichever script makes it.
+        objEntry.obj.registerCollisions(false)
       end
-
-      -- Behaviour shared by every mini.
-      selectedMiniScript = selectedMiniScript .. "\n" .. globals.miniSharedScript
-
-      -- SET SCRIPT
-      local obj = objEntry.obj
-      local script = selectedMiniScript
-      push(function()
-        obj.setLuaScript(script)
-        return true
-      end)
     end
   end
 

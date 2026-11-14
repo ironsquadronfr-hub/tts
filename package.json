@@ -9,7 +9,7 @@
     "lint:lua": "luacheck mod/src loader tool",
     "start": "npx ts-node tool/main.ts develop mod/src/StarWarsLegion.json dist/StarWarsLegion.json",
     "check:scopes": "python3 tool/check_include_scopes.py dist/StarWarsLegion.json",
-    "test:lua": "npm run -s generate && lua tool/test/Mission.test.lua && lua tool/test/DeploymentZones.test.lua && lua tool/test/MoveTemplates.test.lua && lua tool/test/Followers.test.lua",
+    "test:lua": "npm run -s generate && lua tool/test/Mission.test.lua && lua tool/test/DeploymentZones.test.lua && lua tool/test/MoveTemplates.test.lua && lua tool/test/Followers.test.lua && lua tool/test/MiniUpright.test.lua",
     "test:los": "lua tool/los/geometry.test.lua",
     "validate": "ts-node ./tool/validate.ts"
   },

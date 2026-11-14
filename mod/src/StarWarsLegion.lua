@@ -18,6 +18,7 @@ require('!/Antivirus')
 require('!/TokenCounters')
 require('!/MoveTemplates')
 require('!/Followers')
+require('!/MiniUpright')
 require('!/ShellRelay')
 
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
@@ -37,18 +38,21 @@ end
 -- Anything brought onto the table (out of a bag, a deck, an additive load)
 -- is defused as soon as TTS reports it. A loaded map brings its own
 -- battlefield: the POI snap points follow it. A ruler spawned by a token's
--- script is taken over here (see !/Followers).
+-- script is taken over here (see !/Followers), and a pasted mini without a
+-- script is registered for its collisions (see !/MiniUpright).
 function onObjectSpawn(obj)
   refreshPoiSnapForMap(obj)
   disinfectSpawnedObject(obj)
   counterTokensOnObject(obj)
   losOnObjectPlaced(obj)
   followersAdd(obj)
+  miniUprightWatch(obj)
 end
 
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
 function onObjectDrop(color, obj)
   moveTemplatesOnDrop(color, obj)
+  miniUprightOnDrop(obj)
   counterTokensOnObject(obj)
   losOnObjectPlaced(obj)
 end
@@ -63,6 +67,16 @@ function onObjectHover(color, obj)
   moveTemplatesOnHover(color, obj)
 end
 
+-- The minis without a script stand back up from here (see !/MiniUpright).
+-- Under the loader, collisions reach the brain through the shell's relay.
+function onObjectRotate(obj, spin, flip, color, oldSpin, oldFlip)
+  miniUprightOnRotate(obj, flip, oldFlip)
+end
+
+function onObjectCollisionEnter(obj, info)
+  miniUprightOnCollision(obj)
+end
+
 function onload(saveData)
     -- First, before anything that can throw: the veil is up from the XML,
     -- and this is what guarantees it comes back down.
@@ -71,6 +85,7 @@ function onload(saveData)
     -- Saves, autosaves and undos reload objects that onObjectSpawn never sees.
     disinfectTable()
     counterTokensInit()
+    miniUprightInit()
 
     VERSION = "v5.0.0-beta"
     CCID = sha256(tostring(Time.time))
@@ -684,7 +699,7 @@ function toggleHeightGuideOnHoveredModel(hoverObject)
   end
   local leader = hoverObject
   if hoverObject.getVar("isAMini") ~= true then
-    local leaderGUID = hoverObject.getVar("leaderGUID")
+    local leaderGUID = miniLeaderGUID(hoverObject)
     if leaderGUID == nil then
       return
     end

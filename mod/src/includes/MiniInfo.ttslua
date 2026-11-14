@@ -1,0 +1,44 @@
+-- What a mini that is not its unit's leader carries.
+--
+-- Why: giving an object a script costs 30-45 ms when it appears, whatever
+-- the script (measured 14/11/2026): an army's ~50 non-leader minis made up
+-- most of the 2.8 s of stutter of an import. Their script only held four
+-- values and the uprighting, so they now spawn without one. The import
+-- writes their wiring in the memo instead, which survives a save, a load and
+-- an undo:
+--   {isqMini = 1, leader = <leader guid>, color = "red"|"blue", type = <unit type>}
+-- The uprighting moved to the brain (!/MiniUpright).
+--
+-- Minis imported before that still carry a script with the same values as
+-- globals (leaderGUID, colorSide, unitType). Read a mini through here and
+-- both kinds work.
+
+function miniWiring(obj)
+  if obj == nil then
+    return nil
+  end
+  local memo = obj.memo
+  if memo == nil or memo == "" or not string.find(memo, "isqMini", 1, true) then
+    return nil
+  end
+  local ok, w = pcall(JSON.decode, memo)
+  if ok and type(w) == "table" and w.isqMini then
+    return w
+  end
+  return nil
+end
+
+-- The GUID of the leader of a mini's unit (a leader answers its own), or
+-- nil for anything that is not a unit mini.
+function miniLeaderGUID(obj)
+  if obj == nil then
+    return nil
+  end
+  -- No closure: the line of sight asks this of every object it scans.
+  local ok, guid = pcall(obj.getVar, "leaderGUID")
+  if ok and guid ~= nil then
+    return guid
+  end
+  local w = miniWiring(obj)
+  return w and w.leader or nil
+end

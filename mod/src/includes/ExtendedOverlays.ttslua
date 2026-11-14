@@ -54,8 +54,8 @@ end
 local function rangeBaseSize(fig)
     local bs = ownBaseSize(fig)
     if bs then return bs end
-    local ok, leaderGUID = pcall(function() return fig.getVar("leaderGUID") end)
-    local leader = ok and leaderGUID and getObjectFromGUID(leaderGUID)
+    local leaderGUID = miniLeaderGUID(fig)
+    local leader = leaderGUID and getObjectFromGUID(leaderGUID)
     if leader and leader ~= fig then return ownBaseSize(leader) end
     return nil
 end

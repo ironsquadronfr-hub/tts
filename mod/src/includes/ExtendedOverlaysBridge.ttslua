@@ -10,6 +10,7 @@
 -- absent.
 
 require('!/Brain')
+require('!/MiniInfo')
 
 -- True only when a player has turned the overlays on for the table.
 function extendedOverlaysOn()
@@ -56,11 +57,12 @@ end
 -- enough: an ASSIGNED order token copies the selected unit's unitData into
 -- its script globals, so it passes for a unit and gets an overlay drawn
 -- around the token itself. Ask for unit markers instead: leaders carry
--- miniGUIDs, minis carry leaderGUID, order tokens carry neither.
+-- miniGUIDs, minis carry their leader's GUID (!/MiniInfo), order tokens
+-- carry neither.
 function isUnitFigure(obj)
   local ok, minis = pcall(function() return obj.getTable('miniGUIDs') end)
   if ok and minis then return true end
-  return readScriptVar(obj, 'leaderGUID') ~= nil
+  return miniLeaderGUID(obj) ~= nil
 end
 
 -- Everything the range hover hotkey may draw for: unit figures; tokens with

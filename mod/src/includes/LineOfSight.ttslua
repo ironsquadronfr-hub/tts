@@ -305,8 +305,8 @@ end
 -- miniGuids may be nil (background preparation): then only isAMini is asked.
 local function losIsTerrain(miniGuids, o)
   if miniGuids ~= nil and miniGuids[o.getGUID()] then return false end
-  -- isAMini only marks leaders: the other minis carry leaderGUID.
-  if o.getVar("isAMini") == true or o.getVar("leaderGUID") ~= nil then return false end
+  -- isAMini only marks leaders: the other minis carry their leader's GUID.
+  if o.getVar("isAMini") == true or miniLeaderGUID(o) ~= nil then return false end
   local t = o.type
   if t == "Card" or t == "Deck" or t == "Die" or t == "Bag" or t == "Infinite" then
     return false
