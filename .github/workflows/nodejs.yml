@@ -35,6 +35,9 @@ jobs:
       - name: Test Lua
         run: npm run test:lua && npm run test:los
 
+      - name: Check include scopes
+        run: npm run check:scopes
+
   release:
     # Only main publishes the "latest" release; other branches are only checked.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

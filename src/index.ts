@@ -7,6 +7,7 @@ import os from 'os';
 import path from 'path';
 import { deferSetup } from './lib/defer-setup';
 import buildDeckSchemaLua from './lib/generate-deck-schema';
+import { scopeAllIncludes } from './lib/scope-includes';
 
 /**
  * Reads a `{TTS-SAVE-FILE}.json`, and replaces the contents of a directory.
@@ -98,6 +99,7 @@ export async function compileSaveFile(
   const splitter = new expander.SplitIO();
   const saveFile = await splitter.readAndCollapse(source);
   deferSetup(saveFile);
+  scopeAllIncludes(saveFile);
   console.info(`Writing "${output}"...`);
   await fs.writeJson(output, saveFile);
   console.info(`Wrote "${output}"...`);
