@@ -83,6 +83,7 @@ function spawnFollowingProjector(name, bundle, target, kill)
   end
   return obj
 end
+
 require('!/ExtendedOverlaysBridge')
 
 function showRangeOnHoveredModel(hoverObject)

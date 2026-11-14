@@ -150,9 +150,9 @@ TOKEN_RING_BUNDLES["Advantage / Asset Token"] = TOKEN_RING_BUNDLES["Objective To
 -- The names are deliberately the vanilla ones. standbyTokens (Global) and
 -- removeLockedRulers (GAME_CONTROLLER) sweep by name, so our Projectors
 -- inherit the mod's own cleanup.
-local PROJECTOR_SPEC = {
-    range      = {name = "Range Ruler"},
-    cohesion   = {name = "Cohesion Ruler"},
+local PROJECTOR_NAME = {
+    range    = "Range Ruler",
+    cohesion = "Cohesion Ruler",
 }
 
 local function isLiveObject(obj)
@@ -204,8 +204,8 @@ local function resolveOverlayBundle(kind, fig, params)
 end
 
 local function spawnOverlayProjector(kind, fig, params)
-    local spec = PROJECTOR_SPEC[kind]
-    if not spec then return nil end
+    local name = PROJECTOR_NAME[kind]
+    if not name then return nil end
     local bundle = resolveOverlayBundle(kind, fig, params)
     if not bundle then return nil end
     if not fig then return nil end
@@ -214,8 +214,7 @@ local function spawnOverlayProjector(kind, fig, params)
     -- !/Followers), cohesion included, which is what makes it follow during
     -- a drag. A gone figure is handled by onObjectDestroy below, not by the
     -- follower.
-    local obj = spawnFollowingProjector(spec.name, bundle, fig, false)
-    return obj
+    return spawnFollowingProjector(name, bundle, fig, false)
 end
 
 -- Destroy the Projector an entry owns, then forget the entry. EVERY removal
