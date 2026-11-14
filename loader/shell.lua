@@ -9,7 +9,10 @@
 --   manifest.json the version, the file names and the UI's image assets
 --
 -- Every event the mod listens to reaches an object script too (measured in
--- TTS), so nothing is relayed: the brain hears them itself.
+-- TTS), so the brain hears them itself. Except collisions (measured
+-- 14/11/2026): onObjectCollisionEnter, Stay and Exit of an object registered
+-- with registerCollisions() only reach Global. The shell hands them over, see
+-- relayCollision below.
 --
 -- A fresh table (a Workshop load, or a save packed with !loader pack) first
 -- asks the host which version to run, Stable or Beta, then installs that
@@ -48,6 +51,20 @@ state = {channel = 'stable', version = nil, fresh = true, ui = nil, uiAssets = n
 package = nil
 local PACKAGE_MARK = '\n<<<loader package>>>\n'
 local PARTS = {'channel', 'manifest', 'brain', 'ui', 'objects'}
+
+-- Collisions, handed to the brain's relayCollision({event, object, info})
+-- when the brain asks for them (relayCollisions = true): only objects
+-- registered with registerCollisions() raise them, and Stay comes every
+-- physics frame, so nothing is relayed to a brain that does not listen.
+local function relayCollision(event, object, info)
+  local brain = getObjectFromGUID(BRAIN_GUID)
+  if brain ~= nil and brain.getVar('relayCollisions') == true then
+    brain.call('relayCollision', {event = event, object = object, info = info})
+  end
+end
+function onObjectCollisionEnter(object, info) relayCollision('Enter', object, info) end
+function onObjectCollisionStay(object, info) relayCollision('Stay', object, info) end
+function onObjectCollisionExit(object, info) relayCollision('Exit', object, info) end
 
 local function say(text)
   print('[loader] ' .. text)

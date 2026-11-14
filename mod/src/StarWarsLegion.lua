@@ -17,6 +17,7 @@ require('!/DeferredSetup')
 require('!/Antivirus')
 require('!/TokenCounters')
 require('!/MoveTemplates')
+require('!/ShellRelay')
 
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
 -- so an onsave() is never called and the global script saves nothing at all.

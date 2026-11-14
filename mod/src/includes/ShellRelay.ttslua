@@ -1,0 +1,18 @@
+-- What the loader shell relays to the brain.
+--
+-- Under the loader the logic runs in the brain object, which hears every
+-- event the mod uses except collisions: those of an object registered with
+-- registerCollisions() only reach Global (measured 14/11/2026), and Global is
+-- the shell. The shell calls relayCollision() below with what TTS gave it;
+-- this turns it back into the usual event, so a module defines
+-- onObjectCollisionEnter/Stay/Exit as if it ran in Global. Without the
+-- loader the logic runs in Global and TTS calls those directly.
+
+relayCollisions = true
+
+function relayCollision(params)
+  local handler = _G["onObjectCollision" .. tostring(params.event)]
+  if handler ~= nil then
+    handler(params.object, params.info)
+  end
+end
