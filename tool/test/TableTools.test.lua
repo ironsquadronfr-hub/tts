@@ -205,6 +205,17 @@ test("the chess clocks keep their time through the brain's save", function()
   tableToolsRestoreClocks(nil)
 end)
 
+test("the shared plate look keeps each button's own size", function()
+  local c = fake("c", '{"tool":"clear","side":"red"}')
+  local p = fake("p", '{"tool":"rulesPage"}')
+  tableToolEquip(c)
+  tableToolEquip(p)
+  local cb, pb = c.buttons[1], p.buttons[1]
+  assert(cb.scale[3] == 0.7 and cb.width == 1500 and cb.height == 2000 and cb.font_size == 400, "CLEAR")
+  assert(pb.scale[3] == 1.4 and pb.width == 1500 and pb.label == "PAGE", "PAGE")
+  assert(cb.position[2] == 0.65 and pb.function_owner == self, "position or owner")
+end)
+
 if failures > 0 then
   print(failures .. " test(s) failed")
   os.exit(1)

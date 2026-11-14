@@ -1,9 +1,10 @@
 -- The table's small fixed tools, equipped by the brain.
 --
 -- Why: giving an object a script costs 30-45 ms when it appears, whatever
--- the script. These tools only needed theirs to make themselves unclickable
--- and to put a button on themselves at load: 20 of them cost about a second
--- of every load (measured 14/11/2026). They now carry no script; their memo
+-- the script. These 28 tools only needed theirs to make themselves
+-- unclickable, put a button or a menu entry on themselves and keep a small
+-- state: about 1 to 1.4 s of every load (measured 14/11/2026). They now carry
+-- no script; their memo
 -- says what they are, and the brain gives them the very same buttons, owned
 -- by the brain (a button owned by another script works, and the click comes
 -- here with the object clicked, measured 14/11/2026):
@@ -50,8 +51,13 @@ function tableToolWiring(obj)
   return nil
 end
 
-local function dieRoller(w)
-  return getObjectFromGUID(dieRollerInfo[w.side .. "DieRollerGUID"] or "")
+-- The die roller of a tool's side, and the tool's wiring.
+local function dieRoller(obj)
+  local w = tableToolWiring(obj)
+  if w == nil or w.side == nil then
+    return nil, nil
+  end
+  return getObjectFromGUID(dieRollerInfo[w.side .. "DieRollerGUID"] or ""), w
 end
 
 local function press(obj)
@@ -62,8 +68,7 @@ end
 -- the object clicked.
 
 function tableToolSpawnDice(obj)
-  local w = tableToolWiring(obj)
-  local roller = w and dieRoller(w)
+  local roller, w = dieRoller(obj)
   if roller == nil or DICE[w.dice] == nil then
     return
   end
@@ -72,8 +77,7 @@ function tableToolSpawnDice(obj)
 end
 
 function tableToolRoll(obj, color)
-  local w = tableToolWiring(obj)
-  local roller = w and dieRoller(w)
+  local roller = dieRoller(obj)
   if roller == nil then
     return
   end
@@ -82,8 +86,7 @@ function tableToolRoll(obj, color)
 end
 
 function tableToolClear(obj)
-  local w = tableToolWiring(obj)
-  local roller = w and dieRoller(w)
+  local roller = dieRoller(obj)
   if roller == nil then
     return
   end
@@ -249,12 +252,18 @@ end
 
 -- The buttons, as the tools' own scripts made them.
 
-local function button(obj, fn, fields)
-  fields.click_function = fn
-  fields.function_owner = self
-  fields.position = fields.position or {0, 0.65, 0}
-  obj.createButton(fields)
+-- A button owned by the brain: a shared look, then this button's own fields.
+local function button(obj, fn, look, fields)
+  local b = {click_function = fn, function_owner = self, position = {0, 0.65, 0}}
+  for k, v in pairs(look or {}) do b[k] = v end
+  for k, v in pairs(fields) do b[k] = v end
+  obj.createButton(b)
 end
+
+-- The square grey plates (CLEAR, the token buttons, PAGE).
+local PLATE = {scale = {1, 1, 0.7}, width = 1500, height = 2000, font_size = 400, color = GREY, font_color = BLACK}
+local TURN = {scale = {0.5, 0.5, 0.5}, width = 400, height = 500, font_size = 400,
+  color = {0.1498, 0.1498, 0.1498, 1}, font_color = {1, 1, 1, 1}}
 
 local EQUIP = {
   spawnDice = function(obj, w)
@@ -263,33 +272,30 @@ local EQUIP = {
       return
     end
     obj.interactable = false
-    button(obj, "tableToolSpawnDice", {label = "", width = 1400, height = 1400, font_size = 1100,
+    button(obj, "tableToolSpawnDice", nil, {label = "", width = 1400, height = 1400, font_size = 1100,
       color = {1, 1, 1, 0.01}, font_color = dice.font, tooltip = dice.tooltip, alignment = 3})
   end,
   roll = function(obj)
     obj.interactable = false
-    button(obj, "tableToolRoll", {label = "ROLL", width = 1400, height = 1400, font_size = 500,
+    button(obj, "tableToolRoll", nil, {label = "ROLL", width = 1400, height = 1400, font_size = 500,
       color = GREY, font_color = BLACK, tooltip = "Roll Die"})
   end,
   clear = function(obj)
     obj.interactable = false
-    button(obj, "tableToolClear", {label = "CLEAR", scale = {1, 1, 0.7}, width = 1500, height = 2000,
-      font_size = 400, color = GREY, font_color = BLACK, tooltip = "Clear Die"})
+    button(obj, "tableToolClear", PLATE, {label = "CLEAR", tooltip = "Clear Die"})
   end,
   returnTokens = function(obj)
-    button(obj, "tableToolReturnTokens", {label = "", scale = {1, 1, 0.7}, width = 1500, height = 2000,
-      font_size = 400, color = GREY, font_color = BLACK,
+    button(obj, "tableToolReturnTokens", PLATE, {label = "",
       tooltip = "Return all Aim, Dodge, Standby and Command Tokens to the respective Players"})
     obj.setColorTint({0.7, 0, 0})
   end,
   removeSuppression = function(obj)
-    button(obj, "tableToolRemoveSuppression", {label = "", scale = {1, 1, 0.7}, width = 1500, height = 2000,
-      font_size = 400, color = GREY, font_color = BLACK,
+    button(obj, "tableToolRemoveSuppression", PLATE, {label = "",
       tooltip = "Remove one suppression from each suppression token in the Battlefield"})
   end,
   rulesPage = function(obj)
-    button(obj, "tableToolRulesPage", {label = "PAGE", tooltip = "Jump to a page of the document above",
-      scale = {1, 1, 1.4}, width = 1500, height = 2000, font_size = 400, color = GREY, font_color = BLACK})
+    button(obj, "tableToolRulesPage", PLATE, {label = "PAGE", scale = {1, 1, 1.4},
+      tooltip = "Jump to a page of the document above"})
     obj.setColorTint({0.93, 0.94, 0.88})
   end,
   lectern = function(obj)
@@ -300,17 +306,11 @@ local EQUIP = {
   end,
   turnCounter = function(obj)
     local state = obj.getStateId()
-    local look = {scale = {0.5, 0.5, 0.5}, width = 400, height = 500, font_size = 400,
-      color = {0.1498, 0.1498, 0.1498, 1}, font_color = {1, 1, 1, 1}}
     if state > 1 then
-      local b = {label = "<", position = {-0.95, 0.1, 0}}
-      for k, v in pairs(look) do b[k] = v end
-      button(obj, "tableToolTurnPrev", b)
+      button(obj, "tableToolTurnPrev", TURN, {label = "<", position = {-0.95, 0.1, 0}})
     end
     if state < 5 then
-      local b = {label = ">", position = {0.95, 0.1, 0}}
-      for k, v in pairs(look) do b[k] = v end
-      button(obj, "tableToolTurnNext", b)
+      button(obj, "tableToolTurnNext", TURN, {label = ">", position = {0.95, 0.1, 0}})
     end
   end,
   commandStack = function(obj)
