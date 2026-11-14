@@ -1,4 +1,5 @@
--- Luacheck configuration for the mod's scripts (npm run lint:lua).
+-- Luacheck configuration for the mod's scripts, the loader shell and the Lua
+-- tests (npm run lint:lua).
 --
 -- TTS runs Lua 5.2 (MoonSharp) with its own API on top. Object scripts and
 -- the includes they require share one set of global functions, defined in
@@ -110,3 +111,6 @@ files["mod/src/includes/common/Stringx.ttslua"] = { ignore = { "211/stringx" } }
 files["mod/src/includes/common/Tablex.ttslua"] = { ignore = { "211/tablex" } }
 files["mod/src/includes/common/Zonex.ttslua"] = { ignore = { "211/zonex" } }
 files["mod/src/includes/SpawnList.ttslua"] = { ignore = { "211/initListSpawner" } }
+files["tool/los/geometry.test.lua"] = {
+  read_globals = { "LOS_TEST" }, -- set by LineOfSight when LOS_EXPOSE_FOR_TESTS is on
+}
