@@ -1,0 +1,158 @@
+-- Deployment zones: where each piece of a mission's zones goes, and the zone
+-- projector that draws a whole zone at once.
+--
+-- A mission's zones are a 12 x 6 grid of 6-inch cells. Each cell used to get
+-- its own projector, and a projector draws again every object it touches:
+-- 48 cells cost 24.7 ms per frame against 16.4 ms without them (measured on
+-- 14 Nov 2026). One projector per zone, reading the zone's shape from a mask,
+-- draws the same thing for the cost of none. The masks are made ahead of
+-- time, one bundle per zone shape (see data/DeploymentZoneBundles). A shape
+-- with no bundle, or pieces that overlap, falls back to one projector per
+-- piece.
+
+DeploymentZones = {}
+
+-- Centre of the top left cell, and cell size, in inches.
+local X_START, Z_START, CELL = -25, 15, 6
+-- The grid in steps of 1.5 inches, from the lower left corner of the table.
+local STEP, LEFT, BOTTOM = 1.5, -28, -18
+
+-- Each piece is drawn centred on its cell plus this offset (x, z).
+local OFFSET = {
+  r = {0, 0}, rh = {0, -1.5}, rs = {1.5, 0}, rss = {-1.5, 0},
+  rc = {1.5, -1.5}, rcc = {-1.5, -1.5},
+  b = {0, 0}, bh = {0, 1.5}, bs = {-1.5, 0}, bss = {1.5, 0},
+  bc = {-1.5, 1.5}, bcc = {1.5, 1.5},
+}
+
+-- Size of each kind of piece, in inches across (x) and deep (z).
+local SIZE = {
+  [""] = {6, 6}, h = {6, 3}, s = {3, 6}, ss = {3, 6}, c = {3, 3}, cc = {3, 3},
+}
+
+-- See https://github.com/swlegion/tts/issues/275.
+local function invertMatrix(input)
+  local output = {}
+  local height, width = #input, #input[1]
+  for y = 1, height do
+    output[y] = {}
+    for x = 1, width do
+      output[y][x] = input[height + 1 - y][width + 1 - x]
+    end
+  end
+  return output
+end
+
+-- Swaps red and blue cells ("rh" <-> "bh"). Each red cell's art and offset
+-- is its blue counterpart turned 180 degrees, so skipping invertMatrix and
+-- swapping colors draws each player's zone on the opposite edge.
+local function swapColors(input)
+  local output = {}
+  for y, row in ipairs(input) do
+    output[y] = {}
+    for x, cell in ipairs(row) do
+      local first = cell:sub(1, 1)
+      if first == "r" then
+        cell = "b" .. cell:sub(2)
+      elseif first == "b" then
+        cell = "r" .. cell:sub(2)
+      end
+      output[y][x] = cell
+    end
+  end
+  return output
+end
+
+-- The pieces of a mission's zones, in the order the cells are read:
+-- {cell = "rh", x = ..., z = ...}, position in inches. An "l" cell is a
+-- side piece plus a corner piece.
+function DeploymentZones.pieces(matrix, mirror)
+  matrix = mirror and swapColors(matrix) or invertMatrix(matrix)
+  local pieces = {}
+  local function add(cell, x, z)
+    local offset = OFFSET[cell]
+    table.insert(pieces, {
+      cell = cell,
+      x = X_START + CELL * (x - 1) + offset[1],
+      z = Z_START - CELL * (z - 1) + offset[2],
+    })
+  end
+  for z, row in ipairs(matrix) do
+    for x, cell in ipairs(row) do
+      if cell == "bl" then
+        add("bs", x, z)
+        add("bcc", x, z)
+      elseif cell == "rl" then
+        add("rs", x, z)
+        add("rcc", x, z)
+      elseif OFFSET[cell] then
+        add(cell, x, z)
+      end
+    end
+  end
+  return pieces
+end
+
+-- TTS counts in floats only and plain Lua 5.4 in integers too: the same
+-- string either way.
+local function cellKey(u, v)
+  return string.format("%d:%d", u, v)
+end
+
+local function hexRow(bits)
+  local out = {}
+  for i = 1, #bits, 4 do
+    local chunk = bits:sub(i, i + 3)
+    chunk = chunk .. string.rep("0", 4 - #chunk)
+    out[#out + 1] = string.format("%x", tonumber(chunk, 2))
+  end
+  return table.concat(out)
+end
+
+-- One color's zone ("r" or "b") as a single shape: its centre in inches and
+-- the key of its mask, "<width>x<depth>/<rows>", in steps of 1.5 inches,
+-- each row a hex string, top row (far edge, +z) first. Nil when the color
+-- has no piece, or when two pieces overlap (the old projectors then drew the
+-- overlap darker, which one mask cannot do).
+function DeploymentZones.zone(pieces, color)
+  local covered, minU, maxU, minV, maxV = {}, nil, nil, nil, nil
+  for _, piece in ipairs(pieces) do
+    if piece.cell:sub(1, 1) == color then
+      local size = SIZE[piece.cell:sub(2)]
+      local u0 = math.floor((piece.x - size[1] / 2 - LEFT) / STEP + 0.5)
+      local v0 = math.floor((piece.z - size[2] / 2 - BOTTOM) / STEP + 0.5)
+      local u1 = u0 + math.floor(size[1] / STEP + 0.5) - 1
+      local v1 = v0 + math.floor(size[2] / STEP + 0.5) - 1
+      for u = u0, u1 do
+        for v = v0, v1 do
+          local key = cellKey(u, v)
+          if covered[key] then
+            return nil
+          end
+          covered[key] = true
+        end
+      end
+      minU = math.min(minU or u0, u0)
+      maxU = math.max(maxU or u1, u1)
+      minV = math.min(minV or v0, v0)
+      maxV = math.max(maxV or v1, v1)
+    end
+  end
+  if not minU then
+    return nil
+  end
+  local rows = {}
+  for v = maxV, minV, -1 do
+    local bits = {}
+    for u = minU, maxU do
+      bits[#bits + 1] = covered[cellKey(u, v)] and "1" or "0"
+    end
+    rows[#rows + 1] = hexRow(table.concat(bits))
+  end
+  local width, depth = maxU - minU + 1, maxV - minV + 1
+  return {
+    x = LEFT + (minU + width / 2) * STEP,
+    z = BOTTOM + (minV + depth / 2) * STEP,
+    key = string.format("%dx%d/", width, depth) .. table.concat(rows, "-"),
+  }
+end

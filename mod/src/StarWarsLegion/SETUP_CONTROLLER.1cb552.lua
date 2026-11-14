@@ -1,6 +1,8 @@
 require('!/Deck')
 require('!/Shelf')
 require('!/Brain')
+require('!/DeploymentZones')
+require('!/data/DeploymentZoneBundles')
 
 function onload(save_state)
     _G.Deck = Deck:create()
@@ -406,8 +408,6 @@ function spawnObjs(cardType, selectedBattleCardName, callback)
   })
 end
 
-local xStart = -25
-local zStart = 15
 local yValue = 20
 
 local deployLinks = {}
@@ -415,14 +415,12 @@ local deployLinks = {}
   deployLinks.rh = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_half_metal_v2.unity3d"
   deployLinks.rs = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_half_metal_v2.unity3d"
   deployLinks.rss = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_half_metal_v2.unity3d"
-  deployLinks.rl = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_l_metal_v2.unity3d"
   deployLinks.rc = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_corner_metal_v2.unity3d"
   deployLinks.rcc = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_red_spawn_corner_metal_v2.unity3d"
   deployLinks.b = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_metal_v2.unity3d"
   deployLinks.bh = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_half_metal_v2.unity3d"
   deployLinks.bs = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_half_metal_v2.unity3d"
   deployLinks.bss = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_half_metal_v2.unity3d"
-  deployLinks.bl = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_l_metal_v2.unity3d"
   deployLinks.bc = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_corner_metal_v2.unity3d"
   deployLinks.bcc = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_corner_metal_v2.unity3d"
 
@@ -431,56 +429,21 @@ local deployRotations = {}
   deployRotations.rh = 0
   deployRotations.rs = 90
   deployRotations.rss = 90
-  deployRotations.rl = 0
   deployRotations.rc = 0
   deployRotations.rcc = 0
   deployRotations.b = 0
   deployRotations.bh = 0
   deployRotations.bs = 90
   deployRotations.bss = 90
-  deployRotations.bl = 0
   deployRotations.bc = 0
   deployRotations.bcc = 0
 
-local deployOffset = {}
-  deployOffset.r = {0, 0, 0}
-  deployOffset.rh = {0, 0, -1.5}
-  deployOffset.rs = {1.5, 0, 0}
-  deployOffset.rss = {-1.5, 0, 0}
-  deployOffset.rl = {0, 0, 0}
-  deployOffset.rc = {1.5, 0, -1.5}
-  deployOffset.rcc = {-1.5, 0, -1.5}
-  deployOffset.b = {0, 0, 0}
-  deployOffset.bh = {0, 0, 1.5}
-  deployOffset.bs = {-1.5, 0, 0}
-  deployOffset.bss = {1.5, 0, 0}
-  deployOffset.bl = {0, 0, 0}
-  deployOffset.bc = {-1.5, 0, 1.5}
-  deployOffset.bcc = {1.5, 0, 1.5}
-
-function AddVectors(vectorA, vectorB)
-  vectorA[1] = vectorA[1] + vectorB[1]
-  vectorA[2] = vectorA[2] + vectorB[2]
-  vectorA[3] = vectorA[3] + vectorB[3]
-  return vectorA  
-end
-
-function spawnBoundaryCell(cell, x, z)
-  local asset = deployLinks[cell]
-  local offset = deployOffset[cell]
-  local pos = {
-    xStart + (6 * (x - 1)),
-    yValue,
-    zStart - (6 * (z - 1)),
-  }
-
-  pos = AddVectors(pos, offset)
-
+local function spawnDeploymentProjector(asset, pos, rotation)
   local projector = spawnObject({
     type        = "Custom_AssetBundle",
     position    = pos,
     scale       = {0, 0, 0},
-    rotation    = {0, deployRotations[cell], 0}
+    rotation    = {0, rotation, 0}
   })
   projector.setName("Deployment Boundary")
   projector.setLock(true)
@@ -489,77 +452,25 @@ function spawnBoundaryCell(cell, x, z)
   })
 end
 
+-- matrix is a grid of 6-inch cells, 12 across and 6 deep, where each cell is
+-- "r*" (red zone, the suffix picks the piece), "b*" (blue zone) or " ".
+-- Each zone is drawn by one projector when its shape has a bundle (see
+-- includes/DeploymentZones), else by one projector per piece as before.
 function spawnDeploymentBoundary(matrix, mirror)
-    local function invertMatrix(input)
-      -- See https://github.com/swlegion/tts/issues/275.
-      local output = {}
-      local height = #input
-      local width  = #input[1]
-      for y = 1, height, 1 do
-        output[y] = {}
-        for x = 1, width, 1 do
-          output[y][x] = " "
-        end
-      end
-      for y = 1, height, 1 do
-        for x = 1, width, 1 do
-          output[y][x] = input[height + 1 - y][width + 1 - x]
-        end
-      end
-      return output
-    end
-    
-    -- Swaps red and blue cells ("rh" <-> "bh"). Each red cell's art and offset
-    -- is its blue counterpart turned 180 degrees, so skipping invertMatrix and
-    -- swapping colors draws each player's zone on the opposite edge.
-    local function swapColors(input)
-      local output = {}
-      for y, row in ipairs(input) do
-        output[y] = {}
-        for x, cell in ipairs(row) do
-          local first = cell:sub(1, 1)
-          if first == "r" then
-            cell = "b" .. cell:sub(2)
-          elseif first == "b" then
-            cell = "r" .. cell:sub(2)
-          end
-          output[y][x] = cell
-        end
-      end
-      return output
-    end
-
-    if mirror then
-      matrix = swapColors(matrix)
+  local pieces = DeploymentZones.pieces(matrix, mirror)
+  for _, color in ipairs({"r", "b"}) do
+    local zone = DeploymentZones.zone(pieces, color)
+    local asset = zone and DEPLOYMENT_ZONE_BUNDLES[color .. "|" .. zone.key]
+    if asset then
+      spawnDeploymentProjector(asset, {zone.x, yValue, zone.z}, 0)
     else
-      matrix = invertMatrix(matrix)
-    end
-    -- matrix is in the format of
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- { x, x, x, x, x, x, x, x, x, x, x, x }
-    -- ... where "x" can either be:
-    -- "r*" :  red deployment zone (the suffix picks the edge piece)
-    -- "b*" :  blue deployment zone
-    -- ""  :  ignore
-    for z, row in pairs(matrix) do
-      for x, cell in pairs(row) do
-        if cell == " " then
-          -- skip the blank cells
-        elseif cell == "bl" then
-          spawnBoundaryCell("bs", x, z)
-          spawnBoundaryCell("bcc", x, z)
-        elseif cell == "rl" then
-          spawnBoundaryCell("rs", x, z)
-          spawnBoundaryCell("rcc", x, z)
-        else
-          spawnBoundaryCell(cell, x, z)
+      for _, piece in ipairs(pieces) do
+        if piece.cell:sub(1, 1) == color then
+          spawnDeploymentProjector(deployLinks[piece.cell], {piece.x, yValue, piece.z}, deployRotations[piece.cell])
         end
       end
     end
+  end
 end
 
 function clearDeploymentBoundary()

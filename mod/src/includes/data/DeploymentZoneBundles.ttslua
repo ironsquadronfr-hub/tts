@@ -1,0 +1,23 @@
+-- One bundle per deployment zone shape of the official missions, each a
+-- single projector with the zone's mask (see includes/DeploymentZones).
+-- Key: "<r|b>|" .. DeploymentZones.zone(...).key. Generated, do not edit.
+DEPLOYMENT_ZONE_BUNDLES = {
+  ["b|16x6/ffff-ffff-ffff-ffff-ffff-ffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_16x6_207013_v1.unity3d",
+  ["b|24x16/ffffff-ffffff-ffffff-ffffff-ffffff-ffffff-000ff0-000ff0-000ff0-000ff0-000ff0-000ff0-000ff0-000ff0-000ff0-000ff0"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_24x16_55dbf6_v1.unity3d",
+  ["b|24x6/fc003f-fc003f-fc003f-fc003f-fc003f-fc003f"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_24x6_63d34b_v1.unity3d",
+  ["b|32x6/ffffffff-ffffffff-ffffffff-ffffffff-ffffffff-ffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_32x6_1f29a7_v1.unity3d",
+  ["b|36x14/fffffffff-fffffffff-fffffffff-fffffffff-fffffffff-fffffffff-fc0000000-fc0000000-fc0000000-fc0000000-fc0000000-fc0000000-fc0000000-fc0000000"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_36x14_2e0cf8_v1.unity3d",
+  ["b|36x16/ffffff00f-ffffff00f-ffffff00f-ffffff00f-ffffff00f-ffffff00f-00000000f-00000000f-00000000f-00000000f-00000000f-00000000f-00000000f-00000000f-00000000f-00000000f"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_36x16_e5cb44_v1.unity3d",
+  ["b|36x6/fffffffff-fffffffff-fffffffff-fffffffff-fffffffff-fffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_36x6_340283_v1.unity3d",
+  ["b|48x6/ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_48x6_33a708_v1.unity3d",
+  ["b|48x6/fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_b_48x6_e2e26a_v1.unity3d",
+  ["r|16x6/ffff-ffff-ffff-ffff-ffff-ffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_16x6_207013_v1.unity3d",
+  ["r|24x16/0ff000-0ff000-0ff000-0ff000-0ff000-0ff000-0ff000-0ff000-0ff000-0ff000-ffffff-ffffff-ffffff-ffffff-ffffff-ffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_24x16_669de9_v1.unity3d",
+  ["r|24x6/fc003f-fc003f-fc003f-fc003f-fc003f-fc003f"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_24x6_63d34b_v1.unity3d",
+  ["r|32x6/ffffffff-ffffffff-ffffffff-ffffffff-ffffffff-ffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_32x6_1f29a7_v1.unity3d",
+  ["r|36x14/00000003f-00000003f-00000003f-00000003f-00000003f-00000003f-00000003f-00000003f-fffffffff-fffffffff-fffffffff-fffffffff-fffffffff-fffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_36x14_94eb1a_v1.unity3d",
+  ["r|36x16/f00000000-f00000000-f00000000-f00000000-f00000000-f00000000-f00000000-f00000000-f00000000-f00000000-f00ffffff-f00ffffff-f00ffffff-f00ffffff-f00ffffff-f00ffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_36x16_014ddf_v1.unity3d",
+  ["r|36x6/fffffffff-fffffffff-fffffffff-fffffffff-fffffffff-fffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_36x6_340283_v1.unity3d",
+  ["r|48x6/ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff-ffffffffffff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_48x6_33a708_v1.unity3d",
+  ["r|48x6/fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff-fffc00003fff"] = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/deploy_zone_r_48x6_e2e26a_v1.unity3d",
+}
