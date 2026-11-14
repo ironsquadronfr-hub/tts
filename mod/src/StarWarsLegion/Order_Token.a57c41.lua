@@ -30,8 +30,6 @@ end
 --
 function setTemplateVariables()
     unitData.aStart = templateInfo.aStart[unitData.baseSize][unitData.selectedSpeed]
-    unitData.templateMesh = templateInfo.templateMesh[unitData.selectedSpeed]
-    unitData.templateBallCollider = templateInfo.templateBallCollider
     unitData.tint = templateInfo.tint[unitData.selectedSpeed]
     unitData.buttonPosition = templateInfo.buttonPosition[unitData.selectedSpeed]
     unitData.buttonColor = templateInfo.buttonColor[unitData.selectedSpeed]
@@ -649,8 +647,7 @@ function moveUnit(isDeploy)
     -- because a scripted object costs 30-45 ms more to appear. They rest
     -- locked, weightless and without gravity; the brain unlocks a half under
     -- an empty-handed pointer, and finds its partner and the base in its memo.
-    local speed = unitData.selectedSpeed
-    local tpl = templateInfo.moveTemplate[speed]
+    local tpl = templateInfo.moveTemplate[unitData.selectedSpeed]
     local function templateData(name, bundle, rotY, scaleY)
         return {
             Name = "Custom_Assetbundle",
@@ -937,9 +934,15 @@ end
 
 function clearMovementTemplates()
     -- By GUID as a fallback: an undo respawns a half under the same GUID,
-    -- and the reference held here then points at the destroyed copy.
-    local a = templateA or (templateAGUID and getObjectFromGUID(templateAGUID))
-    local b = templateB or (templateBGUID and getObjectFromGUID(templateBGUID))
+    -- and the reference held here then points at the destroyed copy. Such a
+    -- reference compares equal to nil yet can still be truthy, so `==` it is.
+    local function live(ref, guid)
+        if ref == nil and guid ~= nil then
+            return getObjectFromGUID(guid)
+        end
+        return ref
+    end
+    local a, b = live(templateA, templateAGUID), live(templateB, templateBGUID)
     if a ~= nil then
         destroyObject(a)
     end

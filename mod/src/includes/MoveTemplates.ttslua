@@ -127,8 +127,7 @@ local function follow(h)
     h.partner.setRotation({0, yaw + h.rotationDifference, 0})
   else
     h.obj.setPosition({h.jx, p.y, h.jz})
-    local ap = h.partner.getPosition()
-    h.partner.setPosition({ap.x, p.y, ap.z})
+    h.partner.setPosition({h.jx, p.y, h.jz})
     h.lastYaw = moveTemplateBYaw(h.jx, h.jz, h.aYaw, h.lastYaw, p.x, p.z)
     h.obj.setRotation({0, h.lastYaw, 0})
   end
