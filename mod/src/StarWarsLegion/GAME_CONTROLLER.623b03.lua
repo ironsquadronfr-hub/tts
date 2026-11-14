@@ -127,7 +127,8 @@ end
 
 function reloadObj(selectedObjs)
     for _, obj in pairs(selectedObjs) do
-        if obj.getName() == "Movement Template" then
+        -- the halves are named "Movement Template (A)" and "(B)"
+        if obj.getName():find("^Movement Template") then
             destroyObject(obj)
         else
             obj.reload()

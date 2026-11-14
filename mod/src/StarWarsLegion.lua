@@ -16,6 +16,7 @@ require('!/ExtendedOverlays')
 require('!/DeferredSetup')
 require('!/Antivirus')
 require('!/TokenCounters')
+require('!/MoveTemplates')
 
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
 -- so an onsave() is never called and the global script saves nothing at all.
@@ -42,13 +43,20 @@ function onObjectSpawn(obj)
 end
 
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
-function onObjectDrop(_, obj)
+function onObjectDrop(color, obj)
+  moveTemplatesOnDrop(color, obj)
   counterTokensOnObject(obj)
   losOnObjectPlaced(obj)
 end
 
 function onObjectPickUp(color, obj)
+  moveTemplatesOnPickUp(color, obj)
   counterTokensOnPickUp(color, obj)
+end
+
+-- Movement templates unlock under an empty-handed pointer (see !/MoveTemplates).
+function onObjectHover(color, obj)
+  moveTemplatesOnHover(color, obj)
 end
 
 function onload(saveData)
@@ -637,10 +645,12 @@ function standbyTokens()
     for i, obj in pairs(allObjs) do
         if obj.getVar("isAToken") == true then
             obj.call("standby")
+        -- The movement templates are named "(A)" and "(B)": the sweep looked
+        -- for a bare "Movement Template" and never found them.
         -- "Maximum Move" joins the sweep: like the rulers, the only reference
         -- to the ring lives in volatile script state, so one that made it
         -- into a save can never be cleared again after a load or an undo.
-        elseif obj.getName() == "Cohesion Ruler" or obj.getName() == "Movement Template" or obj.getName() == "Range Ruler" or obj.getName() == "Deployment Boundary" or obj.getName() == "Maximum Move" or obj.getName() == "Height Guide" then
+        elseif obj.getName() == "Cohesion Ruler" or obj.getName() == "Movement Template (A)" or obj.getName() == "Movement Template (B)" or obj.getName() == "Range Ruler" or obj.getName() == "Deployment Boundary" or obj.getName() == "Maximum Move" or obj.getName() == "Height Guide" then
             destroyObject(obj)
         end
     end

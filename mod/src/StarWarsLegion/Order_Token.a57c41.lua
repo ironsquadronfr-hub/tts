@@ -645,75 +645,52 @@ function moveUnit(isDeploy)
 
     ------------------------------------------- SPAWN TEMPLATES -------------------------------------------
 
-    local modelTemplateA = getObjectFromGUID(templateInfo.modelTemplateAGUID)
+    -- Plain objects, no script: the brain drives them (see !/MoveTemplates),
+    -- because a scripted object costs 30-45 ms more to appear. They rest
+    -- locked, weightless and without gravity; the brain unlocks a half under
+    -- an empty-handed pointer, and finds its partner and the base in its memo.
+    local speed = unitData.selectedSpeed
+    local tpl = templateInfo.moveTemplate[speed]
+    local function templateData(name, bundle, rotY, scaleY)
+        return {
+            Name = "Custom_Assetbundle",
+            Nickname = name,
+            Locked = true,
+            Sticky = false,
+            Rigidbody = {Mass = 0, Drag = 1000, AngularDrag = 1000, UseGravity = false},
+            Transform = {
+                posX = basePos.x - b, posY = basePos.y, posZ = basePos.z - a,
+                rotX = 0, rotY = rotY, rotZ = 0,
+                scaleX = 1, scaleY = scaleY, scaleZ = 1,
+            },
+            CustomAssetbundle = {
+                AssetbundleURL = bundle,
+                AssetbundleSecondaryURL = tpl.sharedBundle,
+                MaterialIndex = 1,
+                TypeIndex = 0,
+            },
+        }
+    end
 
-    templateA = spawnObject({
-        type = "Custom_AssetBundle",
-        position = {basePos.x - b, basePos.y, basePos.z - a},
-        rotation = {0, baseRot.y + 180, 0},
-        scale = {1,1,1}
-    })
-    templateA.setCustomObject({
-        type = 0,
-        assetbundle = templateInfo.moveTemplate[unitData.selectedSpeed].longBundle,
-        assetbundle_secondary = templateInfo.moveTemplate[unitData.selectedSpeed].sharedBundle,
-        material = 1,
-    })
+    templateA = spawnObjectData({data = templateData("Movement Template (A)", tpl.longBundle, baseRot.y + 180, 1)})
+    -- the second half a tiny bit taller, to stop z-fighting at the joint
+    templateB = spawnObjectData({data = templateData("Movement Template (B)", tpl.shortBundle, baseRot.y, 1.1)})
+    templateAGUID, templateBGUID = templateA.getGUID(), templateB.getGUID()
 
-    templateA.mass = 0.0
-
-    local templateLuaScriptA = "unitInfo = {}\nunitInfo.baseSize = '"..unitData.baseSize.."'\nunitInfo.selectedSpeed = "..unitData.selectedSpeed.."\n"..modelTemplateA.getLuaScript()
-
-    templateA.setLuaScript(templateLuaScriptA)
-    templateA.sticky = false
-    templateA.setName("Movement Template (A)")
-    templateA.setColorTint(templateInfo.moveTemplate[unitData.selectedSpeed].colorTint)
-
-    local modelTemplateB = getObjectFromGUID(templateInfo.modelTemplateBGUID)
-
-    templateB = spawnObject({
-        type = "Custom_AssetBundle",
-        position = {basePos.x - b, basePos.y, basePos.z - a},
-        rotation = {0, baseRot.y, 0},
-        --make the second bit a tiny bit taller to stop zfighting at the joint
-        scale = {1,1.1,1}
-    })
-    templateB.setCustomObject({
-        type = 0,
-        assetbundle = templateInfo.moveTemplate[unitData.selectedSpeed].shortBundle,
-        assetbundle_secondary = templateInfo.moveTemplate[unitData.selectedSpeed].sharedBundle,
-        material = 1
-    })
-
-    templateB.mass = 0.0
-
-    local templateLuaScriptB = "unitInfo = {}\nunitInfo.baseSize = '"..unitData.baseSize.."'\nunitInfo.selectedSpeed = "..unitData.selectedSpeed.."\n"..modelTemplateB.getLuaScript()
-
-    templateB.setLuaScript(templateLuaScriptB)
-    templateB.sticky = false
-    templateB.setName("Movement Template (B)")
-    templateB.setColorTint(templateInfo.moveTemplate[unitData.selectedSpeed].colorTint)
-
-    -- SET VALUES
-
-    templateA.setTable("basePos", basePos)
-    templateA.setTable("baseRot", baseRot)
-    templateA.setVar("templateB", templateB)
-
+    -- A turns around the base only for a small base, outside deployment.
     local fixedMove
     if isDeploy then
         fixedMove = true
     else
         fixedMove = unitData.baseSize ~= "small"
     end
-    templateA.setLock(fixedMove)
-
-    templateB.setTable("basePos", basePos)
-    templateB.setTable("baseRot", baseRot)
-    templateB.setVar("templateA", templateA)
-    templateB.setLock(false)
-
-    templateA.setVar("isDeploy", isDeploy)
+    templateA.memo = JSON.encode({
+        isqTpl = "A", partner = templateBGUID,
+        bx = basePos.x, bz = basePos.z,
+        aStart = unitData.aStart + startOffset,
+        fixed = fixedMove,
+    })
+    templateB.memo = JSON.encode({isqTpl = "B", partner = templateAGUID})
 
     local maxMoveBundles = getMovementLinks()
     local baseSizeMoveBundles = maxMoveBundles[unitData.baseSize]
@@ -959,12 +936,17 @@ function clearTemplates()
 end
 
 function clearMovementTemplates()
-    if templateA ~= nil then
-        destroyObject(templateA)
+    -- By GUID as a fallback: an undo respawns a half under the same GUID,
+    -- and the reference held here then points at the destroyed copy.
+    local a = templateA or (templateAGUID and getObjectFromGUID(templateAGUID))
+    local b = templateB or (templateBGUID and getObjectFromGUID(templateBGUID))
+    if a ~= nil then
+        destroyObject(a)
     end
-    if templateB ~= nil then
-        destroyObject(templateB)
+    if b ~= nil then
+        destroyObject(b)
     end
+    templateA, templateB, templateAGUID, templateBGUID = nil, nil, nil, nil
     if maxMoveTemplate ~= nil then
         -- pcall: the ring may already be gone (Clear Map, standbyTokens), in which
         -- case destroyObject throws and the rest of the cleanup was skipped.

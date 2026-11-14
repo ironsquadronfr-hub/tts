@@ -1,0 +1,194 @@
+-- Movement templates without a script of their own.
+--
+-- Why: every scripted object costs 30-45 ms to appear on a Mac (about four
+-- times that on an average PC), whatever its script. The two halves of the
+-- movement template used to carry a copy of Model Template A/B each, so a
+-- Move froze the game for 90-127 ms (430 ms on a tester's PC). The same
+-- objects without a script cost 24-36 ms (measured 14/11/2026). So the Order
+-- Token now spawns plain objects and the brain drives them, from the events
+-- it already receives.
+--
+-- How a half is driven:
+--   * Both halves rest LOCKED, so a mini pushed into them cannot move them
+--     (they used to snap back in onCollisionStay; collisions of an object
+--     without a script only reach Global, which the loader keeps frozen).
+--   * A locked object cannot be picked up, so a half unlocks while a player
+--     with an empty hand hovers it, and locks again when the pointer leaves
+--     or when it is dropped.
+--   * While a half is held, one coroutine moves it after the pointer, the
+--     same math the template scripts ran: A swings around the unit's base
+--     and drags B along; B pivots on the joint, within 90 degrees of A.
+--
+-- Each half carries its wiring in its memo, written by the Order Token:
+--   A: {isqTpl = "A", partner = <B guid>, bx, bz = base, aStart, fixed}
+--   B: {isqTpl = "B", partner = <A guid>}
+-- A memo survives a save, a load and an undo, unlike script variables.
+-- A "fixed" A (deployment, or any base but small) never unlocks: only its B
+-- turns, as before.
+
+local atan2 = math.atan2 or math.atan
+
+-- Pure math, kept apart so that tool/test/MoveTemplates.test.lua can check
+-- it against the formulas of the old template scripts.
+
+-- Where half A goes when the pointer is at (mx, mz): on the circle of radius
+-- aStart around the base, on the pointer's side, its nose away from the base.
+function moveTemplateAPose(bx, bz, aStart, mx, mz)
+  local a, b = bx - mx, bz - mz
+  local yaw = math.deg(atan2(a, b)) + 180
+  local angle = atan2(b, a)
+  return bx - aStart * math.cos(angle), bz - aStart * math.sin(angle), yaw
+end
+
+-- The yaw half B takes when the pointer is at (mx, mz) and the joint at
+-- (jx, jz): towards the pointer, unless that is more than 90 degrees off
+-- the line of half A (aYaw), in which case it keeps lastYaw.
+function moveTemplateBYaw(jx, jz, aYaw, lastYaw, mx, mz)
+  local q = math.deg(atan2(jx - mx, jz - mz))
+  local base = aYaw - 180
+  if base > 180 then
+    base = base - 360
+  end
+  local inside
+  if base > -90 and base < 90 then
+    inside = q < base + 90 and q > base - 90
+  elseif base >= 90 then
+    inside = q > base - 90 or q < base - 270
+  else
+    inside = q < base + 90 or q > base + 270
+  end
+  if inside then
+    return q
+  end
+  return lastYaw
+end
+
+-- Everything below talks to TTS.
+
+local NAMES = {
+  ["Movement Template (A)"] = true,
+  ["Movement Template (B)"] = true,
+}
+
+-- held[color] = what that player is moving; hovered[color] = the half that
+-- player's pointer is on, if any.
+local held, hovered, looping = {}, {}, false
+
+local function wiring(obj)
+  if obj == nil or not NAMES[obj.getName()] then
+    return nil
+  end
+  local ok, w = pcall(JSON.decode, obj.memo or "")
+  if ok and type(w) == "table" and w.isqTpl then
+    return w
+  end
+  return nil
+end
+
+local function stillHeld(obj)
+  for _, h in pairs(held) do
+    if h.obj == obj then
+      return true
+    end
+  end
+  return false
+end
+
+function moveTemplatesOnHover(color, obj)
+  local before = hovered[color]
+  hovered[color] = nil
+  if before ~= nil and before ~= obj and not stillHeld(before) then
+    before.setLock(true)
+  end
+  local w = wiring(obj)
+  if w == nil or w.fixed then
+    return
+  end
+  -- A hand that carries something (a mini moved across the template) must
+  -- not unlock it, or the mini could push it.
+  if #Player[color].getHoldingObjects() > 0 then
+    return
+  end
+  hovered[color] = obj
+  obj.setLock(false)
+end
+
+-- One step of a held half, after the pointer.
+local function follow(h)
+  local p = Player[h.color].getPointerPosition()
+  if p == nil or h.partner == nil then
+    return
+  end
+  if h.role == "A" then
+    local x, z, yaw = moveTemplateAPose(h.bx, h.bz, h.aStart, p.x, p.z)
+    h.obj.setRotation({0, yaw, 0})
+    h.obj.setPosition({x, p.y, z})
+    h.partner.setPosition({x, p.y, z})
+    h.partner.setRotation({0, yaw + h.rotationDifference, 0})
+  else
+    h.obj.setPosition({h.jx, p.y, h.jz})
+    local ap = h.partner.getPosition()
+    h.partner.setPosition({ap.x, p.y, ap.z})
+    h.lastYaw = moveTemplateBYaw(h.jx, h.jz, h.aYaw, h.lastYaw, p.x, p.z)
+    h.obj.setRotation({0, h.lastYaw, 0})
+  end
+  h.obj.setVelocity({0, 0, 0})
+  h.obj.setAngularVelocity({0, 0, 0})
+end
+
+function moveTemplatesLoop()
+  while next(held) ~= nil do
+    for color, h in pairs(held) do
+      if h.obj == nil then
+        held[color] = nil
+      else
+        local ok, err = pcall(follow, h)
+        if not ok then
+          held[color] = nil
+          print("Movement template: " .. tostring(err))
+        end
+      end
+    end
+    coroutine.yield(0)
+  end
+  looping = false
+  return 1
+end
+
+function moveTemplatesOnPickUp(color, obj)
+  local w = wiring(obj)
+  if w == nil then
+    return
+  end
+  local partner = getObjectFromGUID(w.partner or "")
+  if partner == nil then
+    return
+  end
+  local h = {color = color, obj = obj, role = w.isqTpl, partner = partner}
+  if h.role == "A" then
+    h.bx, h.bz, h.aStart = w.bx, w.bz, w.aStart
+    h.rotationDifference = partner.getRotation().y - obj.getRotation().y
+  else
+    local joint = partner.getPosition()
+    h.jx, h.jz = joint.x, joint.z
+    h.aYaw = partner.getRotation().y
+    h.lastYaw = obj.getRotation().y
+  end
+  held[color] = h
+  if not looping then
+    looping = true
+    startLuaCoroutine(Brain(), "moveTemplatesLoop")
+  end
+end
+
+function moveTemplatesOnDrop(color, obj)
+  local h = held[color]
+  if h == nil or h.obj ~= obj then
+    return
+  end
+  pcall(follow, h)
+  held[color] = nil
+  hovered[color] = nil
+  obj.setLock(true)
+  highestPoint = 0
+end
