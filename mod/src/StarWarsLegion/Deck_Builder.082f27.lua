@@ -238,7 +238,7 @@ function commandCardSubMenu(numberSelection)
           break
         end
       end
-      _G["choiceSubMenu"..index] = function() 
+      _G["choiceSubMenu"..index] = function()
         selectCommandCard(isContingencies, availableCard, numberSelection)
       end
       local aColor = {0.1764,0.1764,0.1764,0.01}

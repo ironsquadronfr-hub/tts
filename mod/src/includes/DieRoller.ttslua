@@ -301,9 +301,9 @@ function updateDieCountDisplay(params)
   }
 
   if dieObjs then
-    local clone = {unpack(dieObjs)} 
+    local clone = {unpack(dieObjs)}
     dieObjs = {}
-  
+
     for _, obj in ipairs(clone) do
       if obj and obj.getGUID() ~= toDelete then
         local selectedColor = obj.getVar("dieColor")

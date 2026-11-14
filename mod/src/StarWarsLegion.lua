@@ -315,7 +315,7 @@ function onload(saveData)
     unitIDTokenBagGUID = "21550f"
 
     Wait.time(initHotkeys, 1)
-  
+
     -- LIST BUILDER info
     redSelectedArmyFaction = ""
     blueSelectedArmyFaction = ""
@@ -420,7 +420,7 @@ function onload(saveData)
       },
       deployment = {
         {1.23, -1.88, z1},
-        {1.23, -1.88, z2}, 
+        {1.23, -1.88, z2},
         {1.23, -1.88, z3},
         {1.23, -1.88, z4},
       },

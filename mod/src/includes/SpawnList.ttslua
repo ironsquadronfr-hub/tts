@@ -204,7 +204,7 @@ local function initListSpawner(params)
       if adjustedPos.z > 0 then
         zFromCard = -zOffset * zIndex
       end
-      totalZOffset = totalZOffset - (paddedBase * zFromCard)     
+      totalZOffset = totalZOffset - (paddedBase * zFromCard)
     end
     local newIndex = (index - (basesPerRow * zIndex) - 1)
     local baseOffset = paddedBase * xOffset
@@ -269,7 +269,7 @@ local function initListSpawner(params)
         local silhHeight = 0
         local silhOffset = 0
 
-        -- TODO: Handle JSON Import because the miniTable isn't fully populated 
+        -- TODO: Handle JSON Import because the miniTable isn't fully populated
         local silhType = "custom"
         if pMiniTable.type then
           if string.find(pMiniTable.type, "Trooper") then

@@ -339,7 +339,7 @@ function _listUpgrades(unit)
   local card = _deck:spawnUnitCard(__state.faction, name)
   local position = self.getPosition()
   local rotation = self.getRotation()
-  
+
   position = translatePos(
     position,
     rotation,
@@ -589,7 +589,7 @@ local _upgradeCardOffsets = {
 
 function _spawnUpgradeCard(upgrade, slotIndex, isRequired)
   local card = _deck:spawnUpgradeCard(upgrade.name)
-  
+
   local position = self.getPosition()
   local rotation = self.getRotation()
   local offset = _upgradeCardOffsets[slotIndex]

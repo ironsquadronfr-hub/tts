@@ -425,7 +425,7 @@ local deployLinks = {}
   deployLinks.bcc = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/projector_blue_spawn_corner_metal_v2.unity3d"
 
 local deployRotations = {}
-  deployRotations.r = 0 
+  deployRotations.r = 0
   deployRotations.rh = 0
   deployRotations.rs = 90
   deployRotations.rss = 90

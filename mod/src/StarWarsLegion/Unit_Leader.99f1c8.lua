@@ -1,6 +1,6 @@
 require('!/Brain')
 
-﻿require('!/Cohesion')
+require('!/Cohesion')
 
 -- Model mini
 function onload()
@@ -173,7 +173,7 @@ end
 
 function evaluateLocks()
    local newValue = isLocked()
-   
+
    for k, guid in pairs(miniGUIDs) do
         local obj = getObjectFromGUID(guid)
         if obj ~= nil then
@@ -197,12 +197,12 @@ end
 function tryAddLock(lockName)
    locks[lockName] = true
    evaluateLocks()
-end  
+end
 
 function tryRemoveLock(lockName)
    locks[lockName] = false
    evaluateLocks()
-end  
+end
 
 function removeAllLocks(lockName)
    if locks ~= nil then
@@ -401,7 +401,7 @@ function spawnSilhouette(obj, pos, rot)
       silhouetteData = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/sihl_long_variant_metal_v2.unity3d"
       scale = 1.0
     end
-  else    
+  else
     if unitData.baseSize == "small" then
       height = globals.silhouetteHeight["small"]
     else
@@ -413,7 +413,7 @@ function spawnSilhouette(obj, pos, rot)
     local offsetVector = Vector.new(objUp.x * offset, objUp.y * offset, objUp.z * offset)
     pos = { pos.x + offsetVector.x, pos.y + offsetVector.y, pos.z + offsetVector.z }
   end
-  
+
 
   local silhouette = spawnObject({
     type = "Custom_AssetBundle",

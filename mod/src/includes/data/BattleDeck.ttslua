@@ -36,7 +36,7 @@ function _onLoadShared(state)
     font_size      = 1100,
     color          = {1, 1, 1, 0.01},
     font_color     = {1, 1, 1, 100},
-    alignment      = 3,           
+    alignment      = 3,
   })
 
   _updateInput()

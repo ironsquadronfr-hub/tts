@@ -120,7 +120,7 @@ function addSilhouetteButton()
     self.createButton(btnData)
     -- It had no rotation at all, so it read mirrored on the back face too.
     registerOrientedButton("SIL", 0)
-  end    
+  end
 
   function toggleSilhouettes()
     if silhouetteState then
@@ -129,7 +129,7 @@ function addSilhouetteButton()
       showSilhouette()
     end
   end
-  
+
   -- Loops through all minis in the unit
   -- Removes all attachments and destroys the first one
   -- The silhouette should be the only attachment, so this should be safe to do
@@ -141,7 +141,7 @@ function addSilhouetteButton()
     end
     silhouetteState = false
   end
-  
+
   -- Loops through all minis in the unit
   -- Spawns a silhouette at the pos and rot of each one
   -- and attaches them using the new attachment feature
@@ -151,7 +151,7 @@ function addSilhouetteButton()
     local newSilhouette = spawnSilhouette(self, pos, rot)
     silhouetteState = true
   end
-  
+
   function spawnSilhouette(obj, pos, rot)
     local globals = Brain().getTable("templateInfo")
     local scale = 2.0
@@ -163,8 +163,8 @@ function addSilhouetteButton()
       local offsetVector = Vector.new(objUp.x * offset, objUp.y * offset, objUp.z * offset)
       pos = { pos.x + offsetVector.x, pos.y + offsetVector.y, pos.z + offsetVector.z }
     end
-    
-  
+
+
     local silhouette = spawnObject({
       type = "Custom_AssetBundle",
       position = pos,

@@ -6,7 +6,7 @@ function onload(save_state)
     -- info
     if self.getName() ~= "Model Template B" then
         templateInfo = Brain().getTable("templateInfo")
-        
+
         aStart = templateInfo.aStart[unitInfo.baseSize][unitInfo.selectedSpeed]
         -- DEFAULT VALUES
         pickedUp = false

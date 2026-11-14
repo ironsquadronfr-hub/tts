@@ -1762,8 +1762,8 @@ function getExistingMaskLength()
     return #findObjectsByName("Masking Boundary")
 end
 
-function toggleMaskMid()   
-    local length = getExistingMaskLength() 
+function toggleMaskMid()
+    local length = getExistingMaskLength()
     if length > 0 then
         clearMasks()
     else
@@ -1775,7 +1775,7 @@ function toggleMaskMid()
 end
 
 function toggleMaskRight()
-    local length = getExistingMaskLength() 
+    local length = getExistingMaskLength()
     if length > 0 then
         clearMasks()
     else
@@ -1787,7 +1787,7 @@ function toggleMaskRight()
 end
 
 function toggleMaskLeft()
-    local length = getExistingMaskLength() 
+    local length = getExistingMaskLength()
     if length > 0 then
         clearMasks()
     else

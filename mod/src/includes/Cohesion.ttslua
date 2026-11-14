@@ -38,8 +38,8 @@ function spawnCohesionRuler(cohesionSourceObject)
     end
 
     local newUnitData = cohesionSourceObject.getTable("unitData")
-    if not newUnitData then 
-      return 
+    if not newUnitData then
+      return
     end
 
     local cohesionBundlesTable = getCohesionLinks()

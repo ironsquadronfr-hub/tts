@@ -522,7 +522,7 @@ end
 function initDeploy()
     initPos = selectedUnitObj.getPosition()
     initRot = selectedUnitObj.getRotation()
-    selectedUnitObj.call("setStartPos")   
+    selectedUnitObj.call("setStartPos")
     moveUnit(true)
 end
 
@@ -651,7 +651,7 @@ function moveUnit(isDeploy)
     templateA = spawnObject({
         type = "Custom_AssetBundle",
         position = {basePos.x - b, basePos.y, basePos.z - a},
-        rotation = {0, baseRot.y + 180, 0},        
+        rotation = {0, baseRot.y + 180, 0},
         scale = {1,1,1}
     })
     templateA.setCustomObject({
@@ -778,7 +778,7 @@ function moveUnit(isDeploy)
     })
     if fixedMove then
 
-        if true then -- TODO: Is it worth enforcing this? "unitData.strafeMove" 
+        if true then -- TODO: Is it worth enforcing this? "unitData.strafeMove"
 
               self.createButton({
                   click_function = "moveForward",
@@ -1511,7 +1511,7 @@ function getDistance(originObj, targetObj)
   -- set the y-value for each position to 0 to ignore height differences
   originPos:set(nil, 0, nil)
   targetPos:set(nil, 0, nil)
-  
+
   return Vector.distance(originPos, targetPos)
 end
 
