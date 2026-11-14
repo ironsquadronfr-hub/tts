@@ -1,0 +1,231 @@
+-- The table's small fixed tools, equipped by the brain.
+--
+-- Why: giving an object a script costs 30-45 ms when it appears, whatever
+-- the script. These tools only needed theirs to make themselves unclickable
+-- and to put a button on themselves at load: 20 of them cost about a second
+-- of every load (measured 14/11/2026). They now carry no script; their memo
+-- says what they are, and the brain gives them the very same buttons, owned
+-- by the brain (a button owned by another script works, and the click comes
+-- here with the object clicked, measured 14/11/2026):
+--   {tool = "spawnDice", side = "red"|"blue", dice = "BlackAttack"|...}
+--   {tool = "roll" | "clear", side = "red"|"blue"}
+--   {tool = "returnTokens"} / {tool = "removeSuppression"}  (the asset buttons)
+--   {tool = "rulesPage"}   (finds its lectern through its GMNotes)
+--   {tool = "inert"}       (the table, the two label panels: unclickable only)
+--
+-- Buttons are not saved: the brain equips the tools at load, as each one
+-- leaves the setup crate, and whenever one appears (a paste, a state change).
+-- Equipping twice is harmless.
+
+local GREY = {0.7573, 0.7573, 0.7573, 0.01}
+local BLACK = {0, 0, 0, 100}
+local WHITE = {1, 1, 1, 100}
+local RED_TEXT = {0.7692, 0, 0, 100}
+
+local DICE = {
+  BlackAttack = {call = "spawnBlackAttackDice", tooltip = "Spawn Black Attack Dice", font = WHITE},
+  RedAttack = {call = "spawnRedAttackDice", tooltip = "Spawn Red Attack Dice", font = WHITE},
+  WhiteAttack = {call = "spawnWhiteAttackDice", tooltip = "Spawn White Attack Dice", font = RED_TEXT},
+  RedDefense = {call = "spawnRedDefenseDice", tooltip = "Spawn Red Defense Dice", font = WHITE},
+  WhiteDefense = {call = "spawnWhiteDefenseDice", tooltip = "Spawn White Defense Dice", font = RED_TEXT},
+}
+
+function tableToolWiring(obj)
+  if obj == nil then
+    return nil
+  end
+  local memo = obj.memo
+  if memo == nil or memo == "" or not string.find(memo, '"tool"', 1, true) then
+    return nil
+  end
+  local ok, w = pcall(JSON.decode, memo)
+  if ok and type(w) == "table" and type(w.tool) == "string" then
+    return w
+  end
+  return nil
+end
+
+local function dieRoller(w)
+  return getObjectFromGUID(dieRollerInfo[w.side .. "DieRollerGUID"] or "")
+end
+
+local function press(obj)
+  pcall(function() obj.AssetBundle.playTriggerEffect(0) end)
+end
+
+-- Click handlers: the button's owner is the brain, so TTS calls these with
+-- the object clicked.
+
+function tableToolSpawnDice(obj)
+  local w = tableToolWiring(obj)
+  local roller = w and dieRoller(w)
+  if roller == nil or DICE[w.dice] == nil then
+    return
+  end
+  press(obj)
+  roller.call(DICE[w.dice].call)
+end
+
+function tableToolRoll(obj, color)
+  local w = tableToolWiring(obj)
+  local roller = w and dieRoller(w)
+  if roller == nil then
+    return
+  end
+  press(obj)
+  roller.call("rollDie", {color})
+end
+
+function tableToolClear(obj)
+  local w = tableToolWiring(obj)
+  local roller = w and dieRoller(w)
+  if roller == nil then
+    return
+  end
+  press(obj)
+  roller.call("clearDie")
+end
+
+function tableToolRemoveSuppression(obj)
+  press(obj)
+  gRemoveOneSuppression({})
+end
+
+-- A token (or a stack of them) back above its bag, staggered so they land
+-- one on another.
+local function returnToken(bag, obj, number)
+  local bagPos = bag.getPosition()
+  local chips = obj.getQuantity()
+  if chips > 0 then
+    for _ = 1, chips do
+      local taken = obj.takeObject({top = true})
+      taken.setRotation({0, 0, 0})
+      taken.setPositionSmooth({bagPos.x, bagPos.y + number, bagPos.z})
+      number = number + 2
+    end
+  else
+    obj.setRotation({0, 0, 0})
+    obj.setPositionSmooth({bagPos.x, bagPos.y + number, bagPos.z})
+    number = number + 2
+  end
+  return number
+end
+
+-- Aim, dodge, standby, surge, smoke and observation tokens back to their
+-- bags, order tokens back to their tray.
+function tableToolReturnTokens(obj)
+  press(obj)
+  local zone = getObjectFromGUID(battlefieldZoneGUID)
+  if zone == nil then
+    return
+  end
+  local bags = {
+    ["Aim Token"] = aimBagGUID,
+    ["Dodge Token"] = dodgeBagGUID,
+    ["Standby Token"] = standbyBagGUID,
+    ["Surge Token"] = surgeBagGUID,
+    ["Smoke Token"] = smokeBagGUID,
+    ["Observation Token"] = observationBagGUID,
+  }
+  local numbers = {}
+  local commandNumber = 1
+  for _, o in pairs(zone.getObjects() or {}) do
+    local bagGUID = bags[o.getName()]
+    if bagGUID ~= nil then
+      local bag = getObjectFromGUID(bagGUID)
+      if bag ~= nil then
+        numbers[bagGUID] = returnToken(bag, o, numbers[bagGUID] or 1)
+      end
+    elseif o.getVar("isAToken") == true then
+      local unitData = o.getTable("unitData")
+      local tray = getObjectFromGUID(commandTokenTrayData[unitData.colorSide][unitData.commandType])
+      local pos = tray.getPosition()
+      pos.y = pos.y + 0.5 + (0.2 * commandNumber)
+      o.setPositionSmooth(pos, false, false)
+      o.setRotationSmooth(tray.getRotation(), false, false)
+      commandNumber = commandNumber + 1
+    end
+  end
+end
+
+-- A page box finds its lectern by the mark in its GMNotes, not by GUID:
+-- swapping a document respawns the lectern, which can change its GUID.
+function tableToolRulesPage(obj, color)
+  press(obj)
+  local index = string.match(obj.getGMNotes() or "", "^rules%-page%-(%d+)$")
+  local wanted = index and ("rules-lectern-" .. index)
+  for _, o in ipairs(getAllObjects()) do
+    if wanted ~= nil and o.getGMNotes() == wanted then
+      o.call("rulesLecternGoToPage", color)
+      return
+    end
+  end
+  broadcastToColor("The lectern for this button is missing.", color, {1, 0.5, 0.5})
+end
+
+-- The buttons, as the tools' own scripts made them.
+
+local function button(obj, fn, fields)
+  fields.click_function = fn
+  fields.function_owner = self
+  fields.position = fields.position or {0, 0.65, 0}
+  obj.createButton(fields)
+end
+
+local EQUIP = {
+  spawnDice = function(obj, w)
+    local dice = DICE[w.dice]
+    if dice == nil then
+      return
+    end
+    obj.interactable = false
+    button(obj, "tableToolSpawnDice", {label = "", width = 1400, height = 1400, font_size = 1100,
+      color = {1, 1, 1, 0.01}, font_color = dice.font, tooltip = dice.tooltip, alignment = 3})
+  end,
+  roll = function(obj)
+    obj.interactable = false
+    button(obj, "tableToolRoll", {label = "ROLL", width = 1400, height = 1400, font_size = 500,
+      color = GREY, font_color = BLACK, tooltip = "Roll Die"})
+  end,
+  clear = function(obj)
+    obj.interactable = false
+    button(obj, "tableToolClear", {label = "CLEAR", scale = {1, 1, 0.7}, width = 1500, height = 2000,
+      font_size = 400, color = GREY, font_color = BLACK, tooltip = "Clear Die"})
+  end,
+  returnTokens = function(obj)
+    button(obj, "tableToolReturnTokens", {label = "", scale = {1, 1, 0.7}, width = 1500, height = 2000,
+      font_size = 400, color = GREY, font_color = BLACK,
+      tooltip = "Return all Aim, Dodge, Standby and Command Tokens to the respective Players"})
+    obj.setColorTint({0.7, 0, 0})
+  end,
+  removeSuppression = function(obj)
+    button(obj, "tableToolRemoveSuppression", {label = "", scale = {1, 1, 0.7}, width = 1500, height = 2000,
+      font_size = 400, color = GREY, font_color = BLACK,
+      tooltip = "Remove one suppression from each suppression token in the Battlefield"})
+  end,
+  rulesPage = function(obj)
+    button(obj, "tableToolRulesPage", {label = "PAGE", tooltip = "Jump to a page of the document above",
+      scale = {1, 1, 1.4}, width = 1500, height = 2000, font_size = 400, color = GREY, font_color = BLACK})
+    obj.setColorTint({0.93, 0.94, 0.88})
+  end,
+  inert = function(obj)
+    obj.interactable = false
+  end,
+}
+
+-- Equips one object if its memo names a tool; harmless on anything else.
+function tableToolEquip(obj)
+  local w = tableToolWiring(obj)
+  local equip = w and EQUIP[w.tool]
+  if equip == nil then
+    return
+  end
+  obj.clearButtons()
+  equip(obj, w)
+end
+
+function tableToolsInit()
+  for _, obj in ipairs(getAllObjects()) do
+    pcall(tableToolEquip, obj)
+  end
+end

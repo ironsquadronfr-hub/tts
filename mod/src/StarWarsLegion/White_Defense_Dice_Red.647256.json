@@ -16,6 +16,7 @@
     "Nickname": "White Defense Dice Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"spawnDice\",\"side\":\"red\",\"dice\":\"WhiteDefense\"}",
     "ColorDiffuse": {
       "r": 0.9816119,
       "g": 0.9816119,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./White_Defense_Dice_Red.647256.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

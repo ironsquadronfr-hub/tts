@@ -16,6 +16,7 @@
     "Nickname": "Rules Page Box 1",
     "Description": "",
     "GMNotes": "rules-page-1",
+    "Memo": "{\"tool\":\"rulesPage\"}",
     "ColorDiffuse": {
       "r": 0.93,
       "g": 0.94,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Rules_Page_Box_1.e0d00d.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

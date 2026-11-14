@@ -16,6 +16,7 @@
     "Nickname": "Clear Die Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"clear\",\"side\":\"red\"}",
     "ColorDiffuse": {
       "r": 0,
       "g": 0.489776552,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Clear_Die_Red.b42920.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

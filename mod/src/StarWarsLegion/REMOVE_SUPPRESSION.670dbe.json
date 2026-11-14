@@ -16,6 +16,7 @@
     "Nickname": "REMOVE SUPPRESSION",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"inert\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 1,
@@ -44,7 +45,7 @@
       "TypeIndex": 0,
       "CastShadows": false
     },
-    "LuaScript": "#include ./REMOVE_SUPPRESSION.670dbe.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

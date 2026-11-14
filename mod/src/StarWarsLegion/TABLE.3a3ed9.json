@@ -16,6 +16,7 @@
     "Nickname": "TABLE",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"inert\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 1,
@@ -41,10 +42,12 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./TABLE.3a3ed9.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": "",
-    "Tags": ["Table"]
+    "Tags": [
+      "Table"
+    ]
   },
   "StatesPaths": {}
 }

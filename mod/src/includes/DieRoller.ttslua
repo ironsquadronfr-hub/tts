@@ -331,26 +331,25 @@ function updateDieCountDisplay(params)
 
 end
 
-function updateButtonDisplay(buttonGUID,diceColor)
-  buttonObj = getObjectFromGUID(buttonGUID)
-
-  local data = buttonObj.getTable("data")
-  if dieColorCount[diceColor] ~= 0 then
-      data.label = dieColorCount[diceColor]
-  else
-      data.label = ""
+-- The spawn buttons show how many dice of their colour are out. They have no
+-- script of their own any more (the brain gives them their button, see
+-- !/TableTools), so their label is edited in place rather than rebuilt from
+-- a copy of the button kept in their script.
+local function setButtonLabel(buttonGUID, label)
+  local buttonObj = getObjectFromGUID(buttonGUID)
+  if buttonObj ~= nil and #(buttonObj.getButtons() or {}) > 0 then
+    buttonObj.editButton({index = 0, label = label})
   end
+end
 
-  buttonObj.clearButtons()
-  buttonObj.createButton(data)
+function updateButtonDisplay(buttonGUID,diceColor)
+  if dieColorCount[diceColor] ~= 0 then
+    setButtonLabel(buttonGUID, tostring(dieColorCount[diceColor]))
+  else
+    setButtonLabel(buttonGUID, "")
+  end
 end
 
 function clearButtonDisplay(buttonGUID,diceColor)
-  buttonObj = getObjectFromGUID(buttonGUID)
-
-  local data = buttonObj.getTable("data")
-  data.label = ""
-
-  buttonObj.clearButtons()
-  buttonObj.createButton(data)
+  setButtonLabel(buttonGUID, "")
 end

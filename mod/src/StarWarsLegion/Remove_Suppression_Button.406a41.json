@@ -16,6 +16,7 @@
     "Nickname": "Remove Suppression Button",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"removeSuppression\"}",
     "ColorDiffuse": {
       "r": 0.9076521,
       "g": 0.87377274,

@@ -16,6 +16,7 @@
     "Nickname": "Return Tokens Button",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"returnTokens\"}",
     "ColorDiffuse": {
       "r": 0.7,
       "g": 0,

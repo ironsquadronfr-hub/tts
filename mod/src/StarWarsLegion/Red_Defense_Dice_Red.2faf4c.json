@@ -16,6 +16,7 @@
     "Nickname": "Red Defense Dice Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"spawnDice\",\"side\":\"red\",\"dice\":\"RedDefense\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 0,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Red_Defense_Dice_Red.2faf4c.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

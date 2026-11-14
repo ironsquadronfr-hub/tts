@@ -16,6 +16,7 @@
     "Nickname": "Red Attack Die Blue",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"spawnDice\",\"side\":\"blue\",\"dice\":\"RedAttack\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 0,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Red_Attack_Die_Blue.9c6dfc.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

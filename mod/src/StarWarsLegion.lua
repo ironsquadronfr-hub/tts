@@ -19,6 +19,7 @@ require('!/TokenCounters')
 require('!/MoveTemplates')
 require('!/Followers')
 require('!/MiniUpright')
+require('!/TableTools')
 require('!/ShellRelay')
 
 -- Must be spelled onSave: unlike onload, TTS has no all-lowercase alias for it,
@@ -38,8 +39,9 @@ end
 -- Anything brought onto the table (out of a bag, a deck, an additive load)
 -- is defused as soon as TTS reports it. A loaded map brings its own
 -- battlefield: the POI snap points follow it. A ruler spawned by a token's
--- script is taken over here (see !/Followers), and a pasted mini without a
--- script is registered for its collisions (see !/MiniUpright).
+-- script is taken over here (see !/Followers), a pasted mini without a
+-- script is registered for its collisions (see !/MiniUpright), and a table
+-- tool gets its button (see !/TableTools).
 function onObjectSpawn(obj)
   refreshPoiSnapForMap(obj)
   disinfectSpawnedObject(obj)
@@ -47,6 +49,7 @@ function onObjectSpawn(obj)
   losOnObjectPlaced(obj)
   followersAdd(obj)
   miniUprightWatch(obj)
+  tableToolEquip(obj)
 end
 
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
@@ -612,6 +615,9 @@ function onload(saveData)
 
     -- standby tokens
     standbyTokens()
+
+    -- the dice, rules and token buttons of the table (see !/TableTools)
+    tableToolsInit()
 
     -- deploy the deferred side-table furniture (paced, under the veil)
     initDeferredSetup()

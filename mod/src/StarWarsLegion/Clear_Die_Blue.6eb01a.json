@@ -16,6 +16,7 @@
     "Nickname": "Clear Die Blue",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"clear\",\"side\":\"blue\"}",
     "ColorDiffuse": {
       "r": 0,
       "g": 0.489776552,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Clear_Die_Blue.6eb01a.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

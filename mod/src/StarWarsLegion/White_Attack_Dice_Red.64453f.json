@@ -16,6 +16,7 @@
     "Nickname": "White Attack Dice Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"spawnDice\",\"side\":\"red\",\"dice\":\"WhiteAttack\"}",
     "ColorDiffuse": {
       "r": 0.9528255,
       "g": 0.9528255,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./White_Attack_Dice_Red.64453f.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

@@ -16,6 +16,7 @@
     "Nickname": "Roll Die Blue",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"roll\",\"side\":\"blue\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 0.958389342,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Roll_Die_Blue.7a27f9.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

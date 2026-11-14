@@ -137,11 +137,15 @@ end
 
 -- What the crate could not do for objects that find each other by scanning
 -- the table rather than by GUID: once everything is out, the two load-time
--- scans in the mod are replayed, and any deployed object may ask to be
--- called back by defining onSetupComplete.
+-- scans in the mod are replayed, any deployed object may ask to be called
+-- back by defining onSetupComplete, and the table tools that came out get
+-- their buttons (see !/TableTools).
 local function afterDeployment(deployed)
   for _, guid in ipairs(deployed) do
     local obj = getObjectFromGUID(guid)
+    if obj ~= nil then
+      pcall(tableToolEquip, obj)
+    end
     if obj ~= nil and obj.getVar('onSetupComplete') ~= nil then
       pcall(function() obj.call('onSetupComplete') end)
     end

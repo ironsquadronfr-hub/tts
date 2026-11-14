@@ -16,6 +16,7 @@
     "Nickname": "Roll Die Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"roll\",\"side\":\"red\"}",
     "ColorDiffuse": {
       "r": 1,
       "g": 0.958389342,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Roll_Die_Red.efd35f.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },

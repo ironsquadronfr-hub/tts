@@ -16,6 +16,7 @@
     "Nickname": "Black Attack Dice Red",
     "Description": "",
     "GMNotes": "",
+    "Memo": "{\"tool\":\"spawnDice\",\"side\":\"red\",\"dice\":\"BlackAttack\"}",
     "ColorDiffuse": {
       "r": 0.115994535,
       "g": 0.133585751,
@@ -41,7 +42,7 @@
       "TypeIndex": 0,
       "LoopingEffectIndex": 0
     },
-    "LuaScript": "#include ./Black_Attack_Dice_Red.ada290.lua",
+    "LuaScript": "",
     "LuaScriptState": "",
     "XmlUI": ""
   },
