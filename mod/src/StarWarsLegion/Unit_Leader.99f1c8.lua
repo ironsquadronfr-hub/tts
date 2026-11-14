@@ -121,8 +121,6 @@ function addSilhouetteButton()
 end
 
 function addLockButton()
-    -- Same guard as addSilhouetteButton: never abort the button rebuild.
-    local btnTint = battlefieldButtonTint()
     local templateInfo = Brain().getTable("templateInfo")
     local buttonOffset = calculateButtonZOffset(templateInfo.baseRadius[unitData.baseSize])
     lockBtnData = {
@@ -378,7 +376,7 @@ function showSilhouette()
     if obj then
       local pos = obj.getPosition()
       local rot = obj.getRotation()
-      local newSilhouette = spawnSilhouette(obj, pos, rot)
+      spawnSilhouette(obj, pos, rot)
     end
   end
   silhouetteState = true
@@ -387,7 +385,7 @@ end
 function spawnSilhouette(obj, pos, rot)
   local globals = Brain().getTable("templateInfo")
   local scale = globals.baseRadius[unitData.baseSize]
-  local height = 1.0
+  local height
   local offset = 0.0
   local silhouetteData = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/sihl_metal_v2.unity3d"
   if silhType == "custom" then

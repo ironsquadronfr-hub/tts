@@ -99,15 +99,8 @@ end
 function enterData(obj, dataString, newValue)
     dataScript = obj.getLuaScript()
     dataString = dataString .. " = "
-    local stringStart = 0
-    local valueStart = 0
-    stringStart, valueStart = string.find(dataScript, dataString)
-    valueStart = valueStart
-
-    local valueEnd = 0
-    local valueNil = 0
-    valueEnd, valueNil = string.find(dataScript, "\n", valueStart)
-    valueEnd = valueEnd
+    local _, valueStart = string.find(dataScript, dataString)
+    local valueEnd = string.find(dataScript, "\n", valueStart)
 
     local newDataScript = string.sub(dataScript, 1, valueStart).. newValue .. string.sub(dataScript, valueEnd)
 
@@ -431,8 +424,7 @@ function flipMap()
     local allObjs = battlefieldZone.getObjects()
 
     --Check if the table we made is empty due to the zone being empty
-    if #allObjs == 0 then
-    else
+    if #allObjs > 0 then
         for _, obj in ipairs(allObjs) do
             -- flip obj
             if obj ~= battlefieldTable and not isMapAmbience(obj) then
@@ -598,8 +590,7 @@ function clearMap()
     local objectsInZone = battlefieldZone.getObjects()
 
     --Check if the table we made is empty due to the zone being empty
-    if #objectsInZone == 0 then
-    else
+    if #objectsInZone > 0 then
         --If it isn't empty, we use a for loop to look at each entry in the list
         for _, object in ipairs(objectsInZone) do
             -- destroy object
@@ -701,7 +692,6 @@ function loadMap()
     if loadedCartridge ~= nil then
         clearZones()
         spawnMapFromCartridge(loadedCartridge)
-    else
     end
 end
 
@@ -731,8 +721,7 @@ function placeTerrain(paObj, savedTransform)
     paObj.setPosition(spawnPos)
     paObj.setRotation(spawnRot)
 
-    if paObj.getVar("scripted") == true then
-    else
+    if paObj.getVar("scripted") ~= true then
         paObj.setLuaScript("")
     end
 

@@ -148,12 +148,11 @@ function addSilhouetteButton()
   function showSilhouette()
     local pos = self.getPosition()
     local rot = self.getRotation()
-    local newSilhouette = spawnSilhouette(self, pos, rot)
+    spawnSilhouette(self, pos, rot)
     silhouetteState = true
   end
 
   function spawnSilhouette(obj, pos, rot)
-    local globals = Brain().getTable("templateInfo")
     local scale = 2.0
     local height = 3.0
     local offset = 0.0

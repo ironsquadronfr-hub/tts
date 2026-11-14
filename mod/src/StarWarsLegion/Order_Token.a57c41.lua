@@ -58,7 +58,6 @@ function getEligibleUnit()
     eligibleUnitsNumber = 0
     selectedUnitObj = nil
 
-    local allUnits = nil
     local allUnits = battlefieldZone.getObjects()
 
     if allUnits ~= nil then
@@ -160,7 +159,7 @@ function createStandbyButtons()
         self.createButton({
             click_function = "activate",
             function_owner = self,
-            label = "ACT", position = {0, 0.05, 0.4}, width = 350, height = 250, font_size = 120, color = {0.03, 0.6, 0.03, 1}, font_color = {1, 1, 1, 1},
+            label = "ACT", position = {0, 0.05, 0.4}, width = 350, height = 250, font_size = 120, font_color = {1, 1, 1, 1},
             tooltip = "Activate nearest " .. unitData.commandType .. " unit",
             color = {0.03, 0.6, 0.03}
         })
@@ -701,7 +700,7 @@ function moveUnit(isDeploy)
     templateA.setTable("baseRot", baseRot)
     templateA.setVar("templateB", templateB)
 
-    local fixedMove = false
+    local fixedMove
     if isDeploy then
         fixedMove = true
     else
@@ -752,7 +751,6 @@ function moveUnit(isDeploy)
     ------------------------------------------- SPAWN BUTTON -------------------------------------------
 
 
-    local data = {click_function = "INSERT_FUNCTION", function_owner = self, label = "1", position = {3, 0.2, -0.4}, width = 300, height = 350, font_size = 200, tooltip = "1"}
 
     self.createButton({
         click_function = "changeSpeed1",
@@ -818,7 +816,7 @@ function moveUnit(isDeploy)
               })
 
         else
-              self.createButton({
+              self.createButton({ -- luacheck: ignore 511 (kept for the TODO on "if true" above)
                   click_function = "moveBackwards",
                   function_owner = self,
                   label = "B",
@@ -1409,7 +1407,6 @@ function isMiniOnTable(mini, allUnits)
   end
 
 function createRangeButton(leaderObj)
-    local selectedUnitObjUnitName = selectedUnitObj.getVar("unitName")
     local allUnitsOnTable = battlefieldZone.getObjects()
     local enemyBaseSize = leaderObj.getVar("baseSize")
     local enemyMinis = leaderObj.getTable("miniGUIDs")
@@ -1464,7 +1461,6 @@ end
 
 function unhighlightEnemies()
   for _, leader in ipairs(getEnemyUnits()) do
-    local enemyID = leader.getVar("unitID")
     local enemyMinis = leader.getTable("miniGUIDs")
     unhighlightUnit(enemyMinis)
     leader.call("resetUnitButtons")
@@ -1517,10 +1513,8 @@ end
 
 
 function allUnitLeaders()
-   local unitLeaders = nil
-   unitLeaders = {}
+   local unitLeaders = {}
    local leaderCount = 1
-   local allUnits = nil
    local allUnits = battlefieldZone.getObjects()
 
    if allUnits ~= nil then

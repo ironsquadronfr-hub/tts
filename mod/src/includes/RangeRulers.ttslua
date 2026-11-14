@@ -98,7 +98,7 @@ function spawnRangeRuler(rangeSourceObject, projectorBundleOverride)
     return
   end
 
-  local rulerBundleToSpawn = ""
+  local rulerBundleToSpawn
 
   if projectorBundleOverride ~= nil then
     rulerBundleToSpawn = projectorBundleOverride

@@ -128,18 +128,6 @@ function onload(saveData)
         "https://steamusercontent-a.akamaihd.net/ugc/874120727305503775/8D94FFCC0574D5F4F41D85E3D08DDE6214DA33C3/",
         "https://steamusercontent-a.akamaihd.net/ugc/874120727305374487/9F2189A39695F8B9D09A3A84EB718CA9486D6AB6/"
     }
-    for _,objSet in pairs(templateInfo.templateAGUID) do
-        for i, objGUID in ipairs(objSet) do
-            local obj = getObjectFromGUID(objGUID)
-        end
-    end
-
-    for _,objSet in pairs(templateInfo.templateBGUID) do
-        for i, objGUID in ipairs(objSet) do
-            local obj = getObjectFromGUID(objGUID)
-        end
-    end
-
     -- math available here: https://docs.google.com/spreadsheets/d/1LD6spROJFw29c5L-lN1RJwqk7XplQShOj1Z8QQkBGf4/edit?usp=sharing
     -- formula is: ((tool - notch + base) * 0.5) /25.4
     templateInfo.aStart = {}

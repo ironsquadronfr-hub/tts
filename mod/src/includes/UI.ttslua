@@ -125,7 +125,6 @@ function experimentalSideLoad()
       print("Injected " .. tostring(loaded) .. " battlefield card(s).")
     end
     if json.objects then
-      local loaded = 0
       for name, data in pairs(json.objects) do
         Brain().call("sideLoadObject", {
           name = name,

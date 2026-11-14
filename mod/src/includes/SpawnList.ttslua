@@ -47,7 +47,6 @@ local function initListSpawner(params)
   local globals = params.globals
   local color = params.color
   local mount = params.mount
-  local orientation = params.orientation
   local unitTokens = params.unitTokens
   local scripts = params.scripts or {}
 
@@ -104,14 +103,12 @@ local function initListSpawner(params)
     local templateHalfWidth = globals.spawnOffsets.templateHalfWidth
     local templateHalfHeight = globals.spawnOffsets.templateHalfHeight
     local cardHeight = globals.spawnOffsets.cardHeight
-    local cardWidth = globals.spawnOffsets.unitCardWidth
     local padding = globals.spawnOffsets.padding
     local xOffset = 1
     local zOffset = 1
 
     if index > 10 then
       -- TODO: Support unit ID tokens > 10.
-      index = index - 10
       adjustedPos.z = adjustedPos.z - (templateHalfHeight * 0.3)
     end
 
@@ -196,7 +193,7 @@ local function initListSpawner(params)
     }
     local paddedBase = (base + padding)
     local basesPerRow = math.max(1, math.abs(math.floor(templateHalfWidth * 2.0 / paddedBase)))
-    local whole, part = math.modf(index/(basesPerRow + 1));
+    local whole = math.modf(index/(basesPerRow + 1));
     local zIndex = whole
     local totalZOffset = initialZOffset(upgradeCount)
     if index > basesPerRow then
@@ -274,7 +271,7 @@ local function initListSpawner(params)
         if pMiniTable.type then
           if string.find(pMiniTable.type, "Trooper") then
               silhType = "notched"
-            if pMiniTable.baseSize == small then
+            if pMiniTable.baseSize == "small" then
               silhType = "small"
             end
           else

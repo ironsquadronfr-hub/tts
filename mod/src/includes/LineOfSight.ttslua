@@ -1548,7 +1548,7 @@ function losVerdictCoroutine()
 
   -- Step 1: the leader's witness lines, and which defenders are obscured.
   local witnesses = {}
-  local obscured, obscuredBy = {}, {}
+  local obscured = {}
   local obscuredCount, byNames, byOrder = 0, {}, {}
   for d, def in ipairs(defenders) do
     if not losAlive(request.leaderGuid) then return finish() end
@@ -1573,7 +1573,6 @@ function losVerdictCoroutine()
         obscured[def.guid] = true
         obscuredCount = obscuredCount + 1
         local by = result.by
-        obscuredBy[def.guid] = by
         local label = by.name
         if by.note then label = label .. " (" .. by.note .. ")" end
         if not byNames[label] then

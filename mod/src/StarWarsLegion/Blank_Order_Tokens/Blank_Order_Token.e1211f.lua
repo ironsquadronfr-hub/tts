@@ -169,7 +169,7 @@ function promote_unit(rank, color)
         return
     end
 
-    local unit_command_type = ""
+    local unit_command_type
     local new_unit_command_type = ""
     local unit_token_name = ""
     local order_token_to_delete = nil

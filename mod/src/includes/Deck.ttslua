@@ -155,7 +155,7 @@ function Deck:spawnUpgradeCard(name)
     local unknown = self._unknown.upgrade
     local name = upgrade.name
     local front = upgrade.image
-    local back = ""
+    local back
     if upgrade.flip == nil then
       back = front
     else

@@ -27,7 +27,6 @@ function sideLoadCommand(params)
 end
 
 function sideLoadBattle(params)
-  local name = params.name:upper()
   local data = params.data
   local type = params.type:lower()
   local kind = params.kind:lower()

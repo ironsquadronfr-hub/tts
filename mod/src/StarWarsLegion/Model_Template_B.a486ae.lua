@@ -66,9 +66,6 @@ function positionTemplate()
 
     local q = math.deg(math.atan2(a, b))
 
-
-    q = math.deg(math.atan2(a, b))
-
     self.setPosition({x = objPos.x, y = mouseY, z = objPos.z })
     templateA.setTable("templatePos", self.getPosition())
     templateA.setPosition({x = templateA.getPosition().x, y = self.getPosition().y, z = templateA.getPosition().z })

@@ -101,15 +101,8 @@ end
 function enterData(obj, dataString, newValue)
     dataScript = obj.getLuaScript()
     dataString = dataString .. " = "
-    local stringStart = 0
-    local valueStart = 0
-    stringStart, valueStart = string.find(dataScript, dataString)
-    valueStart = valueStart
-
-    local valueEnd = 0
-    local valueNil = 0
-    valueEnd, valueNil = string.find(dataScript, "\n", valueStart)
-    valueEnd = valueEnd
+    local _, valueStart = string.find(dataScript, dataString)
+    local valueEnd = string.find(dataScript, "\n", valueStart)
 
     local newDataScript = string.sub(dataScript, 1, valueStart).. newValue .. string.sub(dataScript, valueEnd)
 
