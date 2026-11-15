@@ -8,7 +8,7 @@
 
 -- Fake TTS ---------------------------------------------------------------
 
-local objects, calls, broadcasts, dialogs
+local objects, calls, broadcasts, dialogs, selections, pending
 
 local loadText = rawget(_G, "loadstring") or load
 JSON = {
@@ -34,14 +34,28 @@ end
 
 self = {name = "brain"}
 
-Player = setmetatable({}, {__index = function(_, color)
-  return {showInputDialog = function(_, _, fn)
-    dialogs[#dialogs + 1] = {color = color, answer = fn}
-  end}
+Player = setmetatable({Action = {Select = 1, PickUp = 2, FlipOver = 3}}, {__index = function(_, color)
+  return {
+    color = color,
+    showInputDialog = function(_, _, fn)
+      dialogs[#dialogs + 1] = {color = color, answer = fn}
+    end,
+    getSelectedObjects = function() return selections[color] or {} end,
+  }
 end})
 
--- Wait.condition runs at once here: the bag is always loaded.
-Wait = {condition = function(fn) fn() end}
+-- Wait.condition runs at once here: the bag is always loaded. Wait.time and
+-- Wait.frames wait for tick(), one step of the game each.
+local function later(fn) pending[#pending + 1] = fn end
+Wait = {condition = function(fn) fn() end, time = later, frames = later}
+local function tick()
+  local now = pending
+  pending = {}
+  for _, fn in ipairs(now) do fn() end
+end
+
+local clock = 0
+os.clock = function() return clock end -- luacheck: ignore 122
 
 local function fake(guid, memo, extra)
   local o = {memo = memo, buttons = {}, interactable = true, gm = "", pressed = 0}
@@ -65,7 +79,7 @@ end
 
 local failures = 0
 local function test(name, fn)
-  objects, calls, broadcasts, dialogs = {}, {}, {}, {}
+  objects, calls, broadcasts, dialogs, selections, pending = {}, {}, {}, {}, {}, {}
   dieRollerInfo = {redDieRollerGUID = "rr", blueDieRollerGUID = "br"}
   fake("rr")
   fake("br")
@@ -105,6 +119,61 @@ test("roll passes the player's colour, clear passes nothing", function()
   _G[c.buttons[1].click_function](c, "Blue")
   assert(calls[1].guid == "rr" and calls[1].fn == "rollDie" and calls[1].arg[1] == "Blue", "roll")
   assert(calls[2].fn == "clearDie" and calls[2].arg == nil, "clear")
+end)
+
+-- A die, as getSelectedObjects and onPlayerAction hand it over.
+local function die(name)
+  return {type = "Dice", name = name, isDestroyed = function() return false end}
+end
+
+local function rollButton()
+  local r = fake("r", '{"tool":"roll","side":"red"}')
+  tableToolEquip(r)
+  return function() _G[r.buttons[1].click_function](r, "Red") end
+end
+
+test("ROLL with dice selected lets the roller read the selection", function()
+  local roll = rollButton()
+  selections.Red = {die("a"), die("b")}
+  onPlayerAction(Player.Red, Player.Action.Select, selections.Red)
+  tick()
+  roll()
+  assert(calls[1].fn == "rollDie" and calls[1].arg[1] == "Red" and calls[1].arg[2] == nil, "list passed")
+end)
+
+test("ROLL through a hand zone rerolls the dice selected a moment before, once", function()
+  local roll = rollButton()
+  local a, b = die("a"), die("b")
+  selections.Red = {a, b}
+  onPlayerAction(Player.Red, Player.Action.PickUp, {a})
+  tick()
+  selections.Red = {} -- pressing on the hand zone
+  roll()
+  local dice = calls[1].arg[2]
+  assert(dice and #dice == 2 and dice[1] == a and dice[2] == b, "remembered dice")
+  tick() -- the pending read finds the selection gone and stops
+  roll()
+  assert(calls[2].arg[2] == nil, "the next ROLL rolls every die")
+end)
+
+test("ROLL well after a deliberate deselect rolls every die", function()
+  local roll = rollButton()
+  selections.Red = {die("a")}
+  onPlayerAction(Player.Red, Player.Action.Select, selections.Red)
+  tick()
+  selections.Red = {}
+  clock = 10
+  tick() -- the read sees the selection empty at 10 s
+  clock = 11
+  roll()
+  assert(calls[1].arg[2] == nil, "old selection reused")
+  assert(#pending == 0, "still reading the selection")
+end)
+
+test("only selecting or picking up dice starts reading the selection", function()
+  onPlayerAction(Player.Red, Player.Action.Select, {{type = "Card"}})
+  onPlayerAction(Player.Red, Player.Action.FlipOver, {die("a")})
+  assert(#pending == 0, "read started")
 end)
 
 test("equipping twice leaves one button", function()
