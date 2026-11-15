@@ -52,7 +52,9 @@ function rollDie(callbackParams)
   local player = Player[color]
   local toRoll = dieObjs
   if player  then
-    local selected = player.getSelectedObjects()
+    -- callbackParams[2]: the dice the player had selected just before the
+    -- click cleared the selection (see tableToolRoll in TableTools).
+    local selected = callbackParams[2] or player.getSelectedObjects()
     if selected and #selected > 0 then
       toRoll = {}
       for _, s in pairs(selected) do
