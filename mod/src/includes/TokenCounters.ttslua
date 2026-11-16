@@ -26,20 +26,23 @@ local registry = {}
 local passesLeft, scanning = 0, false
 
 -- A digit key pressed over a token makes TTS hold on to that token for about
--- a second, waiting for a second digit. If the token is replaced meanwhile
--- (new face, merge, destruct), every scripted hotkey stops working until TTS
--- is restarted. A Deliver hotkey bound to a digit key does just that, so a
--- token that takes one is left alone for GUARD_TIME, well within the
--- SCAN_PASSES x SCAN_EVERY of inspection that follows.
+-- a second, waiting for a second digit, and each further digit extends the
+-- wait, even over another token. If a held token is replaced meanwhile (new
+-- face, merge, destruct), every scripted hotkey stops working until TTS is
+-- restarted. A Deliver hotkey bound to a digit key does just that, so the
+-- tokens that take one are left alone until GUARD_TIME after the last of a
+-- burst, well within the SCAN_PASSES x SCAN_EVERY of inspection that follows.
 local GUARD_TIME = 1.5
-local guardedUntil = {}
+local burst, burstUntil = {}, 0
 
 local function guard(o)
-  guardedUntil[o.getGUID()] = Time.time + GUARD_TIME
+  if Time.time >= burstUntil then burst = {} end
+  burst[o.getGUID()] = true
+  burstUntil = Time.time + GUARD_TIME
 end
 
 local function isGuarded(o)
-  return (guardedUntil[o.getGUID()] or 0) > Time.time
+  return Time.time < burstUntil and burst[o.getGUID()] == true
 end
 
 local function isCounter(o, kind)
