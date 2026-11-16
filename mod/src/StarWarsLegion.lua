@@ -67,6 +67,10 @@ function onObjectPickUp(color, obj)
   counterTokensOnPickUp(color, obj)
 end
 
+function onObjectNumberTyped(obj)
+  return counterTokensOnNumberTyped(obj)
+end
+
 -- Movement templates unlock under an empty-handed pointer (see !/MoveTemplates).
 function onObjectHover(color, obj)
   moveTemplatesOnHover(color, obj)
