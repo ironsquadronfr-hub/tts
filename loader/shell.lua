@@ -9,10 +9,10 @@
 --   manifest.json the version, the file names and the UI's image assets
 --
 -- Every event the mod listens to reaches an object script too (measured in
--- TTS), so the brain hears them itself. Except collisions (measured
--- 14/11/2026): onObjectCollisionEnter, Stay and Exit of an object registered
--- with registerCollisions() only reach Global. The shell hands them over, see
--- relayCollision below.
+-- TTS), so the brain hears them itself. Except two, which only reach Global:
+-- onObjectCollisionEnter, Stay and Exit of an object registered with
+-- registerCollisions() (measured 14/11/2026), and onObjectNumberTyped
+-- (measured 16/11/2026). The shell hands them over, see relayEvent below.
 --
 -- A fresh table (a Workshop load, or a save packed with !loader pack) first
 -- asks the host which version to run, Stable or Beta, then installs that
@@ -52,19 +52,50 @@ package = nil
 local PACKAGE_MARK = '\n<<<loader package>>>\n'
 local PARTS = {'channel', 'manifest', 'brain', 'ui', 'objects'}
 
--- Collisions, handed to the brain's relayCollision({event, object, info})
--- when the brain asks for them (relayCollisions = true): only objects
--- registered with registerCollisions() raise them, and Stay comes every
--- physics frame, so nothing is relayed to a brain that does not listen.
-local function relayCollision(event, object, info)
+-- Events that may only reach Global, handed over to the brain's
+-- relayEvent({name, args}) when the brain lists their name in relayedEvents
+-- (a string such as ',onObjectNumberTyped,'): an event the brain already
+-- hears itself is never listed, so it never arrives twice. The list covers
+-- the two measured cases and the events never measured, so that the next
+-- gap found only needs a new brain, not a new shell. What the brain returns
+-- goes back to TTS (true on onObjectNumberTyped cancels the digit).
+-- onPlayerChangeColor is relayed by the shell's own handler further down.
+-- onUpdate and the container filters are left out: per frame, or able to
+-- change what TTS does.
+local RELAYED = {
+  'onObjectCollisionEnter', 'onObjectCollisionStay', 'onObjectCollisionExit',
+  'onObjectNumberTyped', 'onObjectFlick', 'onObjectPeek',
+  'onObjectSearchStart', 'onObjectSearchEnd', 'onObjectStateChange',
+  'onObjectPageChange', 'onObjectTriggerEffect', 'onObjectLoopingEffect',
+  'onPlayerPing', 'onPlayerChangeTeam',
+  'onScriptingButtonDown', 'onScriptingButtonUp', 'onBlindfold',
+}
+
+-- Releases built before relayedEvents ask for collisions only, with
+-- relayCollisions = true and relayCollision({event, object, info}).
+local OLD_COLLISIONS = {
+  onObjectCollisionEnter = 'Enter',
+  onObjectCollisionStay = 'Stay',
+  onObjectCollisionExit = 'Exit',
+}
+
+local function relayEvent(name, ...)
   local brain = getObjectFromGUID(BRAIN_GUID)
-  if brain ~= nil and brain.getVar('relayCollisions') == true then
-    brain.call('relayCollision', {event = event, object = object, info = info})
+  if brain == nil then return end
+  local wanted = brain.getVar('relayedEvents')
+  if type(wanted) == 'string' then
+    if wanted:find(',' .. name .. ',', 1, true) then
+      return brain.call('relayEvent', {name = name, args = {n = select('#', ...), ...}})
+    end
+  elseif OLD_COLLISIONS[name] and brain.getVar('relayCollisions') == true then
+    local object, info = ...
+    brain.call('relayCollision', {event = OLD_COLLISIONS[name], object = object, info = info})
   end
 end
-function onObjectCollisionEnter(object, info) relayCollision('Enter', object, info) end
-function onObjectCollisionStay(object, info) relayCollision('Stay', object, info) end
-function onObjectCollisionExit(object, info) relayCollision('Exit', object, info) end
+
+for _, name in ipairs(RELAYED) do
+  _G[name] = function(...) return relayEvent(name, ...) end
+end
 
 local function say(text)
   print('[loader] ' .. text)
@@ -242,7 +273,10 @@ function updateWaitingLine()
 end
 
 function onPlayerConnect() Wait.frames(updateWaitingLine, 1) end
-function onPlayerChangeColor() Wait.frames(updateWaitingLine, 1) end
+function onPlayerChangeColor(color)
+  Wait.frames(updateWaitingLine, 1)
+  relayEvent('onPlayerChangeColor', color)
+end
 
 local function tween(id)
   local from = level[id]

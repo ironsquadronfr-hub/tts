@@ -1,13 +1,29 @@
 -- What the loader shell relays to the brain.
 --
 -- Under the loader the logic runs in the brain object, which hears every
--- event the mod uses except collisions: those of an object registered with
--- registerCollisions() only reach Global (measured 14/11/2026), and Global is
--- the shell. The shell calls relayCollision() below with what TTS gave it;
--- this turns it back into the usual event, so a module defines
--- onObjectCollisionEnter/Stay/Exit as if it ran in Global. Without the
--- loader the logic runs in Global and TTS calls those directly.
+-- event the mod uses except two that only reach Global, and Global is the
+-- shell: collisions of an object registered with registerCollisions()
+-- (measured 14/11/2026) and digits typed over an object (measured
+-- 16/11/2026). The shell relays the events listed in relayedEvents to
+-- relayEvent() below, which calls the usual handler, so a module defines
+-- onObjectCollisionEnter or onObjectNumberTyped as if it ran in Global.
+-- Without the loader the logic runs in Global and TTS calls those directly.
+--
+-- Only list an event measured as not reaching the brain: one it hears
+-- itself would arrive twice.
 
+relayedEvents = ',onObjectCollisionEnter,onObjectCollisionStay,onObjectCollisionExit,onObjectNumberTyped,'
+
+-- Returns what the handler returns: true on onObjectNumberTyped cancels
+-- TTS's own handling of the digit.
+function relayEvent(params)
+  local handler = _G[params.name]
+  if handler ~= nil then
+    return handler(table.unpack(params.args, 1, params.args.n))
+  end
+end
+
+-- Shells published before relayedEvents relay collisions this way.
 relayCollisions = true
 
 function relayCollision(params)

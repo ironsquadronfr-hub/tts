@@ -67,6 +67,7 @@ function onObjectPickUp(color, obj)
   counterTokensOnPickUp(color, obj)
 end
 
+-- Under the loader, digits typed reach the brain through the shell's relay.
 function onObjectNumberTyped(obj)
   return counterTokensOnNumberTyped(obj)
 end
@@ -76,13 +77,13 @@ function onObjectHover(color, obj)
   moveTemplatesOnHover(color, obj)
 end
 
--- The minis without a script stand back up from here (see !/MiniUpright).
--- Under the loader, collisions reach the brain through the shell's relay.
 -- A command stack resizes when a token is taken out (see !/TableTools).
 function onObjectLeaveContainer(container, obj)
   tableToolOnLeaveContainer(container)
 end
 
+-- The minis without a script stand back up from here (see !/MiniUpright).
+-- Under the loader, collisions reach the brain through the shell's relay.
 function onObjectRotate(obj, spin, flip, color, oldSpin, oldFlip)
   miniUprightOnRotate(obj, flip, oldFlip)
 end
