@@ -84,38 +84,31 @@ end
 -- copy. The date comes from a HEAD request, which downloads nothing (measured
 -- in game: Drive answers HEAD and getResponseHeader reads Last-Modified).
 
--- The library url a lectern url stands for, whether it carries a date or not.
-function rulesBaseUrl(url)
-  return (string.gsub(url or '', '&v=[^&]*', ''))
-end
-
+-- The library entry a lectern url stands for, whether it carries a date or not.
 function rulesChoiceForUrl(url)
-  return RULES_LIBRARY_BY_URL[rulesBaseUrl(url)]
+  return RULES_LIBRARY_BY_URL[(string.gsub(url or '', '&v=[^&]*', ''))]
 end
 
--- Calls back with the dated url, or the bare one if Drive does not answer in
--- time, so a document always loads, at worst from the cache as before.
+-- Calls back once with the dated url, or with the bare one if Drive fails or
+-- does not answer in time: a document always loads, at worst from the cache.
 local DATE_TIMEOUT = 8
 
 function rulesDatedUrl(url, callback)
-  local done = false
+  local timer
   local function finish(result)
-    if done then return end
-    done = true
+    if not timer then return end
+    Wait.stop(timer)
+    timer = nil
     callback(result)
   end
-  Wait.time(function() finish(url) end, DATE_TIMEOUT)
+  timer = Wait.time(function() finish(url) end, DATE_TIMEOUT)
   local sent = pcall(WebRequest.custom, url, 'HEAD', true, nil, {}, function(req)
-    local stamp = nil
+    local stamp = ''
     if not req.is_error and req.response_code == 200 then
       local ok, modified = pcall(req.getResponseHeader, 'Last-Modified')
       if ok and modified then stamp = string.gsub(modified, '[^%w]', '') end
     end
-    if stamp and stamp ~= '' then
-      finish(url .. '&v=' .. stamp)
-    else
-      finish(url)
-    end
+    finish(stamp ~= '' and (url .. '&v=' .. stamp) or url)
   end)
   if not sent then finish(url) end
 end

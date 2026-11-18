@@ -39,9 +39,9 @@ local plates, buttons, backButton, lecterns
 local pending = nil
 local language = 'en'
 
--- Lecterns waiting on Drive for a date, so a second request does not swap
--- the same lectern twice over.
-local busy = {}
+-- The latest request per lectern: Drive answers out of order, and only the
+-- last thing asked of a lectern may land on it.
+local requests = {}
 
 local function documentTitle(key)
   for _, doc in ipairs(RULES_LIBRARY) do
@@ -230,6 +230,27 @@ local function swap(lectern, url, label)
   return true
 end
 
+-- Loads a document on a lectern under its dated url (see RulesLibrary), so
+-- a new edition on Drive is downloaded rather than served from the cache.
+local function showOnLectern(index, choice, announce)
+  local ticket = (requests[index] or 0) + 1
+  requests[index] = ticket
+  rulesDatedUrl(choice.url, function(url)
+    if requests[index] ~= ticket then return end
+    findLecterns()
+    local lectern = lecterns[index]
+    if not lectern then return end
+    local swapped = swap(lectern, url, choice.label)
+    if not announce then return end
+    if swapped then
+      broadcastToAll(choice.label .. ' on lectern ' .. index, { 0.8, 0.9, 1 })
+    else
+      broadcastToAll('Lectern ' .. index .. ' already shows ' .. choice.label,
+        { 0.8, 0.8, 0.8 })
+    end
+  end)
+end
+
 function rulesPanelSend(index)
   findLecterns()
   local lectern = lecterns[index]
@@ -249,36 +270,15 @@ function rulesPanelSend(index)
   if not choice then return end
 
   rulesPanelDocuments()
-  if busy[index] then return end
-  busy[index] = true
-  rulesDatedUrl(choice.url, function(url)
-    busy[index] = nil
-    findLecterns()
-    local current = lecterns[index]
-    if not current then return end
-    if swap(current, url, choice.label) then
-      broadcastToAll(choice.label .. ' on lectern ' .. index, { 0.8, 0.9, 1 })
-    else
-      broadcastToAll('Lectern ' .. index .. ' already shows ' .. choice.label,
-        { 0.8, 0.8, 0.8 })
-    end
-  end)
+  showOnLectern(index, choice, true)
 end
 
 -- On opening, each lectern checks Drive for a newer edition of what it shows
 -- and swaps itself to it, silently. Nothing changes when the file has not.
 local function refreshLecterns()
   for index = 1, LECTERN_ROWS do
-    local lectern = lecterns[index]
-    local choice = rulesChoiceForUrl(lecternUrl(lectern))
-    if choice and not busy[index] then
-      busy[index] = true
-      rulesDatedUrl(choice.url, function(url)
-        busy[index] = nil
-        findLecterns()
-        if lecterns[index] then swap(lecterns[index], url, choice.label) end
-      end)
-    end
+    local choice = rulesChoiceForUrl(lecternUrl(lecterns[index]))
+    if choice then showOnLectern(index, choice, false) end
   end
 end
 
