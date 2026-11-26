@@ -177,6 +177,7 @@ function _listRanks()
     "Special Forces",
     "Support",
     "Heavy",
+    "Flier",
   }) do
     local callback = "_listUnits_" .. i
     _G[callback] = function()

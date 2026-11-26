@@ -1,6 +1,8 @@
 require('!/Brain')
 
 -- Utilities around creating and managing minis.
+require('!/data/FlyingStand')
+
 Shelf = {}
 Shelf.__index = Shelf;
 function Shelf:create()
@@ -337,7 +339,30 @@ end
 function Shelf:_spawnModel(size, miniConfig, objectOverrides)
   local mini
   local type = objectOverrides and objectOverrides.type or 1
-  if miniConfig.mesh == nil then
+  if miniConfig.flyingStand then
+    -- hub with the stem and the 4 prongs attached (includes/data/FlyingStand),
+    -- and the unit's ship on top of the stem, attached too
+    local data = JSON.decode(FLYING_STAND_DATA_JSON)
+    local ship = miniConfig.ship
+    if ship then
+      local k, peg = ship.scale, ship.peg
+      for _, part in ipairs(ship.parts) do
+        table.insert(data.ChildObjects, {
+          Name = "Custom_Model", Nickname = "Flying Stand Ship",
+          Transform = {
+            posX = -k * peg.x, posY = FLYING_STAND_STEM_TOP - k * peg.y, posZ = -k * peg.z,
+            rotX = 0, rotY = 0, rotZ = 0, scaleX = k, scaleY = k, scaleZ = k,
+          },
+          CustomMesh = {
+            MeshURL = part.mesh, DiffuseURL = part.diffuse, NormalURL = "",
+            ColliderURL = FLYING_STAND_INVISIBLE, Convex = true,
+            MaterialIndex = 0, TypeIndex = 0, CastShadows = true,
+          },
+        })
+      end
+    end
+    mini = spawnObjectData({ data = data })
+  elseif miniConfig.mesh == nil then
     mini = spawnObject({
       type = "Custom_AssetBundle"
     })

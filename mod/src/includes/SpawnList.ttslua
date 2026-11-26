@@ -40,6 +40,7 @@ local function countImports(delta)
   end
   return count
 end
+require('!/data/FlyingStand')
 
 local function initListSpawner(params)
   local deck = params.deck
@@ -309,6 +310,14 @@ local function initListSpawner(params)
           "\n" .. globals.modelMiniScript ..
           -- Behaviour shared by every scripted mini.
           "\n" .. globals.miniSharedScript
+
+        -- flying vehicle stand: its own script (A/E, self-righting) after the
+        -- mini's, and the hub in the player's colour (TTS puts the tint in the
+        -- plexiglass shader's _Color; the stem and the prongs keep theirs)
+        if objEntry.obj.hasTag(FLYING_STAND_TAG) then
+          selectedMiniScript = selectedMiniScript .. "\n" .. FLYING_STAND_SCRIPT
+          objEntry.obj.setColorTint(Color.fromString(strColor))
+        end
 
         -- SET SCRIPT
         local obj = objEntry.obj

@@ -7,6 +7,7 @@
 
   "enum": [
     "Armament",
+    "Astromech",
     "Clan",
     "Command",
     "Comms",
@@ -19,6 +20,7 @@
     "Grenades",
     "Hardpoint",
     "Heavy Weapon",
+    "Missile",
     "Ordnance",
     "Personnel",
     "Pilot",

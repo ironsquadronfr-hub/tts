@@ -1,0 +1,538 @@
+-- The move of a flying vehicle (Flier, rulebook appendix F), driven by the
+-- brain like the movement templates (see !/MoveTemplates, which calls the
+-- hooks at the bottom).
+--
+-- The Order Token (moveFlier) lays a straight Range Tool, the "Flight Ruler",
+-- of 1 to 3 segments of 6", its foot a hair (gap) off the stand's base, and
+-- projects round the start the Maximum Move ring with the stand's 4 arc lines
+-- and the "Flight Line", the line of the move. The ruler's memo:
+--   {template = "F", stand, line, ring = <guids>, bx, bz = start, y,
+--    heading = the stand's front, r = base radius, len, arc, gap,
+--    lift = the ruler's axis above what it lies on,
+--    front = 1 | -1 (the stand's front arc along its hub's +Z or -Z)}
+--
+--   * The ruler follows the pointer round the start, its axis at most arc
+--     degrees off the stand's front (up to the arc line, Martin's call); the
+--     line turns with it. While the stand is still at the start, an A/E turn
+--     of the stand turns the ring, its arc lines and the ruler with it.
+--   * The stand, held during the move, slides along the line only: past the
+--     ruler (the minimum move, a gap clear of it), or back at the start; no
+--     limit further out (Martin's call). From the pick up on it is turned
+--     along the line (front arc forward), 1" above what lies under its
+--     prongs; its prongs keep their heading (A/E in hand turns them, see
+--     flightStandTurnProngs): the visual twins come off while it is held,
+--     the physical twins are set right when it is dropped (see
+--     detachProngs). Dropped, it is set on top of what lies under its prongs,
+--     never with a prong inside terrain. Grabbed by its prongs, the stand's
+--     own script turns them and the move leaves it alone (grabsProngs).
+--   * The ruler takes the pointer's height, like the movement templates
+--     (Martin's call), but never down into its own stand's prongs. Its own
+--     shape has no collider (it knocked the prongs lying under it): a thin
+--     slab above the stand's base is its collider, only there for the
+--     pointer to pick it up. Unlocked under the pointer, it is held in place
+--     (flightRulerHold).
+
+local atan2 = math.atan2 or math.atan
+
+-- Pure math, checked by tool/test/FlightMove.test.lua.
+
+-- Where the flight ruler goes when the pointer is at (mx, mz): its foot at r
+-- from the start (bx, bz), towards the pointer, its axis at most arc degrees
+-- off heading. Returns the foot (x, z) and the yaw: the ruler lies along
+-- (sin yaw, cos yaw).
+function flightRulerPose(bx, bz, heading, r, arc, mx, mz)
+  local diff = (math.deg(atan2(mx - bx, mz - bz)) - heading + 180) % 360 - 180
+  local yaw = heading + math.max(-arc, math.min(arc, diff))
+  local q = math.rad(yaw)
+  return bx + r * math.sin(q), bz + r * math.cos(q), yaw
+end
+
+-- Where a stand held or dropped at (px, pz) goes: on the line from (bx, bz)
+-- along (sin yaw, cos yaw), its centre at least lo out (its base past the
+-- ruler), or back at the start, which stays allowed (no move after all):
+-- short of half the minimum it stays there. Returns the centre (x, z) and
+-- whether it is the start.
+function flightStandSnap(bx, bz, yaw, px, pz, lo)
+  local q = math.rad(yaw)
+  local dx, dz = math.sin(q), math.cos(q)
+  local along = (px - bx) * dx + (pz - bz) * dz
+  if along < lo / 2 then
+    return bx, bz, true
+  end
+  along = math.max(lo, along)
+  return bx + along * dx, bz + along * dz, false
+end
+
+-- Everything below talks to TTS.
+
+local rulerOf = {}                              -- stand guid -> its ruler
+local spotOf = {}                               -- stand guid -> last {x, z} on the line
+local objectsOf = setmetatable({}, {__mode = "k"}) -- ruler -> {stand, line, ring}
+
+local function wiringOf(ruler)
+  if ruler == nil or ruler.getName() ~= "Flight Ruler" then
+    return nil
+  end
+  local ok, w = pcall(JSON.decode, ruler.memo or "")
+  if ok and type(w) == "table" and w.template == "F" then
+    return w
+  end
+  return nil
+end
+
+-- The objects a ruler works with, looked up once per ruler.
+local function objectsFor(ruler, w)
+  local o = objectsOf[ruler]
+  if o == nil then
+    o = {
+      stand = w.stand and getObjectFromGUID(w.stand),
+      line = w.line and getObjectFromGUID(w.line),
+      ring = w.ring and getObjectFromGUID(w.ring),
+    }
+    objectsOf[ruler] = o
+  end
+  return o
+end
+
+local function alive(obj)
+  return obj ~= nil and not obj.isDestroyed()
+end
+
+-- The ruler's heading. Not getRotation().y: it lies at {90, yaw, 0}, and with
+-- 90 on X the Euler angles TTS reads back are degenerate (gimbal lock; seen
+-- by Martin as a stand sliding at 90 degrees to the line). Its +Y is the line.
+function flightRulerYaw(ruler)
+  local up = ruler.getTransformUp()
+  return math.deg(atan2(up.x, up.z))
+end
+
+-- The rotation of a stand whose front arc points along yaw.
+local function standRotY(w, yaw)
+  return yaw + ((w.front or 1) < 0 and 180 or 0)
+end
+
+-- Distance from the start to the stand's centre at the shortest move: the
+-- base, a gap, the ruler, a gap, the base.
+local function minimumMove(w)
+  return 2 * w.r + w.len + 2 * (w.gap or 0)
+end
+
+-- The top of what lies under a box footprint centred on (x, z), size
+-- {width, length} along yaw (local +Z = (sin yaw, cos yaw)), among the
+-- objects counts(o) accepts: a box swept down from fromY + 10 meets each
+-- object at its highest point under the footprint (measured; rays at a few
+-- points missed thin terrain in between). nil if nothing.
+local function boxTop(x, z, fromY, width, length, yaw, counts)
+  local best
+  for _, hit in ipairs(Physics.cast({
+    origin = {x, fromY + 10, z}, direction = {0, -1, 0}, type = 3,
+    size = {width, 0.02, length}, orientation = {0, yaw, 0}, max_distance = 60,
+  }) or {}) do
+    local o = hit.hit_object
+    -- distance 0: the box started inside it, no point found
+    if o ~= nil and hit.distance > 0 and counts(o) and (best == nil or hit.point.y > best) then
+      best = hit.point.y
+    end
+  end
+  return best
+end
+
+-- Under the footprint, everything but the move's own tools and skip.
+local TOOLS = {["Flight Ruler"] = true, ["Flight Line"] = true, ["Maximum Move"] = true}
+local function surfaceUnder(x, z, fromY, skip, width, length, yaw)
+  return boxTop(x, z, fromY, width, length, yaw, function(o)
+    return not skip[o] and not TOOLS[o.getName()]
+  end)
+end
+
+local RULER_WIDTH = 0.4        -- the ruler's model is 0.33" wide
+
+-- The highest surface under a stand at (x, z) whose prongs point along
+-- prongYaw + k * 90 (the 4 turn together, square to each other): two boxes
+-- foot to foot across the hub. A stand set there lies on top of whatever is
+-- under it, never with a prong inside a piece of terrain (dropped so, physics
+-- threw it out, seen by Martin); resting on one prong, physics tilts it onto
+-- the rest. skip: the stand and its detached prongs, which have a collider
+-- once detached (measured): counted, the held stand climbed its own prongs
+-- frame after frame, springing up the height of its stem (seen by Martin).
+local PRONG_SPAN, PRONG_WIDTH = 8.3, 0.55
+-- otherYaw: the physical twins, which turn with a held stand (one more pair
+-- of boxes), else nil.
+local function standGround(x, z, fromY, skip, prongYaw, otherYaw)
+  local best
+  for _, yaw in ipairs({prongYaw, otherYaw}) do
+    for _, d in ipairs({0, 90}) do
+      local g = surfaceUnder(x, z, fromY, skip, PRONG_WIDTH, PRONG_SPAN, yaw + d)
+      if g ~= nil and (best == nil or g > best) then best = g end
+    end
+  end
+  return best
+end
+
+-- The stand and its prongs detached while held, for standGround.
+local function standSkip(stand, prongs)
+  local skip = {[stand] = true}
+  for _, pr in ipairs(prongs or {}) do
+    if pr.obj then skip[pr.obj] = true end
+  end
+  return skip
+end
+
+-- Lays the ruler towards (mx, mz), after the stand's heading if it is still
+-- at the start (A/E): then the heading is kept in the memo and the ring, with
+-- its arc lines, turns too. The line follows the ruler.
+local function poseRuler(ruler, w, mx, mz, py)
+  local o = objectsFor(ruler, w)
+  if alive(o.stand) then
+    local p = o.stand.getPosition()
+    if (p.x - w.bx) ^ 2 + (p.z - w.bz) ^ 2 < 0.01 then
+      local f = o.stand.getTransformForward()
+      local front = w.front or 1
+      local heading = math.deg(atan2(front * f.x, front * f.z))
+      if math.abs((heading - w.heading + 180) % 360 - 180) > 0.01 then
+        w.heading = heading
+        ruler.memo = JSON.encode(w)
+        if alive(o.ring) then
+          o.ring.setRotation({0, heading, 0})
+        end
+      end
+    end
+  end
+  local x, z, yaw = flightRulerPose(w.bx, w.bz, w.heading, w.r + (w.gap or 0), w.arc, mx, mz)
+  -- its height like the movement templates' (Martin's call): held, the
+  -- height of the pointer (on a piece of terrain, on top of it; the rest of
+  -- it may pass through terrain, it is locked once dropped); otherwise where
+  -- it is. Never down into its own stand's prongs, which lie under its foot:
+  -- its collider slab and the prongs pushed each other, the held ruler
+  -- shaken and the stand knocked about (measured, seen by Martin).
+  local y = py and (py + (w.lift or 0)) or ruler.getPosition().y
+  if py and alive(o.stand) then
+    local q, half = math.rad(yaw), w.len / 2
+    -- the stand alone (its attached prongs count as the stand)
+    local top = boxTop(x + half * math.sin(q), z + half * math.cos(q), y, RULER_WIDTH, w.len, yaw,
+      function(obj) return obj == o.stand end)
+    if top ~= nil then y = math.max(y, top + (w.lift or 0)) end
+  end
+  ruler.setRotation({90, yaw, 0})
+  ruler.setPosition({x, y, z})
+  ruler.setVelocity({0, 0, 0})
+  ruler.setAngularVelocity({0, 0, 0})
+  if alive(o.line) then
+    o.line.setRotation({0, yaw, 0})
+  end
+end
+
+-- Puts a ruler back in its stand's front arc, keeping its direction as far as
+-- the arc allows (the Order Token calls it after the spawn and before FULL).
+function flightRulerSnap(params)
+  local ruler = params and getObjectFromGUID(params.guid or "")
+  local w = wiringOf(ruler)
+  if w == nil then
+    return false
+  end
+  if w.stand then
+    rulerOf[w.stand] = ruler
+  end
+  local q = math.rad(flightRulerYaw(ruler))
+  local p = ruler.getPosition()
+  poseRuler(ruler, w, p.x + 100 * math.sin(q), p.z + 100 * math.cos(q))
+  return true
+end
+
+-- Where FULL puts the stand: the shortest move along the ruler as it lies
+-- now (back in the front arc first: the stand may have turned). Returns
+-- {x, z, rotY}, or nil.
+function flightRulerFull(params)
+  local ruler = params and getObjectFromGUID(params.guid or "")
+  if not flightRulerSnap(params) then
+    return nil
+  end
+  local w = wiringOf(ruler)
+  local yaw = flightRulerYaw(ruler)
+  local q = math.rad(yaw)
+  local d = minimumMove(w)
+  return {x = w.bx + d * math.sin(q), z = w.bz + d * math.cos(q), rotY = standRotY(w, yaw)}
+end
+
+-- The stand's script calls this after an A/E turn.
+function flightStandTurned(params)
+  local ruler = params and rulerOf[params.guid or ""]
+  if alive(ruler) then
+    flightRulerSnap({guid = ruler.getGUID()})
+  end
+end
+
+-- A ruler unlocked under an empty-handed pointer (to be picked up) is kept
+-- where it lies, every frame, until picked up or left: lying across terrain
+-- (it takes the pointer's height, like the templates) or hit by a stand,
+-- physics threw it out (seen by Martin, the ruler left askew).
+function flightRulerHold(ruler, hovered)
+  local p, yaw = ruler.getPosition(), flightRulerYaw(ruler)
+  local function put()
+    ruler.setPosition(p)
+    ruler.setRotation({90, yaw, 0})
+    ruler.setVelocity({0, 0, 0})
+    ruler.setAngularVelocity({0, 0, 0})
+  end
+  local function step()
+    if not alive(ruler) or ruler.held_by_color ~= nil then
+      return
+    end
+    if ruler.getLock() or not hovered() then
+      -- left: physics may have pushed it since the last frame, and it was
+      -- locked where it was pushed (seen by Martin): back in place, locked
+      ruler.setLock(true)
+      put()
+      return
+    end
+    put()
+    Wait.frames(step, 1)
+  end
+  put()
+  Wait.frames(step, 1)
+end
+
+-- One step of a held ruler, after the pointer at p.
+local function followRuler(h, p)
+  poseRuler(h.obj, h.w, p.x, p.z, p.y)
+end
+
+-- prongsOf[stand guid] = a stand held during its move: {visual = its visual
+-- prongs detached, {obj, rotY}; standRotY = its flat yaw at the pick up;
+-- prongYaw = their heading; offset = A/E turns in hand}.
+local prongsOf = {}
+
+local function isProng(attachment)
+  for _, t in ipairs(attachment.tags or {}) do
+    if t == "FlyingStandProng" then return true end
+  end
+  return false
+end
+
+-- The physical twin of a prong carries its collider ("... (collision)"),
+-- the visual twin its plexiglass and, attached, no collider.
+local function isPhysical(attachment)
+  return (attachment.name or ""):find("%(collision%)") ~= nil
+end
+
+-- The flat heading of an object's forward (+Z) axis, and the heading of obj
+-- in the stand's own frame: on a stand tilted on terrain, the Euler Y of its
+-- prongs is not their heading (read so, the prongs were laid back skewed,
+-- 76 and 104 degrees apart, seen by Martin).
+local function flatYaw(obj)
+  local f = obj.getTransformForward()
+  return math.deg(atan2(f.x, f.z))
+end
+
+local function headingOnStand(stand, obj)
+  local F, U, f = stand.getTransformForward(), stand.getTransformUp(), obj.getTransformForward()
+  local R = {x = U.y * F.z - U.z * F.y, y = U.z * F.x - U.x * F.z, z = U.x * F.y - U.y * F.x}
+  return math.deg(atan2(f.x * R.x + f.y * R.y + f.z * R.z, f.x * F.x + f.y * F.y + f.z * F.z))
+end
+
+-- Squares a stand's prongs: 90 degrees apart, the first given (a physical
+-- twin, when there is one) as the reference.
+local function squareProngs(prongs)
+  local base = prongs[1] and prongs[1].rotY
+  for _, pr in ipairs(prongs) do
+    pr.rotY = base + 90 * math.floor(((pr.rotY - base) % 360) / 90 + 0.5)
+  end
+end
+
+-- Detaches the prongs of a stand that which(attachment) picks, locked, their
+-- heading kept (flat: the stand's flat yaw plus their heading in its frame).
+-- While the stand is HELD only the visual twins come off: taking the
+-- physical twins' colliders off a held stand made it hop (seen by Martin);
+-- they turn with the stand meanwhile and are set right once it is dropped.
+-- Detached, a visual twin has a collider (measured): see standSkip.
+local function detachProngs(stand, which)
+  local prongs = {}
+  local list = stand.getAttachments()
+  local yaw = flatYaw(stand)
+  for i = #list, 1, -1 do
+    if isProng(list[i]) and which(list[i]) then
+      local o = stand.removeAttachment(list[i].index)
+      if o then
+        o.setLock(true)
+        prongs[#prongs + 1] = {obj = o, rotY = yaw + headingOnStand(stand, o)}
+      end
+    end
+  end
+  return prongs
+end
+
+-- The prongs under the stand at p, each at its own heading.
+local function placeProngs(prongs, p)
+  for _, pr in ipairs(prongs) do
+    if alive(pr.obj) then
+      pr.obj.setPosition(p)
+      pr.obj.setRotation({0, pr.rotY, 0})
+    end
+  end
+end
+
+-- One step of a held stand: on the line (the grab point's offset kept),
+-- turned along it from the pick up on (or as it stood, back at the start),
+-- its prongs under it at their own heading, HOLD_LIFT above what lies under
+-- its prongs, visual and physical (not above the pointer: the pointer
+-- crossing the ruler or a piece of terrain made it hop, seen by Martin).
+local HOLD_LIFT = 1
+local function followStand(h, p)
+  local yaw = flightRulerYaw(h.ruler)
+  local x, z, atStart = flightStandSnap(h.w.bx, h.w.bz, yaw, p.x + h.dx, p.z + h.dz, h.lo)
+  local held = prongsOf[h.obj.getGUID()]
+  local rotY = standRotY(h.w, atStart and h.w.heading or yaw)
+  local prongYaw = held and held.prongYaw or 0
+  local physYaw = held and (prongYaw - (held.offset or 0) + rotY - held.standRotY) or nil
+  local ground = standGround(x, z, math.max(p.y, h.w.y), h.skip, prongYaw, physYaw)
+  local at = {x, (ground or p.y) + HOLD_LIFT, z}
+  h.obj.setPosition(at)
+  h.obj.setRotation({0, rotY, 0})
+  if held then placeProngs(held.visual, at) end
+  spotOf[h.obj.getGUID()] = {x, z}
+end
+
+-- A stand grabbed by its prongs (pointer beyond the hub's edge, the stand
+-- script's own rule, see socle_volant.lua grabProngs) turns its prongs and
+-- does not move: the flying move leaves it alone, pick up and drop.
+local HUB_RADIUS = 1.05
+local prongGrab = {}
+local function grabsProngs(color, stand)
+  local ptr, p = Player[color].getPointerPosition(), stand.getPosition()
+  return ptr ~= nil and (ptr.x - p.x) ^ 2 + (ptr.z - p.z) ^ 2 > HUB_RADIUS ^ 2
+end
+
+-- Hook (!/MoveTemplates, on pick up): what to drive for this object, or nil.
+-- The entry's follow(h, p) runs every frame while it is held; a stand entry
+-- is marked stand = true (it stays unlocked when dropped).
+function flightMovePickUp(color, obj)
+  if obj == nil then
+    return nil
+  end
+  if obj.hasTag("FlyingStand") then
+    if grabsProngs(color, obj) then
+      prongGrab[obj.getGUID()] = true   -- the stand's own script turns them
+      return nil
+    end
+    local ruler = rulerOf[obj.getGUID()]
+    local w = alive(ruler) and wiringOf(ruler)
+    if not w then
+      return nil
+    end
+    local at = obj.getPosition()
+    local grab = Player[color].getPointerPosition() or at
+    local visual = detachProngs(obj, function(a) return not isPhysical(a) end)
+    squareProngs(visual)
+    prongsOf[obj.getGUID()] = {
+      visual = visual,
+      standRotY = flatYaw(obj),
+      prongYaw = visual[1] and visual[1].rotY or obj.getRotation().y,
+    }
+    return {color = color, obj = obj, ruler = ruler, w = w, stand = true,
+      skip = standSkip(obj, visual),
+      dx = at.x - grab.x, dz = at.z - grab.z, lo = minimumMove(w), follow = followStand}
+  end
+  local w = wiringOf(obj)
+  if w ~= nil then
+    return {color = color, obj = obj, w = w, follow = followRuler}
+  end
+  return nil
+end
+
+-- The stand's script calls this on A/E while the stand is held: during its
+-- flying move the brain holds the visual prongs, so it turns them (by
+-- degrees) and the physical twins follow at the drop. false otherwise (the
+-- stand's script does it itself).
+function flightStandTurnProngs(params)
+  local held = params and prongsOf[params.guid or ""]
+  if held == nil then
+    return false
+  end
+  local d = params.degrees or 0
+  for _, pr in ipairs(held.visual) do
+    pr.rotY = pr.rotY + d
+  end
+  held.prongYaw = (held.prongYaw or 0) + d
+  held.offset = (held.offset or 0) + d
+  return true
+end
+
+-- A stand being put down by flightStandOnDrop (its prongs off and on again,
+-- the stand locked meanwhile): its own script waits before turning it.
+local dropping = {}
+function flightStandDropping(params)
+  return dropping[params and params.guid or ""] == true
+end
+
+-- Global onObjectDrop: a stand dropped during its move goes on the line,
+-- turned along it, set ON the highest surface under its hub and prongs
+-- (dropped from where it was held, its prongs could land on the ruler's
+-- slab; set at the hub's height only, a prong ended inside a piece of
+-- terrain and broke the stand), its prongs put back and attached
+-- again. Once more a frame later, after TTS has finished its own release.
+function flightStandOnDrop(_color, obj)
+  if obj == nil or not obj.hasTag("FlyingStand") then
+    return
+  end
+  local guid = obj.getGUID()
+  if prongGrab[guid] then
+    prongGrab[guid] = nil
+    return
+  end
+  local ruler = rulerOf[guid]
+  if not alive(ruler) then
+    rulerOf[guid] = nil
+    return
+  end
+  local w = wiringOf(ruler)
+  if w == nil then
+    return
+  end
+  local yaw = flightRulerYaw(ruler)
+  local p = obj.getPosition()
+  local spot = spotOf[guid] or {p.x, p.z}
+  spotOf[guid] = nil
+  local x, z, atStart = flightStandSnap(w.bx, w.bz, yaw, spot[1], spot[2], minimumMove(w))
+  local rotY = standRotY(w, atStart and w.heading or yaw)
+  local held = prongsOf[guid] or {visual = {}}
+  prongsOf[guid] = nil
+  local ground = standGround(x, z, p.y, standSkip(obj, held.visual), held.prongYaw or obj.getRotation().y)
+  local y = ground and (ground + 0.002) or p.y
+  local prongs = held.visual
+  local function place()
+    obj.setPosition({x, y, z})
+    obj.setRotation({0, rotY, 0})
+    -- a release mid-gesture keeps its speed: the stand would slide off
+    obj.setVelocity({0, 0, 0})
+    obj.setAngularVelocity({0, 0, 0})
+    placeProngs(prongs, {x, y, z})
+  end
+  obj.setLock(true)                -- the prongs are its feet: hold it while they come back
+  dropping[guid] = true
+  place()
+  Wait.frames(function()
+    dropping[guid] = nil
+    if not alive(obj) then return end
+    place()
+    -- the physical twins turned with the stand while it was held: off, back
+    -- to their heading (by as much as the stand turned), then everything on
+    -- again in the same frame (the stand is no longer held: no hop)
+    local turned = rotY - (held.standRotY or rotY)
+    local all = {}
+    for _, pr in ipairs(detachProngs(obj, isPhysical)) do
+      pr.rotY = pr.rotY - turned + (held.offset or 0)   -- A/E in hand (flightStandTurnProngs)
+      all[#all + 1] = pr
+    end
+    for _, pr in ipairs(prongs) do all[#all + 1] = pr end
+    prongs = all
+    squareProngs(prongs)  -- each visual twin back on its physical twin
+    placeProngs(prongs, {x, y, z})
+    for _, pr in ipairs(prongs) do
+      if alive(pr.obj) then pr.obj.setLock(false); obj.addAttachment(pr.obj) end
+    end
+    obj.setLock(false)
+    Wait.frames(function()
+      if alive(obj) and not obj.getLock() then obj.setVelocity({0, -0.05, 0}) end
+    end, 2)
+  end, 1)
+end

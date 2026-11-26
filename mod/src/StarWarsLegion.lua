@@ -17,6 +17,7 @@ require('!/DeferredSetup')
 require('!/Antivirus')
 require('!/TokenCounters')
 require('!/MoveTemplates')
+require('!/FlightMove')
 require('!/Followers')
 require('!/MiniUpright')
 require('!/TableTools')
@@ -57,6 +58,7 @@ end
 -- Suppression and wound tokens add up when stacked (see !/TokenCounters).
 function onObjectDrop(color, obj)
   moveTemplatesOnDrop(color, obj)
+  flightStandOnDrop(color, obj)
   miniUprightOnDrop(obj)
   counterTokensOnObject(obj)
   losOnObjectPlaced(obj)
@@ -477,6 +479,7 @@ function onload(saveData)
     commandTokenData.red.sf = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350223881/5F93AC468782FF6B253528788AD43883D873D534/"
     commandTokenData.red.sup = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350224054/3AC5129B9CFE85C357635FAA5A19395CE93BC5D4/"
     commandTokenData.red.heavy = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350223589/13B60C1680CB40EA02470BFCF77C30DDE55B08CE/"
+    commandTokenData.red.flier = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/order_token_flier_red_v1.jpg"
 
     commandTokenData.red.imperialCommander = commandTokenData.red.com
     commandTokenData.red.imperialOperative = commandTokenData.red.op
@@ -484,6 +487,7 @@ function onload(saveData)
     commandTokenData.red.imperialSpecialforces = commandTokenData.red.sf
     commandTokenData.red.imperialSupport = commandTokenData.red.sup
     commandTokenData.red.imperialHeavy = commandTokenData.red.heavy
+    commandTokenData.red.imperialFlier = commandTokenData.red.flier
 
     commandTokenData.red.rebelCommander = commandTokenData.red.com
     commandTokenData.red.rebelOperative = commandTokenData.red.op
@@ -491,6 +495,7 @@ function onload(saveData)
     commandTokenData.red.rebelSpecialforces = commandTokenData.red.sf
     commandTokenData.red.rebelSupport = commandTokenData.red.sup
     commandTokenData.red.rebelHeavy = commandTokenData.red.heavy
+    commandTokenData.red.rebelFlier = commandTokenData.red.flier
 
     commandTokenData.red.separatistCommander = commandTokenData.red.com
     commandTokenData.red.separatistOperative = commandTokenData.red.op
@@ -498,6 +503,7 @@ function onload(saveData)
     commandTokenData.red.separatistSpecialforces = commandTokenData.red.sf
     commandTokenData.red.separatistSupport = commandTokenData.red.sup
     commandTokenData.red.separatistHeavy = commandTokenData.red.heavy
+    commandTokenData.red.separatistFlier = commandTokenData.red.flier
 
     commandTokenData.red.republicCommander = commandTokenData.red.com
     commandTokenData.red.republicOperative = commandTokenData.red.op
@@ -505,6 +511,7 @@ function onload(saveData)
     commandTokenData.red.republicSpecialforces = commandTokenData.red.sf
     commandTokenData.red.republicSupport = commandTokenData.red.sup
     commandTokenData.red.republicHeavy = commandTokenData.red.heavy
+    commandTokenData.red.republicFlier = commandTokenData.red.flier
 
     commandTokenData.red.mercenaryCommander = commandTokenData.red.com
     commandTokenData.red.mercenaryOperative = commandTokenData.red.op
@@ -512,6 +519,7 @@ function onload(saveData)
     commandTokenData.red.mercenarySpecialforces = commandTokenData.red.sf
     commandTokenData.red.mercenarySupport = commandTokenData.red.sup
     commandTokenData.red.mercenaryHeavy = commandTokenData.red.heavy
+    commandTokenData.red.mercenaryFlier = commandTokenData.red.flier
 
     commandTokenData.blue = {}
 
@@ -521,6 +529,7 @@ function onload(saveData)
     commandTokenData.blue.sf = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350223089/89F5AA847DA71F3148E4A97B41489FC2B2DBB945/"
     commandTokenData.blue.sup = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350223170/D9DE41DE504F73766E11F5DAD3B4DF005ED59ACC/"
     commandTokenData.blue.heavy = "https://steamusercontent-a.akamaihd.net/ugc/2425823802350222879/D84AE73FA68A8B02A8FBFE13FC6C3683964B124E/"
+    commandTokenData.blue.flier = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/order_token_flier_blue_v1.jpg"
 
     commandTokenData.blue.imperialCommander = commandTokenData.blue.com
     commandTokenData.blue.imperialOperative = commandTokenData.blue.op
@@ -528,6 +537,7 @@ function onload(saveData)
     commandTokenData.blue.imperialSpecialforces = commandTokenData.blue.sf
     commandTokenData.blue.imperialSupport = commandTokenData.blue.sup
     commandTokenData.blue.imperialHeavy = commandTokenData.blue.heavy
+    commandTokenData.blue.imperialFlier = commandTokenData.blue.flier
 
     commandTokenData.blue.rebelCommander = commandTokenData.blue.com
     commandTokenData.blue.rebelOperative = commandTokenData.blue.op
@@ -535,6 +545,7 @@ function onload(saveData)
     commandTokenData.blue.rebelSpecialforces = commandTokenData.blue.sf
     commandTokenData.blue.rebelSupport = commandTokenData.blue.sup
     commandTokenData.blue.rebelHeavy = commandTokenData.blue.heavy
+    commandTokenData.blue.rebelFlier = commandTokenData.blue.flier
 
     commandTokenData.blue.separatistCommander = commandTokenData.blue.com
     commandTokenData.blue.separatistOperative = commandTokenData.blue.op
@@ -542,6 +553,7 @@ function onload(saveData)
     commandTokenData.blue.separatistSpecialforces = commandTokenData.blue.sf
     commandTokenData.blue.separatistSupport = commandTokenData.blue.sup
     commandTokenData.blue.separatistHeavy = commandTokenData.blue.heavy
+    commandTokenData.blue.separatistFlier = commandTokenData.blue.flier
 
     commandTokenData.blue.republicCommander = commandTokenData.blue.com
     commandTokenData.blue.republicOperative = commandTokenData.blue.op
@@ -549,6 +561,7 @@ function onload(saveData)
     commandTokenData.blue.republicSpecialforces = commandTokenData.blue.sf
     commandTokenData.blue.republicSupport = commandTokenData.blue.sup
     commandTokenData.blue.republicHeavy = commandTokenData.blue.heavy
+    commandTokenData.blue.republicFlier = commandTokenData.blue.flier
 
     commandTokenData.blue.mercenaryCommander = commandTokenData.blue.com
     commandTokenData.blue.mercenaryOperative = commandTokenData.blue.op
@@ -556,6 +569,7 @@ function onload(saveData)
     commandTokenData.blue.mercenarySpecialforces = commandTokenData.blue.sf
     commandTokenData.blue.mercenarySupport = commandTokenData.blue.sup
     commandTokenData.blue.mercenaryHeavy = commandTokenData.blue.heavy
+    commandTokenData.blue.mercenaryFlier = commandTokenData.blue.flier
 
     commandTokenTrayData = {}
     commandTokenTrayData.red = {}
@@ -566,30 +580,35 @@ function onload(saveData)
     commandTokenTrayData.red.rebelSpecialforces = "abb909"
     commandTokenTrayData.red.rebelSupport = "ce9be9"
     commandTokenTrayData.red.rebelHeavy = "f68963"
+    commandTokenTrayData.red.rebelFlier = "f1e701"
     commandTokenTrayData.red.imperialCommander = "071592"
     commandTokenTrayData.red.imperialOperative = "369fa9"
     commandTokenTrayData.red.imperialCorps = "af4c28"
     commandTokenTrayData.red.imperialSpecialforces = "abb909"
     commandTokenTrayData.red.imperialSupport = "ce9be9"
     commandTokenTrayData.red.imperialHeavy = "f68963"
+    commandTokenTrayData.red.imperialFlier = "f1e701"
     commandTokenTrayData.red.republicCommander = "071592"
     commandTokenTrayData.red.republicOperative = "369fa9"
     commandTokenTrayData.red.republicCorps = "af4c28"
     commandTokenTrayData.red.republicSpecialforces = "abb909"
     commandTokenTrayData.red.republicSupport = "ce9be9"
     commandTokenTrayData.red.republicHeavy = "f68963"
+    commandTokenTrayData.red.republicFlier = "f1e701"
     commandTokenTrayData.red.separatistCommander = "071592"
     commandTokenTrayData.red.separatistOperative = "369fa9"
     commandTokenTrayData.red.separatistCorps = "af4c28"
     commandTokenTrayData.red.separatistSpecialforces = "abb909"
     commandTokenTrayData.red.separatistSupport = "ce9be9"
     commandTokenTrayData.red.separatistHeavy = "f68963"
+    commandTokenTrayData.red.separatistFlier = "f1e701"
     commandTokenTrayData.red.mercenaryCommander = "071592"
     commandTokenTrayData.red.mercenaryOperative = "369fa9"
     commandTokenTrayData.red.mercenaryCorps = "af4c28"
     commandTokenTrayData.red.mercenarySpecialforces = "abb909"
     commandTokenTrayData.red.mercenarySupport = "ce9be9"
     commandTokenTrayData.red.mercenaryHeavy = "f68963"
+    commandTokenTrayData.red.mercenaryFlier = "f1e701"
     commandTokenTrayData.red.stack = "e2202d"
 
     commandTokenTrayData.blue = {}
@@ -600,30 +619,35 @@ function onload(saveData)
     commandTokenTrayData.blue.rebelSpecialforces = "3832c6"
     commandTokenTrayData.blue.rebelSupport = "d2c857"
     commandTokenTrayData.blue.rebelHeavy = "6d221d"
+    commandTokenTrayData.blue.rebelFlier = "f1e702"
     commandTokenTrayData.blue.imperialCommander = "57ab78"
     commandTokenTrayData.blue.imperialOperative = "b30914"
     commandTokenTrayData.blue.imperialCorps = "e5e8df"
     commandTokenTrayData.blue.imperialSpecialforces = "3832c6"
     commandTokenTrayData.blue.imperialSupport = "d2c857"
     commandTokenTrayData.blue.imperialHeavy = "6d221d"
+    commandTokenTrayData.blue.imperialFlier = "f1e702"
     commandTokenTrayData.blue.republicCommander = "57ab78"
     commandTokenTrayData.blue.republicOperative = "b30914"
     commandTokenTrayData.blue.republicCorps = "e5e8df"
     commandTokenTrayData.blue.republicSpecialforces = "3832c6"
     commandTokenTrayData.blue.republicSupport = "d2c857"
     commandTokenTrayData.blue.republicHeavy = "6d221d"
+    commandTokenTrayData.blue.republicFlier = "f1e702"
     commandTokenTrayData.blue.separatistCommander = "57ab78"
     commandTokenTrayData.blue.separatistOperative = "b30914"
     commandTokenTrayData.blue.separatistCorps = "e5e8df"
     commandTokenTrayData.blue.separatistSpecialforces = "3832c6"
     commandTokenTrayData.blue.separatistSupport = "d2c857"
     commandTokenTrayData.blue.separatistHeavy = "6d221d"
+    commandTokenTrayData.blue.separatistFlier = "f1e702"
     commandTokenTrayData.blue.mercenaryCommander = "57ab78"
     commandTokenTrayData.blue.mercenaryOperative = "b30914"
     commandTokenTrayData.blue.mercenaryCorps = "e5e8df"
     commandTokenTrayData.blue.mercenarySpecialforces = "3832c6"
     commandTokenTrayData.blue.mercenarySupport = "d2c857"
     commandTokenTrayData.blue.mercenaryHeavy = "6d221d"
+    commandTokenTrayData.blue.mercenaryFlier = "f1e702"
     commandTokenTrayData.blue.stack = "c9f9d0"
 
     -- standby tokens
@@ -650,7 +674,7 @@ function standbyTokens()
         -- "Maximum Move" joins the sweep: like the rulers, the only reference
         -- to the ring lives in volatile script state, so one that made it
         -- into a save can never be cleared again after a load or an undo.
-        elseif obj.getName() == "Cohesion Ruler" or obj.getName() == "Movement Template (A)" or obj.getName() == "Movement Template (B)" or obj.getName() == "Range Ruler" or obj.getName() == "Deployment Boundary" or obj.getName() == "Maximum Move" or obj.getName() == "Height Guide" then
+        elseif obj.getName() == "Cohesion Ruler" or obj.getName() == "Movement Template (A)" or obj.getName() == "Movement Template (B)" or obj.getName() == "Flight Ruler" or obj.getName() == "Flight Line" or obj.getName() == "Range Ruler" or obj.getName() == "Deployment Boundary" or obj.getName() == "Maximum Move" or obj.getName() == "Height Guide" then
             destroyObject(obj)
         end
     end

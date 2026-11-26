@@ -58,6 +58,50 @@
       "additionalProperties": false,
       "type": "object",
       "required": ["bundle"]
+    },
+    {
+      "description": "The flying vehicle stand (hub, stem and 4 prongs, see includes/data/FlyingStand).",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "flyingStand": {
+          "const": true
+        },
+        "ship": {
+          "description": "The ship on top of the stem: its parts, its scale, and the point under its fuselage (model units) set on the top of the stem.",
+          "type": "object",
+          "properties": {
+            "parts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "mesh": { "type": "string", "minLength": 1 },
+                  "diffuse": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false,
+                "required": ["mesh", "diffuse"]
+              }
+            },
+            "scale": { "type": "number" },
+            "peg": {
+              "description": "An object, not an array: the card generator writes arrays of numbers without commas.",
+              "type": "object",
+              "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+              "additionalProperties": false,
+              "required": ["x", "y", "z"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["parts", "scale", "peg"]
+        }
+      },
+
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["flyingStand"]
     }
   ]
 }

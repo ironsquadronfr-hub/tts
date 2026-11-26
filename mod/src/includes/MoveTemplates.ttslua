@@ -22,6 +22,8 @@
 -- Each half carries its wiring in its memo, written by the Order Token:
 --   A: {template = "A", partner = <B guid>, bx, bz = base, aStart, fixed}
 --   B: {template = "B", partner = <A guid>}
+--   F: the flight ruler of a flying vehicle, driven by !/FlightMove: this
+--      file only calls its hooks (pick up, follow, drop).
 -- A memo survives a save, a load and an undo, unlike script variables.
 -- A "fixed" A (deployment, or any base but small) never unlocks: only its B
 -- turns, as before.
@@ -68,6 +70,7 @@ end
 local NAMES = {
   ["Movement Template (A)"] = true,
   ["Movement Template (B)"] = true,
+  ["Flight Ruler"] = true,
 }
 
 -- held[color] = what that player is moving; hovered[color] = the half that
@@ -111,12 +114,23 @@ function moveTemplatesOnHover(color, obj)
   end
   hovered[color] = obj
   obj.setLock(false)
+  if obj.getName() == "Flight Ruler" then
+    -- unlocked under the pointer, it is kept where it lies (!/FlightMove)
+    flightRulerHold(obj, function() return hovered[color] == obj end)
+  end
 end
 
 -- One step of a held half, after the pointer.
 local function follow(h)
   local p = Player[h.color].getPointerPosition()
-  if p == nil or h.partner == nil then
+  if p == nil then
+    return
+  end
+  if h.follow then                 -- a flight ruler or stand (!/FlightMove)
+    h.follow(h, p)
+    return
+  end
+  if h.partner == nil then
     return
   end
   if h.role == "A" then
@@ -155,6 +169,15 @@ function moveTemplatesLoop()
 end
 
 function moveTemplatesOnPickUp(color, obj)
+  local flight = flightMovePickUp(color, obj)
+  if flight ~= nil then
+    held[color] = flight
+    if not looping then
+      looping = true
+      startLuaCoroutine(Brain(), "moveTemplatesLoop")
+    end
+    return
+  end
   local w = wiring(obj)
   if w == nil then
     return
@@ -183,6 +206,11 @@ end
 function moveTemplatesOnDrop(color, obj)
   local h = held[color]
   if h == nil or h.obj ~= obj then
+    return
+  end
+  if h.stand then
+    -- flightStandOnDrop puts it on the line; a stand stays unlocked
+    held[color] = nil
     return
   end
   pcall(follow, h)

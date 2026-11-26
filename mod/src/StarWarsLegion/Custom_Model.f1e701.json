@@ -1,0 +1,67 @@
+{
+  "Object": {
+    "GUID": "f1e701",
+    "Name": "Custom_Model",
+    "Transform": {
+      "posX": -33.89,
+      "posY": 0.9409826,
+      "posZ": -18.44,
+      "rotX": 0.00160595577,
+      "rotY": 179.9961,
+      "rotZ": 0.00000243397358,
+      "scaleX": 1,
+      "scaleY": 1,
+      "scaleZ": 1
+    },
+    "Nickname": "",
+    "Description": "",
+    "GMNotes": "",
+    "ColorDiffuse": {
+      "r": 1,
+      "g": 1,
+      "b": 1
+    },
+    "LayoutGroupSortIndex": 0,
+    "Locked": true,
+    "Grid": true,
+    "Snap": true,
+    "IgnoreFoW": false,
+    "MeasureMovement": false,
+    "DragSelectable": true,
+    "Autoraise": true,
+    "Sticky": true,
+    "Tooltip": true,
+    "GridProjection": false,
+    "HideWhenFaceDown": false,
+    "Hands": false,
+    "CustomMesh": {
+      "MeshURL": "http://cloud-3.steamusercontent.com/ugc/786359883314444328/1BC71E255E0FBB830C5703749BA70E39D1146487/",
+      "DiffuseURL": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/command_tray_slot_flier_v1.jpg",
+      "NormalURL": "",
+      "ColliderURL": "",
+      "Convex": true,
+      "MaterialIndex": 3,
+      "TypeIndex": 0,
+      "CastShadows": true
+    },
+    "LuaScript": "",
+    "LuaScriptState": "",
+    "XmlUI": "",
+    "AttachedSnapPoints": [
+      {
+        "Position": {
+          "x": 0.009038394,
+          "y": 0.283769071,
+          "z": 0.00591049949
+        },
+        "Rotation": {
+          "x": -0.00160420709,
+          "y": 359.9762,
+          "z": -0.000003178757
+        },
+        "Tags": []
+      }
+    ]
+  },
+  "StatesPaths": {}
+}

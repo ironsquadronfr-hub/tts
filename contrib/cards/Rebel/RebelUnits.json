@@ -1509,5 +1509,47 @@
     {
       "content": "contrib/cards/Mercenary/WLO5SpeederTankUnit.json"
     }
+  ],
+  "Flier": [
+    {
+      "name": "T-65 X-wing Fighter",
+      "image": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/t65_x-wing_fighter_card_v2.jpg",
+      "size": "medium",
+      "type": "Flying Vehicle",
+      "points": 115,
+      "speed": 3,
+      "upgrades": {
+        "Pilot": 1,
+        "Astromech": 1,
+        "Missile": 1
+      },
+      "silhouette": {
+        "height": 12,
+        "offset": 0
+      },
+      "minis": [
+        {
+          "flyingStand": true,
+          "ship": {
+            "parts": [
+              {
+                "mesh": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/xwingbasev3.obj",
+                "diffuse": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/red_1024.jpg"
+              },
+              {
+                "mesh": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/xwingopenv3.obj",
+                "diffuse": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/red_1024.jpg"
+              }
+            ],
+            "scale": 4.178,
+            "peg": {
+              "x": 0,
+              "y": 0.028,
+              "z": -0.15
+            }
+          }
+        }
+      ]
+    }
   ]
 }

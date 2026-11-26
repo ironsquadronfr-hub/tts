@@ -3,6 +3,7 @@ require('!/RangeRulers')
 require('!/data/MovementLinks')
 require('!/Cohesion')
 require('!/Brain')
+require('!/data/FlightRuler')
 
 
 -- Model Token
@@ -404,6 +405,8 @@ function findLandingHeight(pos, fallbackY)
     local ignoreNames = {
         ["Movement Template (A)"] = true,
         ["Movement Template (B)"] = true,
+        ["Flight Ruler"] = true,
+        ["Flight Line"] = true,
         ["Maximum Move"] = true,
         ["Cohesion Ruler"] = true,
         ["Range Ruler"] = true,
@@ -621,6 +624,12 @@ function moveUnit(isDeploy)
     })
     lockUnitsExcept(selectedUnitObj, "MoveInProgress")
 
+    -- A flying vehicle moves along a straight Range Tool instead (see moveFlier).
+    if isDeploy ~= true and selectedUnitObj.hasTag("FlyingStand") then
+        moveFlier()
+        return
+    end
+
     ------------------------------------------- PLACEMENT MATH -------------------------------------------
     basePos = selectedUnitObj.getPosition()
     basePos.y = basePos.y + 0.05
@@ -832,9 +841,140 @@ function moveUnit(isDeploy)
     })
 
 end
+------------------------------------------------- FLYING VEHICLE MOVE ---------------------------------------------------
+-- Rulebook, appendix F (Cruising / Combat Move), driven by the brain (see
+-- !/FlightMove): speed 1, 2 or 3 lays a straight Range Tool of as many
+-- segments, the "Flight Ruler", in the stand's front arc; the Maximum Move
+-- ring with the stand's arc lines and the line of the move are projected
+-- round the start. The ruler follows the pointer, a held stand slides along
+-- the line, FULL puts it just past the ruler. Pivoting after a Cruising Move
+-- is left to the player (A/E on the stand).
+
+-- The stand's front arc (printed on the hub) is along its hub's -Z in the
+-- game, like the minis, which face their object's back (seen by Martin: a
+-- ruler laid along +Z sat in the back arc).
+local FRONT = -1
+local function standHeading(obj)
+    local f = obj.getTransformForward()
+    return math.deg(math.atan2(FRONT * f.x, FRONT * f.z))
+end
+
+-- A projector round the start (scale 0 hides TTS's default box, not the
+-- projector), locked, without gravity.
+local function projectorAt(p, heading, bundle, name)
+    local obj = spawnObject({
+        type = "Custom_AssetBundle",
+        position = {p.x, p.y + 20, p.z},
+        rotation = {0, heading, 0},
+        scale = {0, 0, 0},
+    })
+    obj.setCustomObject({type = 0, assetbundle = bundle})
+    obj.setLock(true)
+    obj.use_gravity = false
+    obj.setName(name)
+    return obj
+end
+
+function moveFlier()
+    local segments = math.max(1, math.min(3, tonumber(unitData.selectedSpeed) or 1))
+    local p = selectedUnitObj.getPosition()
+    local heading = standHeading(selectedUnitObj)
+    local r, gap = FLIGHT_RULER.hubRadius, FLIGHT_RULER.gap
+    local q = math.rad(heading)
+    local y = p.y + FLIGHT_RULER.poseY
+    -- the speed's colour, like the movement templates (1 white, 2 black, 3 red)
+    local tint = templateInfo.tint[segments] or {1, 1, 1}
+    local ruler = spawnObjectData({data = {
+        Name = "Custom_Model",
+        Nickname = "Flight Ruler",
+        ColorDiffuse = {r = tint[1], g = tint[2], b = tint[3]},
+        Locked = true,
+        Sticky = false,
+        Rigidbody = {Mass = 0, Drag = 1000, AngularDrag = 1000, UseGravity = false},
+        Transform = {
+            posX = p.x + (r + gap) * math.sin(q), posY = y, posZ = p.z + (r + gap) * math.cos(q),
+            rotX = 90, rotY = heading, rotZ = 0,
+            scaleX = 1, scaleY = 1, scaleZ = 1,
+        },
+        CustomMesh = {
+            MeshURL = FLIGHT_RULER.mesh[segments],
+            DiffuseURL = FLIGHT_RULER.diffuse[segments],
+            -- a thin slab above the stand's base: the ruler never knocks it
+            NormalURL = "", ColliderURL = FLIGHT_RULER.collider[segments],
+            Convex = true, MaterialIndex = 3, TypeIndex = 0, CastShadows = true,
+        },
+    }})
+    -- the brain turns the line with the ruler, the ring with the stand; the
+    -- ring is named "Maximum Move" so that every sweep of that ring takes it
+    flightLine = projectorAt(p, heading, FLIGHT_RULER.line, "Flight Line")
+    maxMoveTemplate = projectorAt(p, heading, FLIGHT_RULER.ring[segments], "Maximum Move")
+    ruler.memo = JSON.encode({
+        template = "F", stand = selectedUnitObj.getGUID(),
+        line = flightLine.getGUID(), ring = maxMoveTemplate.getGUID(),
+        bx = p.x, bz = p.z, y = y, heading = heading, r = r,
+        len = segments * FLIGHT_RULER.segment, arc = FLIGHT_RULER.frontArc,
+        front = FRONT, gap = gap, lift = FLIGHT_RULER.poseY,
+    })
+    -- held as template A, so clearMovementTemplates takes it away
+    templateA, templateAGUID = ruler, ruler.getGUID()
+    local guid = templateAGUID
+    Wait.frames(function()
+        Brain().call("flightRulerSnap", {guid = guid})
+    end, 1)
+
+    for speed, b in ipairs({
+        {z = -0.4, color = {1, 1, 1}, font = {0, 0, 0}},
+        {z = 0.4, color = {0, 0, 0, 1}, font = {1, 1, 1, 1}},
+        {z = 1.2, color = {0.8103, 0.0857, 0.0857, 1}, font = {1, 1, 1, 1}},
+    }) do
+        self.createButton({
+            click_function = "changeSpeed" .. speed,
+            function_owner = self,
+            label = tostring(speed), position = {3, 0.2, b.z}, width = 300, height = 350, font_size = 200,
+            tooltip = "Range Tool of " .. speed .. " segment" .. (speed > 1 and "s" or ""),
+            color = b.color, font_color = b.font,
+        })
+    end
+    self.createButton({
+        click_function = "moveFull",
+        function_owner = self,
+        label = "FULL",
+        position = {4.2, 0.2, 1.2}, width = 700, height = 350, font_size = 200, color = {0, 0, 0, 1}, font_color = {0.0551, 0.9312, 0, 1},
+        tooltip = "Place the vehicle just past the end of the Range Tool"
+    })
+    self.createButton({
+        click_function = "moveStart",
+        function_owner = self,
+        label = "START",
+        position = {4.2, 0.2, 0.4}, width = 700, height = 350, font_size = 200, color = {0, 0, 0, 1}, font_color = {0, 0.9294, 0.8752, 1},
+        tooltip = "Move back to start position"
+    })
+end
+
+-- FULL for a flying vehicle: the brain gives the spot (the shortest move
+-- along the ruler, front arc along it).
+local function moveFlierFull(ruler)
+    local spot = Brain().call("flightRulerFull", {guid = ruler.getGUID()})
+    if type(spot) ~= "table" then return end
+    local endPos = {x = spot.x, y = ruler.getPosition().y, z = spot.z}
+    endPos.y = findLandingHeight(endPos, endPos.y)
+    -- moved, then turned by the stand's own script: its prongs keep their heading
+    local stand = selectedUnitObj
+    stand.setPosition(endPos)
+    Wait.frames(function()
+        local d = (spot.rotY - stand.getRotation().y + 180) % 360 - 180
+        if math.abs(d) > 0.01 then stand.call("turnStand", {degrees = d}) end
+        stand.call("checkVelocity")
+    end, 2)
+end
+
 ------------------------------------------------- MOVE BACK------------------------------------------------------------
 
 function moveFull()
+    if templateA and templateA.getName() == "Flight Ruler" then
+        moveFlierFull(templateA)
+        return
+    end
     if templateB then
         local startPos = templateB.getPosition()
         local startRot = templateB.getRotation()
@@ -963,6 +1103,10 @@ function clearMovementTemplates()
         destroyObject(b)
     end
     templateA, templateB, templateAGUID, templateBGUID = nil, nil, nil, nil
+    if flightLine ~= nil then
+        pcall(destroyObject, flightLine)
+        flightLine = nil
+    end
     if maxMoveTemplate ~= nil then
         -- pcall: the ring may already be gone (Clear Map, standbyTokens), in which
         -- case destroyObject throws and the rest of the cleanup was skipped.
