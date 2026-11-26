@@ -2,23 +2,21 @@
   "Commander": [
     {
       "name": "Gar Saxon",
-      "title": "Head of Clan Saxon",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/14464163344535301954/DA386F6684BDB764CC62DD162084A2151FB6DA95/",
+      "title": "Militant Commando",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139719525/A5642D0B10D7426AD751D9428A0C249D5F4BAF2F/",
       "size": "small",
       "type": "Mandalorian Trooper",
-      "points": 115,
+      "points": 100,
       "speed": 3,
       "upgrades": {
-        "Command": 1,
         "Training": 2,
-        "Grenades": 1,
+        "Comms": 1,
         "Gear": 2,
-        "Armament": 1
+        "Armament": 2
       },
       "minis": [
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/14436064754089284584/95BA954F4E47428F9C0022704047A74D74BD2186/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/14414572076367886190/7FD3B875CE6A41113DC1F3C56D8ECC44DC328580/"
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1856061112420143862/CF491C11176E40BD786A89E1D0C20D3316448188/"
         }
       ],
       "commands": [
@@ -35,11 +33,6 @@
         {
           "name": "Victory or Death!",
           "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139734267/BE465B62B232B7E2F2992497221C565D00B19CCF/",
-          "pip": 3
-        },
-        {
-          "name": "Death Before Defeat",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/9403914900224633725/523A7608466832A100A89AF9BF33D45CC4497C11/",
           "pip": 3
         }
       ]
@@ -133,7 +126,7 @@
       "commands": [
         {
           "name": "Both Hunter and Prey",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/16994067437948840339/36A3687ED811F315C2DE2533375462E8EBA6023F/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/16917518908276587003/2988F4A6821133B2BBAB207875861456BAC7E80F/",
           "pip": 2
         },
         {
@@ -280,7 +273,8 @@
       },
       "minis": [
         {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1789640371719006177/3A456EB29012BFBE4322E020CBC08CF6F915BBF3/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/13848794345403659945/9F0AD66E2AB853B5213872009E110C35DB4F9868/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/15746539274694009740/5C0B35ECEE15D442CAD165309ED314DD78EF599A/"
         }
       ],
       "commands": [
@@ -463,16 +457,16 @@
       },
       "minis": [
         {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1856061112420143408/F4A88228E11334545EACA86B36E6B2008E76B0D3/",
-          "secondary": "https://steamusercontent-a.akamaihd.net/ugc/1789640371717200769/60353F40BAE6D92D6F6ED24E2883EB9CC2EA74C4/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/12486450550746077154/9DEFA5B9D320CF4580B09CB9E23EA0AB650A7881/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/17785341533537022640/58129AF41E3F045F215ECD8AE90F461F0E233F99/"
         },
         {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1856061112420143500/4BDEA7F5B523FC06641B3D71D1E112DC14BD7F81/",
-          "secondary": "https://steamusercontent-a.akamaihd.net/ugc/1789640371717200823/B886D3157AA2F2528F4E5F76F26DF44A41496615/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/13550347945679086628/6544E2EDF038F035B4123F51CB14ECB1FE9C85F1/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/10431971194673280570/774601FD402FD530EA5A90B6CC060631B932C9A9/"
         },
         {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1856061112420143285/F206D67AFF9379B68AD0795767DA378CE80D44AE/",
-          "secondary": "https://steamusercontent-a.akamaihd.net/ugc/1789640371717200823/B886D3157AA2F2528F4E5F76F26DF44A41496615/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/9399608274814486456/84FCBAFBA65591EE567615C937708DDFE07CB745/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/15465560935080965275/51B20DB87881109334B2B737C2439519B1D0C7E3/"
         }
       ]
     },

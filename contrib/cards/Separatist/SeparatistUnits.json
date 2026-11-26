@@ -64,32 +64,27 @@
     },
     {
       "name": "General Grievous",
-      "title": "Wheel Bike Warlord",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/10719584612465428796/38DFBFBDFC11B138DD5FC2DE9F0B6BA67E4450C6/",
-      "size": "large",
-      "type": "Ground Vehicle",
-      "points": 150,
+      "title": "Sinister Cyborg",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081131432388/26B30B4276062FA8693A0D3E566671DAD9DF5DD2/",
+      "size": "small",
+      "type": "Trooper",
+      "points": 130,
       "speed": 2,
       "upgrades": {
-        "Command": 1,
+        "Command": 2,
         "Training": 1,
-        "Gear": 1,
-        "Grenades": 1
-      },
-      "silhouette": {
-        "height": 2.57,
-        "offset": 0
+        "Gear": 1
       },
       "minis": [
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/13779753180075814778/9E0AB77126EDB32A8A14FE5474CEB5940DAD97E5/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/12602549734108871507/9CA056FCF4E993A3B14767225C990F8EDF8E59E2/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234780869167436/AAA2C61A17BB43F2673AF16D30BD0478B9AAAD2A/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234780869167571/EF86CBDA5F361282AD077D61FA81ABF0FEE061A0/"
         }
       ],
       "commands": [
         {
           "name": "Trained In Your Jedi Arts",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081131526384/C4406A3487D2E58D1AF4962B9A306EC5882596CC/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/11841679467163445808/24C6A8AB0E5E086AA9ADF40E91E3E737B4A809C6/",
           "pip": 1
         },
         {
@@ -141,7 +136,7 @@
       "commands": [
         {
           "name": "Trained In Your Jedi Arts",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081131526384/C4406A3487D2E58D1AF4962B9A306EC5882596CC/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/11841679467163445808/24C6A8AB0E5E086AA9ADF40E91E3E737B4A809C6/",
           "pip": 1
         },
         {
@@ -868,7 +863,7 @@
       "minis": [
         {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/16432158164944196/4594ADE002844CEEB6FB9A75E17AA802FCAE89FF/",
-          "secondary": "https://steamusercontent-a.akamaihd.net/ugc/2491139050708070994/E763691AC8C24925DA2CA117DE90A54BAC836230/"
+          "secondary": "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/lm_432_crab_droid_mat_metal_v1.unity3d"
         }
       ]
     },

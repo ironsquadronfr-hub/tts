@@ -2,22 +2,22 @@
   "Commander": [
     {
       "name": "Luke Skywalker",
-      "title": "Hero Of The Rebellion",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133196942/E1A8548A9C0688D979CAD83F32F130B0115D9C50/",
-      "size": "small",
-      "type": "Trooper",
-      "points": 120,
+      "title": "Commander Skywalker",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/14055439616909991431/49C4E67617260BEB9BA30A7186B2F0A6E7E1F1B0/",
+      "size": "medium",
+      "type": "Creature Trooper",
+      "points": 110,
       "speed": 2,
       "upgrades": {
         "Command": 1,
         "Force": 1,
         "Training": 1,
-        "Gear": 1
+        "Comms": 1
       },
       "minis": [
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540537100371/0B15B2810ABEBE5429E4A24852D96BAC2DC28BF7/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540537079134/11A17263AD81DC9D4271B7C6BD809B69141DCB61/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/17466138295659250864/64486F9383C23FBFA17327847189F8F798E0BFB8/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/14381694965898057201/52C1277D712E3B1E4F54C16E4F74CB76639BECB1/"
         }
       ],
       "commands": [
@@ -27,9 +27,9 @@
           "pip": 1
         },
         {
-          "name": "You Serve Your Master Well",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133714680/FD14E558D7D2B7EF32BD992FFC1C89141CD1F192/",
-          "pip": 1
+          "name": "On Patrol",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/10927164661502635503/8DB9E1079B4D67CAA8E7C19A6B1BB2EAE4AAB2F9/",
+          "pip": 2
         },
         {
           "name": "My Ally Is The Force",
@@ -47,8 +47,8 @@
           "pip": 3
         },
         {
-          "name": "I Am A Jedi",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133710140/F162DE57287EB8C43F845BF34550B6666929E36A/",
+          "name": "Not Out of it Yet",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/17986576672810143634/656B6E1AB636857E500DC13A8C94F7FB26C78F84/",
           "pip": 3
         }
       ]
@@ -170,41 +170,51 @@
       "commands": [
         {
           "name": "Sorry About The Mess",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133713891/5010BC7FF52D6539147756EF04579FD860630D4E/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/16308736517290848799/A8ED064B88D1C70281984CD88B069A5AD95F4330/",
           "pip": 1
         },
         {
           "name": "Reckless Diversion",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133711955/8E5E53B03E9248B3BB6CCBC1942C831C02ACFF67/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/14459389638035340052/F24E341649BA81CEAE55865015C58B8B1A557640/",
           "pip": 2
         },
         {
           "name": "Change Of Plans",
-          "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133708965/8DA6716707434EDAF86655364C9557E3408B9B5E/",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/17707426851635788122/DBEE48D7645CE505C9CF0934C7553286844F66FD/",
           "pip": 3
         }
       ]
     },
     {
       "name": "Rebel Officer",
-      "title": "Resolute Commander",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/2495640747384863340/260721B8F3E1D9501B665F44F02869C34B561AF6/",
+      "title": "Fighting for Freedom",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/9534714757713439013/F1243488529E029C17CAC7745960E27861F6F13E/",
       "size": "small",
       "type": "Trooper",
-      "points": 50,
+      "points": 55,
       "speed": 2,
       "upgrades": {
+        "Doctrine": 1,
         "Command": 1,
-        "Gear": 1
+        "Training": 2,
+        "Gear": 1,
+        "Armament": 1,
+        "Grenades": 1
       },
       "minis": [
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234780862726770/62FECAB3FED284E098751CC3BBC70C4CFF828A58/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234780862727097/DE589901F66E4079D82BA2C819672F622A5D7240/"
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/14532786737705927841/CFA38D52A0507FE16F18C09807CFFE2796E3C3DF/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/9545206998925681034/383407768DA711E924DC4459C3774A5A385D0F0A/"
+        }
+      ],
+      "commands": [
+        {
+          "name": "Diversionary Tactics",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/18133143929006199770/1914187C13F4DEC189139B79B77BD0AC5AFE4A74/",
+          "pip": 3
         }
       ]
     },
-
     {
       "name": "Lando Calrissian",
       "title": "Canny General",
@@ -358,6 +368,9 @@
     },
     {
       "content": "contrib/cards/Mercenary/MandalorianHunterUnit.json"
+    },
+    {
+      "content": "contrib/cards/Mercenary/CadBaneUnit.json"
     },
     {
       "name": "Han Solo",
@@ -623,7 +636,7 @@
     {
       "name": "Han & Chewie",
       "title": "Notorious Scoundrels",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/13398538146401700693/CC763C753C0BE205C68D512A92B7A6AF759F8A16/",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/12466830294428687221/96AA0A15BC3F0F9F95BDBE3B0CA0778657C320C9/",
       "size": "small",
       "type": "Trooper",
       "points": 120,
@@ -1072,30 +1085,28 @@
     },
     {
       "name": "Wookiee Warriors",
-      "title": "Freedom Fighters",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133195004/B68B0EBD3193888339421B0AFE8A9F9803EFC027/",
+      "title": "Kashyyyk Resistance",
+      "displayName": "Wookiee Warriors (Resistance)",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133195051/93FB6360319FCFB5CABA147A27FB34D2A843FAC2/",
       "size": "small",
       "type": "Wookiee Trooper",
-      "points": 69,
+      "points": 72,
       "speed": 2,
       "upgrades": {
         "Heavy Weapon": 1,
-        "Training": 2,
+        "Training": 1,
         "Gear": 1,
         "Grenades": 1
       },
       "minis": [
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541173937/5179F4315AD6B0839454E1934E794A7F006C7813/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1619598366708043779/0D96CE1619F4B27F583257A366431E3BAD428F19/"
         },
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174158/677BF72C323CFF2314C174393AFA361C398C5519/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174034/90C4A124BB82CCE0B5E38E13860ED49BB9A4973B/"
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1619598366708043883/1EA1B3C21A50C20D4D168AB91ECFE1C01A4F7DF5/"
         },
         {
-          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174304/9053CDD2798CEA905F8486498D0104B6ACA2F078/",
-          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1619598366708043883/1EA1B3C21A50C20D4D168AB91ECFE1C01A4F7DF5/"
         }
       ]
     },
@@ -1135,13 +1146,15 @@
     },
     {
       "name": "Mandalorian Resistance",
-      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133197470/8F69CF0D59AA51A8D0EFB406C7B3594937BB8D3D/",
+      "title": "Clan Wren",
+      "displayName": "Clan Wren",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/59218081133197439/A9AEEBFD286112DACCAB9944794C5521EE60BB8E/",
       "size": "small",
       "type": "Trooper",
-      "points": 68,
+      "points": 30,
       "speed": 3,
       "upgrades": {
-        "Heavy Weapon": 1,
+        "Heavy Weapon": 2,
         "Training": 1,
         "Comms": 1,
         "Gear": 1,
@@ -1150,15 +1163,10 @@
       },
       "minis": [
         {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2174736446809186437/C255A6920C6B62ADD6B948311053BAAE4803BE29/"
-        },
-        {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2174736446809186272/7872209AB5CBE104129F9AFC58267EB8F6CF80D1/"
-        },
-        {
-          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2174736446809186179/35024924D8BC8A727F508557AF7B714D2E3D22FF/"
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2174736446809185852/7940F0BEFCFE905039054DA1CA3BBF3C0CB2C7A9/"
         }
-      ]
+      ],
+      "required": ["Ursa Wren", "Tristan Wren"]
     },
     {
       "name": "Mandalorian Resistance",
