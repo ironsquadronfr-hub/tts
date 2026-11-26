@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
@@ -44,6 +45,28 @@ def loaded_addresses(text):
             yield m.group(1)
 
 
+def status(u):
+    """HTTP status of u. A 404 is confirmed by a real GET a moment later: in a
+    run of a few hundred HEAD requests, Steam's CDN answered 404 for 65 files
+    that served fine just after (2026-11-26), and they passed as dead."""
+    def ask(method):
+        req = urllib.request.Request(u, method=method, headers={'User-Agent': 'swl-release-check'})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                if method == 'GET':
+                    r.read(1)
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+        except Exception as e:  # noqa: BLE001
+            return str(e)
+    code = ask('HEAD')
+    if code in (404, 410):
+        time.sleep(1)
+        code = ask('GET')
+    return code
+
+
 def main(argv):
     if len(argv) != 4:
         sys.exit(__doc__)
@@ -67,17 +90,15 @@ def main(argv):
         if urlparse(u).path in ('', '/'):
             continue  # a bare host, the start of an address built in code
         # Tolerated only if it is already dead: nothing left to bring home.
-        try:
-            req = urllib.request.Request(u, method='HEAD', headers={'User-Agent': 'swl-release-check'})
-            urllib.request.urlopen(req, timeout=60).close()
+        code = status(u)
+        if code in (404, 410):
+            dead.append(u)
+        elif code == 200:
             errors.append('outside host, still alive: ' + u)
-        except urllib.error.HTTPError as e:
-            if e.code in (404, 410):
-                dead.append(u)
-            else:
-                errors.append('outside host, HTTP %d: %s' % (e.code, u))
-        except Exception as e:  # noqa: BLE001
-            errors.append('outside host, unreachable (%s): %s' % (e, u))
+        elif isinstance(code, int):
+            errors.append('outside host, HTTP %d: %s' % (code, u))
+        else:
+            errors.append('outside host, unreachable (%s): %s' % (code, u))
 
     manifest = {}
     with open(os.path.join(store, 'MANIFEST.csv'), encoding='utf-8', newline='') as f:
