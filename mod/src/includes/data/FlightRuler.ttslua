@@ -36,11 +36,11 @@ FLIGHT_RULER = {
   -- units' ring: radius = distance moved + half base = 6 N + 3 inches.
   -- with the 4 arc lines of the stand
   ring = {
-    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed1_v3.unity3d",
-    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed2_v3.unity3d",
-    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed3_v3.unity3d",
+    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed1_v4.unity3d",
+    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed2_v4.unity3d",
+    "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_speed3_v4.unity3d",
   },
   -- the line of the move: a projected straight line from the edge of the base
   -- forward (the projector's +Z), 80 inches long; turned with the ruler
-  line = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_line_v3.unity3d",
+  line = "https://raw.githubusercontent.com/ironsquadronfr-hub/swl-assets/main/assets/movement_flier_line_v4.unity3d",
 }
