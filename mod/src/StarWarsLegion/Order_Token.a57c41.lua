@@ -921,6 +921,19 @@ function stopUnit()
     unlockAllUnits("MoveInProgress")
 end
 
+-- A deleted token takes its templates with it (movement templates, the
+-- Maximum Move ring, range and cohesion rulers): they stayed on the table.
+-- Mid-move, it also lets the other units go, as STOP does; only then: the
+-- lock is shared by name, another token's move must keep it.
+function onDestroy()
+    local moving = templateA ~= nil or templateAGUID ~= nil or maxMoveTemplate ~= nil
+    pcall(clearTemplates)
+    if moving then
+        pcall(unhighlightEnemies)
+        pcall(unlockAllUnits, "MoveInProgress")
+    end
+end
+
 ------------------------------------------------- Clear templates------------------------------------------------------------
 function clearTemplates()
     clearMovementTemplates()

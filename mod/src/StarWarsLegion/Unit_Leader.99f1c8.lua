@@ -32,6 +32,9 @@ function setUp()
 
     lockBtnGreen = {0.2, 0.9, 0.05, 0.7}
     lockBtnRed = {0.9, 0.1, 0.05, 0.7}
+    -- under the pointer the button fades (a light grey veil, Martin's call)
+    lockBtnHover = {0.5, 0.5, 0.5, 0.5}
+    lockBtnPress = {0.3, 0.3, 0.3, 0.6}
 
     if unitName and colorSide then
         unitData = {}
@@ -133,9 +136,16 @@ function addLockButton()
         height = 180,
         font_size = 100,
         color = lockBtnGreen,
+        -- hover and press a grey veil, the same whether locked or not: under the
+        -- pointer TTS keeps showing the hover colour the button had before a
+        -- click, so a red or green one showed the old state after the click
+        -- until the pointer left (seen by Martin)
+        hover_color = lockBtnHover,
+        press_color = lockBtnPress,
         font_color= {1, 1, 1, 100}
     }
     self.createButton(lockBtnData)
+    updateLockBtnColor()       -- red if it is locked already
     scheduleOblongButtonFix()
 end
 
@@ -148,21 +158,32 @@ function updateLockBtnColor()
     if buttons == nil or #buttons == 0 then
         return
     end
-    if isLocked() then
-        self.editButton({
-            index = 0,
-            color = lockBtnRed
-        })
-    else
-        self.editButton({
-            index = 0,
-            color = lockBtnGreen
-        })
+    -- red also when the mini itself is locked by other means (a flying
+    -- vehicle stand stuck locked showed green, seen by Martin)
+    local c = (isLocked() or self.getLock()) and lockBtnRed or lockBtnGreen
+    -- already this colour: leave it alone (each edit rebuilds the button)
+    if lockBtnSameColour(buttons[1].color, c) then
+        return
     end
+    self.editButton({index = 0, color = c})
+end
+
+-- Whether a button colour as TTS gives it back is c ({r, g, b, a}).
+function lockBtnSameColour(shown, c)
+    if shown == nil then
+        return false
+    end
+    for i, key in ipairs({"r", "g", "b"}) do
+        if math.abs((shown[key] or shown[i] or -1) - c[i]) > 0.01 then
+            return false
+        end
+    end
+    return true
 end
 
 function toggleLockButton()
-   if not isLocked() then
+   -- red (locked one way or another): a click unlocks
+   if not isLocked() and not self.getLock() then
       toggleLock("UnitLockButton")
    else
       removeAllLocks()
