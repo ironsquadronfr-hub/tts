@@ -7,7 +7,7 @@
 -- (seen on 711 lists harvested in Nov. 2026). The import mends it.
 
 -- ListBuilderNew.ttslua runs TTS code at load: take the function alone.
-local src = io.open("mod/src/includes/data/ListBuilderNew.ttslua"):read("a")
+local src = io.open("mod/src/includes/data/ListBuilderNew.ttslua"):read("*a")
 local a = src:find("function repairLongshanksList%(text%)")
 assert(a, "repairLongshanksList not found")
 local b = src:find("\nend\n", a, true)
