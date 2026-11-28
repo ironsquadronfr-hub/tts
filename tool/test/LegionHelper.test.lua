@@ -65,9 +65,11 @@ _G.CardsSchema = {
   commands = {},
 }
 CardsSchemaRevision = 0
+dofile("mod/src/includes/CardNames.ttslua")
 dofile("mod/src/includes/LegionHelper.ttslua")
 
-local UNIT_ART = "https://takras.net/legionhelper/unitcards/gar/clone_trooper_front.webp"
+-- Legion Helper dates its images since Nov. 2026 (?v=<date>).
+local UNIT_ART = "https://takras.net/legionhelper/unitcards/gar/clone_trooper_front.webp?v=2026-11-17"
 local UPGRADE_ART = "https://takras.net/legionhelper/upgradecards/card/clone-trooper-infantry.webp"
 feedText = [[{
   "units": {"Republic": {"Corps": [
@@ -109,6 +111,41 @@ spawned = {}
 objects = {card("lone01", "Clone Trooper Infantry", "mod-upgrade")}
 loadLegionHelperCards()
 check("a card no leader names takes the upgrade's art", faceOf("lone01") == UPGRADE_ART)
+
+-- Legion Helper spells some cards with the mod's old names: each is filed
+-- under the catalogue's name, so that it reaches the card.
+_G.CardsSchema = {
+  units = {REBEL = {["C-3PO GOLDEN GOD"] = {name = "C-3PO", title = "Golden God"},
+                    ["PADMÉ AMIDALA SPIRITED SENATOR"] = {name = "Padmé Amidala", title = "Spirited Senator",
+                      commands = {{name = "Hello There"}}}}},
+  upgrades = {["THE DARKSABER (SABINE)"] = {name = "The Darksaber (Sabine)"},
+              ["A-180 PISTOL CONFIG"] = {name = "A-180 Pistol Config", flip = {name = "A-180 Rifle Config"}}},
+  commands = {},
+}
+local filed = legionHelperCatalogueArt({
+  units = {REBEL = {["C-3P0 GOLDEN GOD"] = {image = "a", shown = "C-3P0: Golden God"},
+                    ["PADME AMIDALA SPIRITED SENATOR"] = {image = "b", shown = "Padme Amidala: Spirited Senator"}}},
+  upgrades = {["THE DARKSABER"] = {image = "c", name = "The Darksaber"},
+              ["A-180 PISTOL CONFIG"] = {image = "d", name = "A-180 Pistol Config", back = "e", backName = "A-180 Rifle Config"},
+              ["NO SUCH CARD"] = {image = "f", name = "No Such Card"}},
+  commands = {["HELLO THERE!"] = "g"},
+})
+check("an old unit name is filed under the catalogue's", filed.units.REBEL["C-3PO GOLDEN GOD"].image == "a"
+  and filed.units.REBEL["C-3PO GOLDEN GOD"].shown == "C-3PO: Golden God")
+check("an accent the builder leaves out", filed.units.REBEL["PADMÉ AMIDALA SPIRITED SENATOR"].image == "b")
+check("an upgrade through an alias", filed.upgrades["THE DARKSABER (SABINE)"].image == "c")
+check("a two-sided upgrade keeps its back", filed.upgrades["A-180 PISTOL CONFIG"].back == "e"
+  and filed.upgrades["A-180 PISTOL CONFIG"].backName == "A-180 Rifle Config")
+check("a card the mod lacks is kept as it is", filed.upgrades["NO SUCH CARD"].image == "f")
+check("a command by its letters", filed.commands["HELLO THERE"] == "g")
+local moved = legionHelperCatalogueArt({units = {MERCENARY = {["C-3P0 GOLDEN GOD"] = {image = "h"}}},
+  upgrades = {}, commands = {}})
+_G.CardsSchema.units.REPUBLIC = {["CLONE COMMANDOS DELTA SQUAD"] = {name = "Clone Commandos", title = "Delta Squad"}}
+local repeated = legionHelperCatalogueArt({units = {REPUBLIC = {["CLONE COMMANDOS DELTA SQUAD •DELTA SQUAD"] = {image = "i"}}},
+  upgrades = {}, commands = {}})
+check("a title repeated at the end of the name", repeated.units.REPUBLIC["CLONE COMMANDOS DELTA SQUAD"].image == "i")
+check("a unit under another faction takes its art where the catalogue has it",
+  moved.units.REBEL and moved.units.REBEL["C-3PO GOLDEN GOD"].image == "h")
 
 if failures > 0 then
   error(failures .. " failure(s)")
