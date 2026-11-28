@@ -2,6 +2,50 @@
   "Commander": [
     {
       "name": "Gar Saxon",
+      "title": "Head of Clan Saxon",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/14464163344535301954/DA386F6684BDB764CC62DD162084A2151FB6DA95/",
+      "size": "small",
+      "type": "Mandalorian Trooper",
+      "points": 115,
+      "speed": 3,
+      "upgrades": {
+        "Command": 1,
+        "Training": 2,
+        "Grenades": 1,
+        "Gear": 2,
+        "Armament": 1
+      },
+      "minis": [
+        {
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/14436064754089284584/95BA954F4E47428F9C0022704047A74D74BD2186/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/14414572076367886190/7FD3B875CE6A41113DC1F3C56D8ECC44DC328580/"
+        }
+      ],
+      "commands": [
+        {
+          "name": "Marked for Elimination",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139734189/BFD230D0FDCC337658C60B4254D6718684F4EF21/",
+          "pip": 1
+        },
+        {
+          "name": "Fight Another Day",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139727495/1DCDC03996549F05C8D84E79CCAAC22F9F22CA17/",
+          "pip": 2
+        },
+        {
+          "name": "Victory or Death!",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139734267/BE465B62B232B7E2F2992497221C565D00B19CCF/",
+          "pip": 3
+        },
+        {
+          "name": "Death Before Defeat",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/9403914900224633725/523A7608466832A100A89AF9BF33D45CC4497C11/",
+          "pip": 3
+        }
+      ]
+    },
+    {
+      "name": "Gar Saxon",
       "title": "Militant Commando",
       "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385139719525/A5642D0B10D7426AD751D9428A0C249D5F4BAF2F/",
       "size": "small",

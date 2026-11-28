@@ -38,6 +38,38 @@
       ]
     },
     {
+      "name": "Obi-Wan Kenobi",
+      "title": "Mounted Jedi General",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/10736636607530646598/D5C71F67E9C9A98BEB5CCA1092311C5CC1562854/",
+      "size": "large",
+      "type": "Repulsor Vehicle",
+      "points": 140,
+      "speed": 3,
+      "upgrades": {
+        "Force": 2,
+        "Command": 1,
+        "Training": 1,
+        "Comms": 1
+      },
+      "silhouette": {
+        "height": 1.83,
+        "offset": 0
+      },
+      "minis": [
+        {
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/13919657420915661495/F689546CFD54A34D3B71DB0E053BCD0138D514C0/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/11042190550271269701/A0995071E0D1990D404E64376A06C9506B5BF94D/"
+        }
+      ],
+      "commands": [
+        {
+          "name": "Into the Breach",
+          "image": "https://steamusercontent-a.akamaihd.net/ugc/13514604391333567265/068A6D0F659E5AF9C42021A8D74997C1806B3D1D/",
+          "pip": 1
+        }
+      ]
+    },
+    {
       "name": "Jedi Knight",
       "title": "Mounted Jedi General",
       "image": "https://steamusercontent-a.akamaihd.net/ugc/14386508818510274652/0340B2C347083C25DC5ADEC0C18C6B7BC2542E0A/",
@@ -773,6 +805,35 @@
   "Special Forces": [
     {
       "name": "Wookiee Warriors",
+      "title": "Noble Fighters",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385135341447/B0773809842EFD82EFA442C9E918729C2DE3AA1F/",
+      "size": "small",
+      "type": "Wookiee Trooper",
+      "points": 69,
+      "speed": 2,
+      "upgrades": {
+        "Heavy Weapon": 1,
+        "Training": 2,
+        "Gear": 1,
+        "Grenades": 1
+      },
+      "minis": [
+        {
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541173937/5179F4315AD6B0839454E1934E794A7F006C7813/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
+        },
+        {
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174158/677BF72C323CFF2314C174393AFA361C398C5519/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174034/90C4A124BB82CCE0B5E38E13860ED49BB9A4973B/"
+        },
+        {
+          "mesh": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174304/9053CDD2798CEA905F8486498D0104B6ACA2F078/",
+          "diffuse": "https://steamusercontent-a.akamaihd.net/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
+        }
+      ]
+    },
+    {
+      "name": "Wookiee Warriors",
       "title": "Kashyyyk Defenders",
       "displayName": "Wookiee Warriors (Defenders)",
       "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385135341419/3EC4467936F4470CD7F7E5BA2E4BE0CD069869AF/",
@@ -795,6 +856,35 @@
         },
         {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1619598366708043883/1EA1B3C21A50C20D4D168AB91ECFE1C01A4F7DF5/"
+        }
+      ]
+    },
+    {
+      "name": "Wookiee Warriors",
+      "title": "Fearsome Guardians",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/10382568399793743084/50B4C721759488BC6FB5EA56F6E2B2D393CE4309/",
+      "size": "small",
+      "type": "Wookiee Trooper",
+      "points": 72,
+      "speed": 2,
+      "upgrades": {
+        "Heavy Weapon": 1,
+        "Training": 1,
+        "Gear": 1,
+        "Grenades": 1
+      },
+      "minis": [
+        {
+          "mesh": "http://cloud-3.steamusercontent.com/ugc/785234540541173937/5179F4315AD6B0839454E1934E794A7F006C7813/",
+          "diffuse": "http://cloud-3.steamusercontent.com/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
+        },
+        {
+          "mesh": "http://cloud-3.steamusercontent.com/ugc/785234540541174158/677BF72C323CFF2314C174393AFA361C398C5519/",
+          "diffuse": "http://cloud-3.steamusercontent.com/ugc/785234540541174034/90C4A124BB82CCE0B5E38E13860ED49BB9A4973B/"
+        },
+        {
+          "mesh": "http://cloud-3.steamusercontent.com/ugc/785234540541174304/9053CDD2798CEA905F8486498D0104B6ACA2F078/",
+          "diffuse": "http://cloud-3.steamusercontent.com/ugc/785234540541174467/18352D89A219B89F6C869D89B9EDE22822F7F950/"
         }
       ]
     },
@@ -1025,6 +1115,28 @@
       "minis": [
         {
           "bundle": "https://steamusercontent-a.akamaihd.net/ugc/2202884666993392985/D48A26F5F9D3498814911131BA08B0BAF92F8B65/"
+        }
+      ]
+    },
+    {
+      "name": "Raddaugh Gnasp Fluttercraft",
+      "displayName": "Fluttercraft",
+      "image": "https://steamusercontent-a.akamaihd.net/ugc/10804385135343126/F85A20B8CBAFDED99A98E49A5606034C27863FE8/",
+      "size": "huge",
+      "type": "Repulsor Vehicle",
+      "points": 55,
+      "speed": 2,
+      "upgrades": {
+        "Crew": 1,
+        "Comms": 1
+      },
+      "silhouette": {
+        "height": 6.5,
+        "offset": 0
+      },
+      "minis": [
+        {
+          "bundle": "https://steamusercontent-a.akamaihd.net/ugc/1619598523372505515/1191E8089B37C0CC4BBE8283EF6B7F9C5A74A13C/"
         }
       ]
     },
