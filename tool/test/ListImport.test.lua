@@ -11,7 +11,9 @@ local src = io.open("mod/src/includes/data/ListBuilderNew.ttslua"):read("*a")
 local a = src:find("function repairLongshanksList%(text%)")
 assert(a, "repairLongshanksList not found")
 local b = src:find("\nend\n", a, true)
-load(src:sub(a, b + 4))()
+-- loadstring: the CI's Lua 5.1, where load takes no string
+local compile = rawget(_G, "loadstring") or load
+compile(src:sub(a, b + 4))()
 
 local failures = 0
 local function check(what, ok)
